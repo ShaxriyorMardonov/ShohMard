@@ -146,6 +146,7 @@ export default async function TestDetailPage({ params, searchParams }: { params:
                       : t("Hammasi ({total} ta)", { total: test.questions.length }),
                   ],
                   [t("Jami baho"), t("{n} ball", { n: test.maxScore ?? rawMax })],
+                  [t("Urinishlar soni"), test.maxAttempts > 1 ? t("{n} marta", { n: test.maxAttempts }) : t("1 marta")],
                   [t("Natija"), t(RESULT_RELEASE_LABEL[test.resultRelease])],
                   [t("Universitetlar"), test.universities.map((u) => u.name).join(", ") || "—"],
                 ].map(([k, v]) => (
@@ -166,6 +167,7 @@ export default async function TestDetailPage({ params, searchParams }: { params:
             maxScore={test.maxScore}
             rawMax={rawMax}
             questionsPerAttempt={test.questionsPerAttempt}
+            maxAttempts={test.maxAttempts}
             totalQuestions={test.questions.length}
             locked={locked}
           />

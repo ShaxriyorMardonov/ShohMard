@@ -6,7 +6,7 @@ import { Pencil, Trash2, UsersRound } from "lucide-react";
 import { assignStudentsGroupAction, deleteStudentAction } from "@/actions/admin";
 import { Field } from "@/components/forms/field";
 import { StudentDialog, type OrgNames, type StudentRow } from "@/components/admin/student-dialog";
-import { Badge } from "@/components/ui/badge";
+import { UserActiveSwitch } from "@/components/admin/user-active-switch";
 import { Button } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -99,7 +99,7 @@ export function StudentsTable({
               <TableCell className="max-w-[180px] text-xs">{s.faculty?.name ?? "—"}</TableCell>
               <TableCell>{s.group?.name ?? "—"}</TableCell>
               <TableCell className="text-xs">{t(studyFormLabel(s.studyForm))}</TableCell>
-              <TableCell>{s.isActive ? <Badge variant="success">{t("Faol")}</Badge> : <Badge variant="muted">{t("Nofaol")}</Badge>}</TableCell>
+              <TableCell><UserActiveSwitch id={s.id} active={s.isActive} /></TableCell>
               <TableCell>
                 <div className="flex justify-end gap-1">
                   <StudentDialog

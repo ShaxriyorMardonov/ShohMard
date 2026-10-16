@@ -50,6 +50,7 @@ export async function resultsWhere(f: ResultFilters): Promise<Prisma.AttemptWher
 
 export const resultSelect = {
   id: true,
+  attemptNo: true,
   startedAt: true,
   submittedAt: true,
   autoSubmitted: true,

@@ -85,7 +85,7 @@ export function Sidebar({ role, footer }: { role: NavRole; footer?: React.ReactN
       <div className="px-2">
         <SamuLogo tone="dark" size="sm" />
         <p className="mt-2 text-[11px] font-medium text-white/45">
-          {t(role === "ADMIN" ? "Administrator paneli" : role === "MANAGER" ? "Menejer paneli" : "Talaba kabineti")}
+          {t(role === "ADMIN" ? "Super admin paneli" : role === "MANAGER" ? "Menejer paneli" : "Talaba kabineti")}
         </p>
       </div>
       <div className="mt-8 flex-1 overflow-y-auto">

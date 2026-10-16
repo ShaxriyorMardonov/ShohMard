@@ -128,24 +128,30 @@ export async function startAttempt(userId: string, universityId: string, testId:
       endsAt: true,
       durationMinutes: true,
       questionsPerAttempt: true,
+      maxAttempts: true,
       questions: { orderBy: { position: "asc" }, select: { questionId: true } },
       _count: { select: { questions: true } },
     },
   });
   if (!test) throw new ExamError("Test topilmadi yoki sizga mavjud emas", "NOT_FOUND");
 
-  const existing = await prisma.attempt.findUnique({
-    where: { testId_userId: { testId, userId } },
+  const previous = await prisma.attempt.findMany({
+    where: { testId, userId },
+    orderBy: { attemptNo: "desc" },
   });
+  const existing = previous.find((a) => a.status === "IN_PROGRESS");
   if (existing) {
-    if (existing.status === "SUBMITTED") {
-      throw new ExamError("Siz bu testni allaqachon topshirgansiz", "ALREADY_SUBMITTED");
-    }
     if (isExpired(existing.deadlineAt, now, SAVE_GRACE_MS)) {
       await finalizeAttempt(existing.id, { auto: true });
       throw new ExamError("Test vaqti tugagan, javoblaringiz avtomatik topshirildi", "EXPIRED");
     }
     return existing; // davom ettirish: muddat qayta boshlanmaydi
+  }
+  if (previous.length >= test.maxAttempts) {
+    throw new ExamError(
+      test.maxAttempts > 1 ? "Urinishlar soni tugagan" : "Siz bu testni allaqachon topshirgansiz",
+      "ALREADY_SUBMITTED",
+    );
   }
 
   if (testState(test, now) !== "open") {
@@ -155,11 +161,13 @@ export async function startAttempt(userId: string, universityId: string, testId:
     throw new ExamError("Testda hali savollar yo'q", "NOT_OPEN");
   }
 
+  const attemptNo = (previous[0]?.attemptNo ?? 0) + 1;
   try {
     return await prisma.attempt.create({
       data: {
         testId,
         userId,
+        attemptNo,
         startedAt: now,
         deadlineAt: computeDeadline(test, now),
         questionIds: pickQuestionIds(test.questions.map((q) => q.questionId), test.questionsPerAttempt),
@@ -168,7 +176,7 @@ export async function startAttempt(userId: string, universityId: string, testId:
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       // Parallel so'rov allaqachon yaratgan
-      const again = await prisma.attempt.findUnique({ where: { testId_userId: { testId, userId } } });
+      const again = await prisma.attempt.findFirst({ where: { testId, userId, status: "IN_PROGRESS" } });
       if (again) return again;
     }
     throw e;

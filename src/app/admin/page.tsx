@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { Activity, BarChart3, Building2, ClipboardList, Library, Plus, Users } from "lucide-react";
+import { Activity, BarChart3, Building2, ClipboardList, Trophy, Users } from "lucide-react";
 import { EmptyState, PageHeader, StatCard } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireAdmin } from "@/lib/auth";
@@ -17,16 +16,26 @@ export default async function AdminDashboard() {
   await finalizeExpiredAttempts();
   const now = new Date();
 
-  const [universities, students, publishedTests, openTests, questions, submitted, inProgress, avg, recent, uniStats, upcoming] =
+  const [universities, students, publishedTests, openTests, submitted, inProgress, top, recent, uniStats, upcoming] =
     await Promise.all([
       prisma.university.count(),
       prisma.user.count({ where: { roles: { has: "STUDENT" }, isActive: true } }),
       prisma.test.count({ where: { isPublished: true } }),
       prisma.test.count({ where: { isPublished: true, startsAt: { lte: now }, endsAt: { gt: now } } }),
-      prisma.question.count(),
       prisma.attempt.count({ where: { status: "SUBMITTED" } }),
       prisma.attempt.count({ where: { status: "IN_PROGRESS" } }),
-      prisma.attempt.aggregate({ where: { status: "SUBMITTED" }, _avg: { percent: true } }),
+      // Har bir test bo'yicha eng yaxshi urinish, so'ng talabaning o'rtacha foizi
+      prisma.$queryRaw<{ id: string; fullName: string; shortName: string | null; tests: bigint; avg: number }[]>`
+        SELECT s."id", s."fullName", un."shortName", COUNT(*) AS tests, AVG(b.best) AS avg
+        FROM (
+          SELECT "userId", "testId", MAX("percent") AS best FROM "Attempt"
+          WHERE "status" = 'SUBMITTED' AND "percent" IS NOT NULL GROUP BY "userId", "testId"
+        ) b
+        JOIN "User" s ON s."id" = b."userId"
+        LEFT JOIN "University" un ON un."id" = s."universityId"
+        GROUP BY s."id", s."fullName", un."shortName"
+        ORDER BY avg DESC, tests DESC, s."fullName" ASC
+        LIMIT 10`,
       prisma.attempt.findMany({
         where: { status: "SUBMITTED" },
         orderBy: { submittedAt: "desc" },
@@ -58,30 +67,56 @@ export default async function AdminDashboard() {
       <PageHeader
         title={t("Xush kelibsiz, {name}", { name: admin.fullName })}
         description={t("SAMU platformasining umumiy holati")}
-        actions={
-          <>
-            <Button asChild variant="outline">
-              <Link href="/admin/questions/new"><Plus /> {t("Savol")}</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/admin/tests/new"><Plus /> {t("Yangi test")}</Link>
-            </Button>
-          </>
-        }
       />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard label={t("Universitetlar")} value={universities} icon={<Building2 />} tone="midnight" />
         <StatCard label={t("Faol talabalar")} value={students} icon={<Users />} />
         <StatCard label={t("Faol testlar")} value={publishedTests} hint={t("Hozir ochiq: {n}", { n: openTests })} icon={<ClipboardList />} tone="warning" />
-        <StatCard label={t("Savollar banki")} value={questions} icon={<Library />} tone="success" />
-      </div>
-      <div className="mt-4 grid gap-4 sm:grid-cols-3">
         <StatCard label={t("Topshirilgan urinishlar")} value={submitted} icon={<BarChart3 />} tone="success" />
         <StatCard label={t("Hozir imtihonda")} value={inProgress} icon={<Activity />} tone="warning" />
-        <StatCard label={t("O'rtacha natija")} value={avg._avg.percent === null ? "—" : `${avg._avg.percent.toFixed(1)}%`} icon={<BarChart3 />} />
       </div>
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[1.6fr_1fr]">
+        <div className="grid gap-6">
+        <Card className="overflow-hidden">
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="flex items-center gap-2"><Trophy className="size-5 text-warning" /> {t("Top 10 talaba")}</CardTitle>
+            <span className="text-xs text-muted-foreground">{t("Har bir testdagi eng yaxshi natija bo'yicha o'rtacha")}</span>
+          </CardHeader>
+          {top.length === 0 ? (
+            <CardContent>
+              <EmptyState icon={<Trophy />} title={t("Hali natijalar yo'q")} />
+            </CardContent>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">№</TableHead>
+                  <TableHead>{t("Talaba")}</TableHead>
+                  <TableHead>{t("Testlar")}</TableHead>
+                  <TableHead className="text-right">{t("O'rtacha")}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {top.map((s, i) => (
+                  <TableRow key={s.id}>
+                    <TableCell>
+                      <span className={`inline-flex size-7 items-center justify-center rounded-full text-xs font-bold ${i < 3 ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground"}`}>{i + 1}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-semibold text-midnight">{s.fullName}</span>
+                      <span className="block text-xs text-muted-foreground">{s.shortName ?? "—"}</span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{Number(s.tests)}</TableCell>
+                    <TableCell className="text-right">
+                      <Badge variant="success">{Number(s.avg).toFixed(1)}%</Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Card>
         <Card className="overflow-hidden">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle>{t("So'nggi natijalar")}</CardTitle>
@@ -119,6 +154,8 @@ export default async function AdminDashboard() {
             </Table>
           )}
         </Card>
+
+        </div>
 
         <div className="grid gap-6">
           <Card>

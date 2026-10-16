@@ -120,7 +120,7 @@ export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
 export const RESULT_RELEASE_LABEL: Record<ResultRelease, string> = {
   IMMEDIATE: "Topshirilgandan so'ng darhol",
   AFTER_END: "Test yakunlangach",
-  MANUAL: "Administrator e'lon qilganda",
+  MANUAL: "Super admin e'lon qilganda",
 };
 
 /** Xom ballni testning jami bahosiga moslaydi (0,1 aniqlikda). */

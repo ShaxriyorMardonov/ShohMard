@@ -42,6 +42,7 @@ export default async function EditTestPage({ params }: { params: Promise<{ testI
           endsAt: toLocalInput(test.endsAt),
           passingPercent: test.passingPercent,
           questionsPerAttempt: test.questionsPerAttempt,
+          maxAttempts: test.maxAttempts,
           maxScore: test.maxScore,
           locked: test._count.attempts > 0,
           resultRelease: test.resultRelease,

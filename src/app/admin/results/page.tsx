@@ -1,12 +1,10 @@
-import Link from "next/link";
 import { BarChart3, FileSpreadsheet, FileText } from "lucide-react";
 import { FilterBar } from "@/components/admin/filter-bar";
 import { Pagination, parsePage } from "@/components/admin/pagination";
 import { EmptyState, PageHeader } from "@/components/layout/app-shell";
-import { Badge } from "@/components/ui/badge";
+import { ResultsTable } from "@/components/admin/results-table";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { STUDY_FORMS, studyFormLabel } from "@/lib/labels";
@@ -106,46 +104,23 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
         <EmptyState icon={<BarChart3 />} title={t("Natijalar topilmadi")} />
       ) : (
         <Card className="overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>{t("Talaba")}</TableHead>
-                <TableHead>{t("Universitet / guruh")}</TableHead>
-                <TableHead>{t("Test")}</TableHead>
-                <TableHead>{t("Topshirilgan")}</TableHead>
-                <TableHead>{t("Ball")}</TableHead>
-                <TableHead className="text-right">{t("Natija")}</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>
-                    <Link href={`/admin/results/${r.id}`} className="font-semibold text-midnight hover:text-royal">{r.user.fullName}</Link>
-                    <span className="block font-mono text-xs text-muted-foreground">{r.user.login}</span>
-                  </TableCell>
-                  <TableCell>
-                    {r.user.university?.shortName ?? "—"}
-                    <span className="block text-xs text-muted-foreground">
-                      {[r.user.faculty?.name, r.user.group?.name, r.user.studyForm ? t(studyFormLabel(r.user.studyForm)) : null].filter(Boolean).join(" · ")}
-                    </span>
-                  </TableCell>
-                  <TableCell className="max-w-[240px]">
-                    <span className="line-clamp-2">{r.test.title}</span>
-                    {r.test.subject && <span className="block text-xs text-muted-foreground">{r.test.subject}</span>}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {formatDateTime(r.submittedAt, lang)}
-                    {r.autoSubmitted && <span className="block text-xs">{t("avtomatik")}</span>}
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">{r.score}/{r.maxScore}</TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={(r.percent ?? 0) >= r.test.passingPercent ? "success" : "error"}>{r.percent}%</Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <ResultsTable
+            rows={rows.map((r) => ({
+              id: r.id,
+              fullName: r.user.fullName,
+              login: r.user.login,
+              university: r.user.university?.shortName ?? "—",
+              org: [r.user.faculty?.name, r.user.group?.name, r.user.studyForm ? t(studyFormLabel(r.user.studyForm)) : null].filter(Boolean).join(" · "),
+              testTitle: r.test.title,
+              subject: r.test.subject,
+              attemptNo: r.attemptNo,
+              submitted: formatDateTime(r.submittedAt, lang),
+              auto: r.autoSubmitted,
+              score: `${r.score}/${r.maxScore}`,
+              percent: r.percent,
+              passed: (r.percent ?? 0) >= r.test.passingPercent,
+            }))}
+          />
           <Pagination page={page} pages={Math.ceil(total / PER_PAGE)} total={total} params={params} />
         </Card>
       )}

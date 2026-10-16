@@ -2,6 +2,7 @@ import { Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { deleteStaffUserAction } from "@/actions/admin";
 import { StaffDialog } from "@/components/admin/staff-dialog";
 import { PageHeader } from "@/components/layout/app-shell";
+import { UserActiveSwitch } from "@/components/admin/user-active-switch";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,14 +35,14 @@ export default async function UsersPage() {
     <>
       <PageHeader
         title={t("Rollar")}
-        description={t("Administratorlar va universitet menejerlari")}
+        description={t("Super adminlar va universitet menejerlari")}
         actions={<StaffDialog universities={universities} trigger={<Button><Plus /> {t("Foydalanuvchi qo'shish")}</Button>} />}
       />
       <Card className="mb-6">
         <CardContent className="grid gap-3 pt-5 text-sm sm:grid-cols-2">
           <div className="flex gap-3">
             <ShieldCheck className="mt-0.5 size-5 shrink-0 text-royal" />
-            <p><b className="text-midnight">{t("Administrator")}</b>: {t("universitetlar, fakultetlar, talabalar, testlar, savollar banki, natijalar va rollar.")}</p>
+            <p><b className="text-midnight">{t("Super admin")}</b>: {t("universitetlar, fakultetlar, talabalar, testlar, savollar banki, natijalar va rollar.")}</p>
           </div>
           <div className="flex gap-3">
             <ShieldCheck className="mt-0.5 size-5 shrink-0 text-success" />
@@ -77,7 +78,7 @@ export default async function UsersPage() {
                     </div>
                   </TableCell>
                   <TableCell>{u.university?.shortName ?? "—"}</TableCell>
-                  <TableCell>{u.isActive ? <Badge variant="success">{t("Faol")}</Badge> : <Badge variant="muted">{t("Nofaol")}</Badge>}</TableCell>
+                  <TableCell><UserActiveSwitch id={u.id} active={u.isActive} disabled={self} /></TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(u.lastLoginAt, lang)}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">

@@ -23,25 +23,29 @@ export async function getStudentTests(userId: string, universityId: string) {
       isPublished: true,
       resultRelease: true,
       resultsReleasedAt: true,
+      maxAttempts: true,
       _count: { select: { questions: true } },
       attempts: {
         where: { userId },
+        orderBy: { attemptNo: "desc" },
         select: { id: true, status: true, deadlineAt: true, submittedAt: true, percent: true },
       },
     },
   });
   return tests.map((t) => {
     const attempt = t.attempts[0] ?? null;
+    const attemptsUsed = t.attempts.length;
+    const attemptsLeft = Math.max(0, t.maxAttempts - attemptsUsed);
     const state = testState(t, now);
     let status: StudentTestStatus;
     if (attempt?.status === "IN_PROGRESS" && !isExpired(attempt.deadlineAt, now, SAVE_GRACE_MS)) status = "in_progress";
-    else if (attempt) status = "submitted";
+    else if (attempt && (attemptsLeft === 0 || state !== "open")) status = "submitted";
     else if (state === "open") status = "open";
     else if (state === "upcoming") status = "upcoming";
     else status = "missed";
     const { attempts: _a, ...rest } = t;
     void _a;
-    return { ...rest, attempt, status, released: isResultReleased(t, now) };
+    return { ...rest, attempt, attemptsUsed, attemptsLeft, status, released: isResultReleased(t, now) };
   });
 }
 

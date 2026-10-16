@@ -19,7 +19,7 @@ function initials(name: string) {
 }
 
 export function roleTitle(role: Role, uni: string | null | undefined, t: TFunction) {
-  if (role === "ADMIN") return t("Administrator");
+  if (role === "ADMIN") return t("Super admin");
   if (role === "MANAGER") return `${t("Menejer")}${uni ? ` · ${uni}` : ""}`;
   return `${t("Talaba")}${uni ? ` · ${uni}` : ""}`;
 }

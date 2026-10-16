@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarClock, CheckCircle2, Clock, FileQuestion, Info } from "lucide-react";
+import { ArrowLeft, CalendarClock, CheckCircle2, Clock, FileQuestion, Info, RotateCcw } from "lucide-react";
 import { PageHeader } from "@/components/layout/app-shell";
 import { TestStatusBadge } from "@/components/student/test-card";
 import { Alert } from "@/components/ui/alert";
@@ -25,7 +25,9 @@ export default async function TestIntroPage({ params }: { params: Promise<{ test
     t("Test boshlangach, taymer to'xtatilmaydi va sahifani yangilash vaqtni qayta boshlamaydi."),
     t("Har bir javobingiz serverga avtomatik saqlanadi."),
     t("Vaqt tugaganda javoblaringiz avtomatik topshiriladi."),
-    t("Testni faqat bir marta topshirish mumkin."),
+    test.maxAttempts > 1
+      ? t("Testni {n} marta topshirish mumkin. Har bir urinish alohida natija sifatida saqlanadi.", { n: test.maxAttempts })
+      : t("Testni faqat bir marta topshirish mumkin."),
   ];
 
   return (
@@ -63,6 +65,12 @@ export default async function TestIntroPage({ params }: { params: Promise<{ test
               <FileQuestion className="size-4 text-royal" />
               <span>{t("Savollar:")} <b>{t("{n} ta", { n: test._count.questions })}</b></span>
             </div>
+            {test.maxAttempts > 1 && (
+              <div className="flex items-center gap-3">
+                <RotateCcw className="size-4 text-royal" />
+                <span>{t("Urinishlar:")} <b>{t("{used} / {max}", { used: test.attemptsUsed, max: test.maxAttempts })}</b></span>
+              </div>
+            )}
             <div className="flex items-start gap-3">
               <CalendarClock className="mt-0.5 size-4 text-royal" />
               <span>
@@ -82,7 +90,7 @@ export default async function TestIntroPage({ params }: { params: Promise<{ test
               </Alert>
             )}
             {test.status === "open" || test.status === "in_progress" ? (
-              <StartTestButton testId={test.id} resume={test.status === "in_progress"} />
+              <StartTestButton testId={test.id} resume={test.status === "in_progress"} retake={!!test.attempt && test.status === "open"} />
             ) : test.status === "upcoming" ? (
               <Alert>
                 <Info />
@@ -91,7 +99,7 @@ export default async function TestIntroPage({ params }: { params: Promise<{ test
             ) : test.status === "submitted" ? (
               <Alert variant="success">
                 <CheckCircle2 />
-                <span>{t("Siz bu testni topshirgansiz.")}</span>
+                <span>{test.maxAttempts > 1 ? t("Barcha urinishlaringizdan foydalandingiz.") : t("Siz bu testni topshirgansiz.")}</span>
               </Alert>
             ) : (
               <Alert variant="error">

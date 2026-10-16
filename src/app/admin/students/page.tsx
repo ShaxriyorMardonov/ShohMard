@@ -71,7 +71,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader
         title={t("Talabalar")}
-        description={staff.scope ? t("{name} talabalari", { name: staff.university?.name }) : t("Talaba hisoblari administrator yoki universitet menejeri tomonidan yaratiladi")}
+        description={staff.scope ? t("{name} talabalari", { name: staff.university?.name }) : t("Talaba hisoblari Super admin yoki universitet menejeri tomonidan yaratiladi")}
         actions={
           <>
             <ImportDialog kind="students" />

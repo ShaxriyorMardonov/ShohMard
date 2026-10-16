@@ -19,6 +19,7 @@ export function TestScheduleCard({
   maxScore,
   rawMax,
   questionsPerAttempt,
+  maxAttempts,
   totalQuestions,
   locked,
 }: {
@@ -29,6 +30,7 @@ export function TestScheduleCard({
   maxScore: number | null;
   rawMax: number;
   questionsPerAttempt: number | null;
+  maxAttempts: number;
   totalQuestions: number;
   locked: boolean;
 }) {
@@ -71,10 +73,14 @@ export function TestScheduleCard({
             <Field label={t("Jami ball")} htmlFor="s-max" error={e.maxScore}>
               <Input id="s-max" name="maxScore" type="number" min={1} max={1000} defaultValue={maxScore ?? ""} placeholder={String(rawMax)} />
             </Field>
+            <Field label={t("Urinishlar soni")} htmlFor="s-att" error={e.maxAttempts}>
+              <Input id="s-att" name="maxAttempts" type="number" min={1} max={20} defaultValue={maxAttempts} />
+            </Field>
           </div>
           <p className="text-xs text-muted-foreground">
             {t("Savollar soni: har bir talabaga testdagi {total} ta savoldan nechtasi tasodifiy tushadi (bo'sh — hammasi).", { total: totalQuestions })}{" "}
-            {t("Jami ball bo'sh qolsa, savollar ballari yig'indisi ({rawMax}) olinadi; o'zgarsa, mavjud natijalar qayta hisoblanadi.", { rawMax })}
+            {t("Jami ball bo'sh qolsa, savollar ballari yig'indisi ({rawMax}) olinadi; o'zgarsa, mavjud natijalar qayta hisoblanadi.", { rawMax })}{" "}
+            {t("Urinishlar soni: talaba testni necha marta topshira oladi.")}
           </p>
           <SubmitButton pending={pending} pendingText={t("Saqlanmoqda...")}>{t("Saqlash")}</SubmitButton>
         </form>

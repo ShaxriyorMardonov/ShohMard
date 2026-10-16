@@ -17,7 +17,7 @@ import type { FormState } from "@/lib/validation";
 export type StaffRow = { id: string; fullName: string; login: string; roles: Role[]; universityId: string | null; isActive: boolean };
 
 const ROLE_OPTIONS: { value: Role; label: string; hint: string }[] = [
-  { value: "ADMIN", label: "Administrator", hint: "Hamma narsani boshqaradi" },
+  { value: "ADMIN", label: "Super admin", hint: "Hamma narsani boshqaradi" },
   { value: "MANAGER", label: "Universitet menejeri", hint: "Talaba yuklash, test yaratish va vaqtini ochish" },
   { value: "STUDENT", label: "Talaba", hint: "Test topshiradi va natijasini ko'radi" },
 ];
@@ -104,7 +104,7 @@ export function StaffDialog({ user, universities, isSelf = false, trigger }: { u
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{user ? t("Foydalanuvchini tahrirlash") : t("Yangi foydalanuvchi")}</DialogTitle>
-          <DialogDescription>{t("Menejer talabalarni yuklaydi, test yaratadi va test vaqtini ochadi. Administrator hamma narsani boshqaradi.")}</DialogDescription>
+          <DialogDescription>{t("Menejer talabalarni yuklaydi, test yaratadi va test vaqtini ochadi. Super admin hamma narsani boshqaradi.")}</DialogDescription>
         </DialogHeader>
         {open && <StaffForm user={user} universities={universities} isSelf={isSelf} onDone={() => setOpen(false)} />}
       </DialogContent>

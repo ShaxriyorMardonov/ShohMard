@@ -26,11 +26,18 @@ export function TestAction({ test, size = "sm" }: { test: StudentTest; size?: "s
   const { t } = useT();
   if (test.status === "open")
     return (
-      <Button asChild size={size}>
-        <Link href={`/student/tests/${test.id}`}>
-          <PlayCircle /> {t("Testni boshlash")}
-        </Link>
-      </Button>
+      <>
+        {test.attempt && test.released && (
+          <Button asChild size={size} variant="outline">
+            <Link href={`/student/results/${test.attempt.id}`}>{t("Natijani ko'rish")}</Link>
+          </Button>
+        )}
+        <Button asChild size={size}>
+          <Link href={`/student/tests/${test.id}`}>
+            <PlayCircle /> {test.attempt ? t("Qayta topshirish") : t("Testni boshlash")}
+          </Link>
+        </Button>
+      </>
     );
   if (test.status === "in_progress" && test.attempt)
     return (
@@ -77,6 +84,12 @@ export function TestCard({ test }: { test: StudentTest }) {
             <FileQuestion className="size-4 text-royal/80" />
             {t("{n} ta savol", { n: test._count.questions })}
           </span>
+          {test.maxAttempts > 1 && (
+            <span className="flex items-center gap-2">
+              <RotateCcw className="size-4 text-royal/80" />
+              {t("Urinishlar: {used} / {max}", { used: test.attemptsUsed, max: test.maxAttempts })}
+            </span>
+          )}
         </div>
       </dl>
       <div className="mt-5 flex items-center justify-end gap-2 empty:hidden">

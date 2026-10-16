@@ -107,6 +107,7 @@ export const testSchema = z
     maxScore: z
       .union([z.literal(""), z.coerce.number({ error: "Son kiriting" }).int("Butun son kiriting").min(1, "Kamida 1 ball").max(1000, "Ko'pi bilan 1000 ball")], { error: "Butun son kiriting" })
       .transform((v) => (v === "" ? null : v)),
+    maxAttempts: z.coerce.number({ error: "Son kiriting" }).int("Butun son kiriting").min(1, "Kamida 1 marta").max(20, "Ko'pi bilan 20 marta"),
     resultRelease: z.enum(["IMMEDIATE", "AFTER_END", "MANUAL"], { error: "Qiymatni tanlang" }),
     isPublished: z.boolean(),
     universityIds: z.array(z.string().min(1)).min(1, "Kamida bitta universitetni tanlang"),

@@ -310,6 +310,7 @@ export async function saveTestAction(_prev: FormState, fd: FormData): Promise<Fo
     passingPercent: str(fd.get("passingPercent")) || "60",
     questionsPerAttempt: str(fd.get("questionsPerAttempt")).trim(),
     maxScore: str(fd.get("maxScore")).trim(),
+    maxAttempts: str(fd.get("maxAttempts")).trim() || "1",
     resultRelease: str(fd.get("resultRelease")),
     isPublished: fd.get("isPublished") === "on",
     universityIds: staff.scope ? [staff.scope] : fd.getAll("universityIds").map(String),
@@ -397,7 +398,9 @@ export async function updateTestScheduleAction(testId: string, _prev: FormState,
   const maxScore = maxRaw === "" ? null : Number(maxRaw);
   const qRaw = str(fd.get("questionsPerAttempt")).trim();
   const questionsPerAttempt = qRaw === "" ? null : Number(qRaw);
+  const maxAttempts = Number(str(fd.get("maxAttempts")).trim() || "1");
   const errors: Record<string, string> = {};
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 20) errors.maxAttempts = "1–20 marta";
   if (questionsPerAttempt !== null && (!Number.isInteger(questionsPerAttempt) || questionsPerAttempt < 1 || questionsPerAttempt > 1000)) {
     errors.questionsPerAttempt = "1–1000 ta";
   }
@@ -416,7 +419,7 @@ export async function updateTestScheduleAction(testId: string, _prev: FormState,
   }
   await prisma.test.update({
     where: { id: testId },
-    data: { startsAt: startsAt!, endsAt: endsAt!, durationMinutes: duration, maxScore, questionsPerAttempt },
+    data: { startsAt: startsAt!, endsAt: endsAt!, durationMinutes: duration, maxScore, questionsPerAttempt, maxAttempts },
   });
   await recomputeDeadlines(testId);
   let rescored = 0;
@@ -620,7 +623,7 @@ export async function saveStaffUserAction(_prev: FormState, fd: FormData): Promi
     universityId: needsUni ? parsed.data.universityId : null,
   };
   if (id === admin.id && (!roles.includes("ADMIN") || !data.isActive)) {
-    return { message: "O'zingizning administrator rolingizni olib tashlay yoki hisobingizni o'chira olmaysiz" };
+    return { message: "O'zingizning Super admin rolingizni olib tashlay yoki hisobingizni o'chira olmaysiz" };
   }
   if (data.universityId && !(await prisma.university.count({ where: { id: data.universityId } }))) {
     return { errors: { universityId: "Universitet topilmadi" } };
@@ -663,4 +666,32 @@ export async function deleteStaffUserAction(id: string): Promise<Result> {
   }
   await prisma.user.delete({ where: { id } });
   revalidatePath("/admin/users");
+}
+
+/** Foydalanuvchini faol yoki nofaol qiladi. Nofaol foydalanuvchi tizimga kira olmaydi. */
+export async function setUserActiveAction(id: string, active: boolean): Promise<Result> {
+  const staff = await requireStaff();
+  if (id === staff.id && !active) return { error: "O'zingizni nofaol qila olmaysiz" };
+  const user = await prisma.user.findUnique({ where: { id }, select: { roles: true, universityId: true } });
+  if (!user) return { error: "Foydalanuvchi topilmadi" };
+  // Menejer faqat o'z universitetining talabalarini boshqaradi
+  if (staff.scope && (user.universityId !== staff.scope || user.roles.some((r) => r !== "STUDENT"))) {
+    return { error: "Bu amal uchun ruxsat yo'q" };
+  }
+  await prisma.user.update({ where: { id }, data: { isActive: active } });
+  if (!active) await prisma.session.deleteMany({ where: { userId: id } });
+  revalidatePath("/admin/students");
+  revalidatePath("/admin/users");
+}
+
+/** Test natijalarini (urinishlarni) o'chirish. Faqat Super admin. */
+export async function deleteResultsAction(ids: string[]): Promise<Result & { count?: number }> {
+  await requireAdmin();
+  const list = Array.from(new Set(ids)).slice(0, 500);
+  if (!list.length) return { error: "Natija tanlanmadi" };
+  const r = await prisma.attempt.deleteMany({ where: { id: { in: list } } });
+  revalidatePath("/admin/results");
+  revalidatePath("/admin/tests");
+  revalidatePath("/admin");
+  return { count: r.count };
 }

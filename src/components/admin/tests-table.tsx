@@ -7,6 +7,7 @@ import { Trash2 } from "lucide-react";
 import { deleteTestsAction, setTestActiveAction } from "@/actions/admin";
 import { TEST_STATE_BADGE } from "@/components/admin/test-state";
 import { Badge } from "@/components/ui/badge";
+import { ToggleSwitch } from "@/components/ui/toggle-switch";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -30,32 +31,7 @@ export type TestListRow = {
 
 /** Faol/nofaol almashtirgich. */
 export function ActiveSwitch({ id, active, disabled }: { id: string; active: boolean; disabled?: boolean }) {
-  const { t } = useT();
-  const router = useRouter();
-  const [pending, start] = React.useTransition();
-  const [error, setError] = React.useState<string | null>(null);
-  return (
-    <div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={active}
-        aria-label={active ? t("Nofaol qilish") : t("Faollashtirish")}
-        disabled={pending || disabled}
-        onClick={() =>
-          start(async () => {
-            const r = await setTestActiveAction(id, !active);
-            setError(r?.error ?? null);
-            router.refresh();
-          })
-        }
-        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${active ? "bg-success" : "bg-muted-foreground/30"}`}
-      >
-        <span className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${active ? "translate-x-5.5" : "translate-x-0.5"}`} />
-      </button>
-      {error && <p className="mt-1 max-w-[180px] text-[11px] leading-tight text-error">{t(error)}</p>}
-    </div>
-  );
+  return <ToggleSwitch active={active} disabled={disabled} onToggle={(next) => setTestActiveAction(id, next)} />;
 }
 
 export function TestsTable({ groups, canDelete }: { groups: { subject: string; rows: TestListRow[] }[]; canDelete: boolean }) {

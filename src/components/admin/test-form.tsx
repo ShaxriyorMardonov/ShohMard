@@ -24,6 +24,7 @@ export type TestInitial = {
   passingPercent: number;
   questionsPerAttempt: number | null;
   maxScore: number | null;
+  maxAttempts: number;
   locked?: boolean;
   resultRelease: "IMMEDIATE" | "AFTER_END" | "MANUAL";
   isPublished: boolean;
@@ -99,6 +100,9 @@ export function TestForm({
           <Field label={t("Maksimal ball (jami baho)")} htmlFor="t-max" error={e.maxScore} hint={t("Bo'sh qolsa, savollar ballari yig'indisi. Masalan, 100 yoki 5")}>
             <Input id="t-max" name="maxScore" type="number" min={1} max={1000} placeholder={t("Savollar ballari yig'indisi")} defaultValue={initial?.maxScore ?? ""} aria-invalid={!!e.maxScore} />
           </Field>
+          <Field label={t("Urinishlar soni")} htmlFor="t-att" error={e.maxAttempts} hint={t("Talaba testni necha marta topshira oladi")}>
+            <Input id="t-att" name="maxAttempts" type="number" min={1} max={20} defaultValue={initial?.maxAttempts ?? 1} aria-invalid={!!e.maxAttempts} />
+          </Field>
           <Field label={t("O'tish chegarasi (%)")} htmlFor="t-pass" error={e.passingPercent}>
             <Input id="t-pass" name="passingPercent" type="number" min={0} max={100} defaultValue={initial?.passingPercent ?? 60} />
           </Field>
@@ -106,7 +110,7 @@ export function TestForm({
             <NativeSelect id="t-rel" name="resultRelease" defaultValue={initial?.resultRelease ?? "IMMEDIATE"}>
               <option value="IMMEDIATE">{t("Topshirilgandan so'ng darhol")}</option>
               <option value="AFTER_END">{t("Test yakunlangach")}</option>
-              <option value="MANUAL">{t("Administrator e'lon qilganda")}</option>
+              <option value="MANUAL">{t("Super admin e'lon qilganda")}</option>
             </NativeSelect>
           </Field>
         </CardContent>

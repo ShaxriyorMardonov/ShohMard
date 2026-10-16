@@ -238,4 +238,19 @@ describe.skipIf(!enabled)("imtihon jarayoni (PostgreSQL bilan integratsion)", as
     await exam.rescoreTest(testId);
     expect((await prisma.attempt.findUniqueOrThrow({ where: { id: a.id } })).score).toBe(5);
   });
+  it("urinishlar soni: chegaragacha qayta topshirish mumkin, keyin rad etiladi", async () => {
+    await prisma.test.update({ where: { id: testId }, data: { maxAttempts: 2 } });
+    const a1 = await exam.startAttempt(alice, uniA, testId);
+    expect(a1.attemptNo).toBe(1);
+    // tugallanmagan urinish bor ekan, yangisi yaratilmaydi
+    expect((await exam.startAttempt(alice, uniA, testId)).id).toBe(a1.id);
+    await exam.submitAttempt(alice, a1.id);
+    const a2 = await exam.startAttempt(alice, uniA, testId);
+    expect(a2.attemptNo).toBe(2);
+    await exam.submitAttempt(alice, a2.id);
+    await expect(exam.startAttempt(alice, uniA, testId)).rejects.toMatchObject({ code: "ALREADY_SUBMITTED" });
+    // natija o'chirilsa, urinish bo'shaydi
+    await prisma.attempt.delete({ where: { id: a2.id } });
+    expect((await exam.startAttempt(alice, uniA, testId)).attemptNo).toBe(2);
+  });
 });

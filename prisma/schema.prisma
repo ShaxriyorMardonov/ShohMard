@@ -140,6 +140,8 @@ model Test {
   questionsPerAttempt Int?
   /// Testning jami (maksimal) bahosi (null — savollar ballari yig'indisi)
   maxScore        Int?
+  /// Talaba testni necha marta topshira oladi
+  maxAttempts     Int           @default(1)
   resultsReleasedAt DateTime?
   restrictedAccess  Boolean       @default(false)
   createdById     String?
@@ -225,10 +227,13 @@ model Attempt {
   percent       Float?
   correctCount  Int?
   totalQuestions Int?
+  /// Talabaning shu testdagi nechanchi urinishi (1 dan)
+  attemptNo     Int           @default(1)
 
   answers Answer[]
 
-  @@unique([testId, userId])
+  @@unique([testId, userId, attemptNo])
+  @@index([testId, userId])
   @@index([userId])
   @@index([status, deadlineAt])
 }
