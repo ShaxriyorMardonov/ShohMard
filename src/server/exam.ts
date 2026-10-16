@@ -294,6 +294,8 @@ export async function getExamView(userId: string, attemptId: string) {
     const own = new Set(attempt.questionIds);
     attempt.test.questions = attempt.test.questions.filter((tq) => own.has(tq.question.id));
   }
+  // Savollar tartibi har bir urinish uchun aralashtiriladi (sahifa yangilanganda tartib saqlanadi)
+  attempt.test.questions = seededShuffle(attempt.test.questions, attempt.id);
   // Variantlar har bir talaba uchun aralashtiriladi (to'g'ri javob doim birinchi turmasligi uchun).
   for (const tq of attempt.test.questions) {
     if (tq.question.type !== "TRUE_FALSE") tq.question.options = seededShuffle(tq.question.options, attempt.id + tq.question.id);

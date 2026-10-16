@@ -263,4 +263,21 @@ describe.skipIf(!enabled)("imtihon jarayoni (PostgreSQL bilan integratsion)", as
     await expect(exam.startAttempt(bob, uniA, testId)).rejects.toMatchObject({ code: "NOT_OPEN" });
     expect((await exam.getAttemptStatus(alice, a.id)).status).toBe("SUBMITTED");
   });
+  it("har bir urinishda savollar tasodifiy tanlanadi va aralashtiriladi", async () => {
+    // 3 savoldan 2 tasi, ko'p talaba uchun: turli to'plam va turli tartib chiqishi kerak
+    await prisma.test.update({ where: { id: testId }, data: { questionsPerAttempt: 2, maxAttempts: 20 } });
+    const sets = new Set<string>();
+    const orders = new Set<string>();
+    for (let i = 0; i < 12; i++) {
+      const a = await exam.startAttempt(alice, uniA, testId);
+      const view = await exam.getExamView(alice, a.id);
+      const ids = view!.test.questions.map((q) => q.question.id);
+      expect(ids).toHaveLength(2);
+      sets.add([...ids].sort().join());
+      orders.add(ids.join());
+      await exam.submitAttempt(alice, a.id);
+    }
+    expect(sets.size).toBeGreaterThan(1);
+    expect(orders.size).toBeGreaterThan(sets.size - 1);
+  });
 });
