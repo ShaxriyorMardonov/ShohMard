@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BarChart3, Lock, Megaphone, Pencil, Trash2, Undo2 } from "lucide-react";
+import { ArrowLeft, BarChart3, Lock, Megaphone, Pencil, Trash2, Undo2, Upload } from "lucide-react";
 import { deleteTestAction, setResultsReleasedAction } from "@/actions/admin";
+import { ImportDialog } from "@/components/admin/import-dialog";
 import { TEST_STATE_BADGE } from "@/components/admin/test-state";
 import { TestQuestions } from "@/components/admin/test-questions";
 import { PageHeader } from "@/components/layout/app-shell";
@@ -15,6 +16,8 @@ import { prisma } from "@/lib/db";
 import { QUESTION_TYPE_LABEL, RESULT_RELEASE_LABEL, isResultReleased, testState } from "@/lib/exam-rules";
 import { formatDateTime, formatDuration } from "@/lib/time";
 import { finalizeExpiredAttempts } from "@/server/exam";
+
+export const maxDuration = 60;
 
 export default async function TestDetailPage({ params, searchParams }: { params: Promise<{ testId: string }>; searchParams: Promise<{ saved?: string }> }) {
   await requireAdmin();
@@ -68,7 +71,16 @@ export default async function TestDetailPage({ params, searchParams }: { params:
       {saved && <Alert variant="success" className="mb-4"><span>Test saqlandi.</span></Alert>}
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <Card>
-          <CardHeader><CardTitle>Savollar</CardTitle></CardHeader>
+          <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
+            <CardTitle>Savollar</CardTitle>
+            {!locked && (
+              <ImportDialog
+                kind="questions"
+                testId={test.id}
+                trigger={<Button size="sm" variant="outline"><Upload /> Word/Excel&apos;dan yuklash</Button>}
+              />
+            )}
+          </CardHeader>
           <CardContent>
             {locked && (
               <Alert variant="info" className="mb-3">

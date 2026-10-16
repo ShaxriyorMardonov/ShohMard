@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 import { deleteStudentAction } from "@/actions/admin";
+import { ImportDialog } from "@/components/admin/import-dialog";
 import { Pagination, parsePage } from "@/components/admin/pagination";
 import { StudentDialog } from "@/components/admin/student-dialog";
 import { EmptyState, PageHeader } from "@/components/layout/app-shell";
@@ -17,6 +18,7 @@ import { prisma } from "@/lib/db";
 import { formatDateTime } from "@/lib/time";
 
 export const metadata: Metadata = { title: "Talabalar" };
+export const maxDuration = 60;
 const PER_PAGE = 25;
 
 export default async function StudentsPage({ searchParams }: { searchParams: Promise<{ q?: string; university?: string; page?: string }> }) {
@@ -58,7 +60,12 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Talabalar"
         description="Talaba hisoblari faqat administrator tomonidan yaratiladi"
-        actions={<StudentDialog universities={universities} trigger={<Button disabled={!universities.length}><Plus /> Talaba qo&apos;shish</Button>} />}
+        actions={
+          <>
+            <ImportDialog kind="students" />
+            <StudentDialog universities={universities} trigger={<Button disabled={!universities.length}><Plus /> Talaba qo&apos;shish</Button>} />
+          </>
+        }
       />
       <form className="mb-4 grid gap-3 sm:grid-cols-[1fr_260px_auto]" role="search">
         <div className="relative">

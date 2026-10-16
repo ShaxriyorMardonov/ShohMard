@@ -49,9 +49,13 @@ export async function saveUniversityAction(_prev: FormState, fd: FormData): Prom
 
 export async function deleteUniversityAction(id: string): Promise<Result> {
   await requireAdmin();
-  const students = await prisma.user.count({ where: { universityId: id } });
-  if (students > 0) return { error: `Bu universitetda ${students} ta talaba bor. Avval ularni boshqa universitetga o'tkazing yoki o'chiring.` };
-  await prisma.university.delete({ where: { id } });
+  // Talabalar va ularning natijalari saqlanadi: ular universitetsiz qoladi va
+  // boshqa universitetga biriktirilguncha tizimga kira olmaydi.
+  await prisma.$transaction([
+    prisma.user.updateMany({ where: { universityId: id }, data: { universityId: null } }),
+    prisma.university.delete({ where: { id } }),
+  ]);
+  revalidatePath("/admin/students");
   revalidatePath("/admin/universities");
 }
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Library, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import type { Prisma, QuestionType } from "@prisma/client";
 import { deleteQuestionAction } from "@/actions/admin";
+import { ImportDialog } from "@/components/admin/import-dialog";
 import { Pagination, parsePage } from "@/components/admin/pagination";
 import { EmptyState, PageHeader } from "@/components/layout/app-shell";
 import { Alert } from "@/components/ui/alert";
@@ -18,6 +19,7 @@ import { prisma } from "@/lib/db";
 import { QUESTION_TYPE_LABEL } from "@/lib/exam-rules";
 
 export const metadata: Metadata = { title: "Savollar banki" };
+export const maxDuration = 60;
 const PER_PAGE = 25;
 const TYPES = ["SINGLE", "MULTIPLE", "TRUE_FALSE"] as const;
 
@@ -53,7 +55,12 @@ export default async function QuestionsPage({
       <PageHeader
         title="Savollar banki"
         description="Testlarga qo'shiladigan barcha savollar"
-        actions={<Button asChild><Link href="/admin/questions/new"><Plus /> Yangi savol</Link></Button>}
+        actions={
+          <>
+            <ImportDialog kind="questions" />
+            <Button asChild><Link href="/admin/questions/new"><Plus /> Yangi savol</Link></Button>
+          </>
+        }
       />
       {sp.saved && <Alert variant="success" className="mb-4"><span>Savol saqlandi.</span></Alert>}
       <form className="mb-4 grid gap-3 md:grid-cols-[1fr_200px_200px_auto]" role="search">

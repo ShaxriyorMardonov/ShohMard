@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteUniversityAction } from "@/actions/admin";
+import { ImportDialog } from "@/components/admin/import-dialog";
 import { UniversityDialog } from "@/components/admin/university-dialog";
 import { EmptyState, PageHeader } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export const metadata: Metadata = { title: "Universitetlar" };
+export const maxDuration = 60;
 
 export default async function UniversitiesPage() {
   await requireAdmin();
@@ -25,7 +27,12 @@ export default async function UniversitiesPage() {
       <PageHeader
         title="Universitetlar"
         description="Platformaga ulangan oliy ta'lim muassasalari"
-        actions={<UniversityDialog trigger={<Button><Plus /> Universitet qo&apos;shish</Button>} />}
+        actions={
+          <>
+            <ImportDialog kind="universities" />
+            <UniversityDialog trigger={<Button><Plus /> Universitet qo&apos;shish</Button>} />
+          </>
+        }
       />
       {universities.length === 0 ? (
         <EmptyState icon={<Building2 />} title="Universitetlar yo'q" description="Birinchi universitetni qo'shing." />
@@ -61,7 +68,11 @@ export default async function UniversitiesPage() {
                       <ConfirmAction
                         trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label="O'chirish"><Trash2 /></Button>}
                         title="Universitetni o'chirish"
-                        description={`"${u.name}" o'chiriladi. Bu amalni qaytarib bo'lmaydi.`}
+                        description={
+                          u._count.students
+                            ? `"${u.name}" o'chiriladi. Undagi ${u._count.students} ta talaba va ularning natijalari saqlanadi, lekin ularni boshqa universitetga biriktirmaguningizcha tizimga kira olmaydi.`
+                            : `"${u.name}" o'chiriladi.`
+                        }
                         confirmLabel="O'chirish"
                         action={deleteUniversityAction.bind(null, u.id)}
                       />
