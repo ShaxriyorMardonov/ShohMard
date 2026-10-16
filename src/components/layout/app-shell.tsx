@@ -12,7 +12,8 @@ function initials(name: string) {
 }
 
 export function AppShell({ user, children }: { user: CurrentUser; children: React.ReactNode }) {
-  const subtitle = user.role === "ADMIN" ? "Administrator" : (user.university?.shortName ?? "Talaba");
+  const subtitle =
+    user.role === "ADMIN" ? "Administrator" : user.role === "MANAGER" ? `Menejer · ${user.university?.shortName ?? ""}` : (user.university?.shortName ?? "Talaba");
   return (
     <div className="flex min-h-dvh">
       <Sidebar role={user.role} />

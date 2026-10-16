@@ -4,15 +4,15 @@ import { BRAND, SamuLogo } from "@/components/brand/samu-logo";
 import { PageHeader } from "@/components/layout/app-shell";
 import { ChangePasswordForm } from "@/components/forms/change-password-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireAdmin } from "@/lib/auth";
+import { requireStaff } from "@/lib/auth";
 
 export const metadata: Metadata = { title: "Sozlamalar" };
 
 export default async function SettingsPage() {
-  const admin = await requireAdmin();
+  const admin = await requireStaff();
   return (
     <>
-      <PageHeader title="Sozlamalar" description="Administrator hisobi va platforma ma'lumotlari" />
+      <PageHeader title="Sozlamalar" description="Hisob va platforma ma'lumotlari" />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>

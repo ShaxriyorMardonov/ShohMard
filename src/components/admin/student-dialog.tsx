@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import type { StudyForm } from "@prisma/client";
 import { useFormAction } from "@/components/forms/use-form-action";
 import { saveStudentAction } from "@/actions/admin";
 import { Field } from "@/components/forms/field";
@@ -10,18 +11,45 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { STUDY_FORMS } from "@/lib/labels";
 import type { FormState } from "@/lib/validation";
 
-type Student = { id: string; fullName: string; login: string; universityId: string | null; groupName: string | null; isActive: boolean };
+export type StudentRow = {
+  id: string;
+  fullName: string;
+  login: string;
+  universityId: string | null;
+  faculty: { name: string } | null;
+  group: { name: string } | null;
+  studyForm: StudyForm | null;
+  isActive: boolean;
+};
 type Uni = { id: string; name: string };
+/** Universitet bo'yicha mavjud fakultet va guruh nomlari (taklif sifatida ko'rsatiladi). */
+export type OrgNames = Record<string, { faculties: string[]; groups: string[] }>;
 
-function StudentForm({ student, universities, onDone }: { student?: Student; universities: Uni[]; onDone: () => void }) {
+function StudentForm({
+  student,
+  universities,
+  orgNames,
+  fixedUniversity,
+  onDone,
+}: {
+  student?: StudentRow;
+  universities: Uni[];
+  orgNames: OrgNames;
+  fixedUniversity?: string;
+  onDone: () => void;
+}) {
   const { state, onSubmit, pending } = useFormAction(async (prev: FormState, fd: FormData) => {
     const res = await saveStudentAction(prev, fd);
     if (res.ok) onDone();
     return res;
   });
+  const [uni, setUni] = React.useState(fixedUniversity ?? student?.universityId ?? "");
+  const names = orgNames[uni] ?? { faculties: [], groups: [] };
   const e = state.errors ?? {};
+  const listId = React.useId();
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
       {student && <input type="hidden" name="id" value={student.id} />}
@@ -33,18 +61,35 @@ function StudentForm({ student, universities, onDone }: { student?: Student; uni
         <Field label="Login" htmlFor="s-login" error={e.login}>
           <Input id="s-login" name="login" defaultValue={student?.login} placeholder="ali.valiyev" autoComplete="off" aria-invalid={!!e.login} />
         </Field>
-        <Field label="Guruh" htmlFor="s-group" error={e.groupName}>
-          <Input id="s-group" name="groupName" defaultValue={student?.groupName ?? ""} placeholder="KI-21" />
+        <Field label="Ta'lim shakli" htmlFor="s-form" error={e.studyForm}>
+          <NativeSelect id="s-form" name="studyForm" defaultValue={student?.studyForm ?? ""}>
+            <option value="">Ko&apos;rsatilmagan</option>
+            {STUDY_FORMS.map((f) => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </NativeSelect>
         </Field>
       </div>
-      <Field label="Universitet" htmlFor="s-uni" error={e.universityId}>
-        <NativeSelect id="s-uni" name="universityId" defaultValue={student?.universityId ?? ""} aria-invalid={!!e.universityId}>
-          <option value="" disabled>Universitetni tanlang</option>
-          {universities.map((u) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </NativeSelect>
-      </Field>
+      {!fixedUniversity && (
+        <Field label="Universitet" htmlFor="s-uni" error={e.universityId}>
+          <NativeSelect id="s-uni" name="universityId" value={uni} onChange={(ev) => setUni(ev.target.value)} aria-invalid={!!e.universityId}>
+            <option value="" disabled>Universitetni tanlang</option>
+            {universities.map((u) => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </NativeSelect>
+        </Field>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Fakultet" htmlFor="s-fac" error={e.facultyName} hint="Ro'yxatdan tanlang yoki yangisini yozing">
+          <Input id="s-fac" name="facultyName" list={`${listId}-f`} defaultValue={student?.faculty?.name ?? ""} placeholder="Kompyuter injiniringi" autoComplete="off" />
+          <datalist id={`${listId}-f`}>{names.faculties.map((n) => <option key={n} value={n} />)}</datalist>
+        </Field>
+        <Field label="Guruh" htmlFor="s-group" error={e.groupName}>
+          <Input id="s-group" name="groupName" list={`${listId}-g`} defaultValue={student?.group?.name ?? ""} placeholder="KI-21" autoComplete="off" />
+          <datalist id={`${listId}-g`}>{names.groups.map((n) => <option key={n} value={n} />)}</datalist>
+        </Field>
+      </div>
       <Field
         label={student ? "Yangi parol (ixtiyoriy)" : "Parol"}
         htmlFor="s-pass"
@@ -65,7 +110,19 @@ function StudentForm({ student, universities, onDone }: { student?: Student; uni
   );
 }
 
-export function StudentDialog({ student, universities, trigger }: { student?: Student; universities: Uni[]; trigger: React.ReactNode }) {
+export function StudentDialog({
+  student,
+  universities,
+  orgNames,
+  fixedUniversity,
+  trigger,
+}: {
+  student?: StudentRow;
+  universities: Uni[];
+  orgNames: OrgNames;
+  fixedUniversity?: string;
+  trigger: React.ReactNode;
+}) {
   const [open, setOpen] = React.useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -75,7 +132,9 @@ export function StudentDialog({ student, universities, trigger }: { student?: St
           <DialogTitle>{student ? "Talabani tahrirlash" : "Yangi talaba"}</DialogTitle>
           <DialogDescription>Talaba faqat o&apos;z universitetiga belgilangan testlarni ko&apos;radi.</DialogDescription>
         </DialogHeader>
-        {open && <StudentForm student={student} universities={universities} onDone={() => setOpen(false)} />}
+        {open && (
+          <StudentForm student={student} universities={universities} orgNames={orgNames} fixedUniversity={fixedUniversity} onDone={() => setOpen(false)} />
+        )}
       </DialogContent>
     </Dialog>
   );

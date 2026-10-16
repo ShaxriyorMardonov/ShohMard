@@ -17,7 +17,7 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
   const a = await prisma.attempt.findUnique({
     where: { id: attemptId },
     include: {
-      user: { select: { fullName: true, login: true, groupName: true, university: { select: { name: true } } } },
+      user: { select: { fullName: true, login: true, group: { select: { name: true } }, university: { select: { name: true } } } },
       test: {
         include: {
           questions: {
@@ -37,7 +37,7 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
         <Link href="/admin/results"><ArrowLeft /> Natijalar</Link>
       </Button>
-      <PageHeader title={a.user.fullName} description={`${a.user.university?.name ?? ""}${a.user.groupName ? ` · ${a.user.groupName}` : ""} · ${a.test.title}`} />
+      <PageHeader title={a.user.fullName} description={`${a.user.university?.name ?? ""}${a.user.group ? ` · ${a.user.group.name}` : ""} · ${a.test.title}`} />
       <Card className="mb-6">
         <CardContent className="flex flex-wrap items-center gap-6 pt-5 text-sm">
           {a.status === "SUBMITTED" ? (

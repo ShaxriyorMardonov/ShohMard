@@ -22,7 +22,7 @@ const META: Record<Kind, { title: string; description: string; accept: string; t
   },
   students: {
     title: "Talabalarni Excel'dan yuklash",
-    description: "Ustunlar: F.I.Sh., Login, Parol, Universitet (qisqa nomi), Guruh. Universitetlar oldindan qo'shilgan bo'lishi kerak.",
+    description: "Ustunlar: F.I.Sh., Login, Parol, Universitet (qisqa nomi), Fakultet, Guruh, Ta'lim shakli. Fakultet va guruh bo'lmasa, avtomatik yaratiladi.",
     accept: ".xlsx",
     templates: [{ href: "/admin/templates/talabalar.xlsx", label: "Excel namuna" }],
     noun: "talaba",

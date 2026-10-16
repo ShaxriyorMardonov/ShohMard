@@ -70,7 +70,7 @@ export default async function AdminDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Universitetlar" value={universities} icon={<Building2 />} tone="midnight" />
         <StatCard label="Faol talabalar" value={students} icon={<Users />} />
-        <StatCard label="Nashr etilgan testlar" value={publishedTests} hint={`Hozir ochiq: ${openTests}`} icon={<ClipboardList />} tone="warning" />
+        <StatCard label="Faol testlar" value={publishedTests} hint={`Hozir ochiq: ${openTests}`} icon={<ClipboardList />} tone="warning" />
         <StatCard label="Savollar banki" value={questions} icon={<Library />} tone="success" />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-3">

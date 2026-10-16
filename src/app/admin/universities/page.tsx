@@ -19,14 +19,14 @@ export default async function UniversitiesPage() {
   await requireAdmin();
   const universities = await prisma.university.findMany({
     orderBy: { name: "asc" },
-    include: { _count: { select: { students: true, tests: true } } },
+    include: { _count: { select: { students: true, tests: true, faculties: true, groups: true } } },
   });
 
   return (
     <>
       <PageHeader
         title="Universitetlar"
-        description="Platformaga ulangan oliy ta'lim muassasalari"
+        description="Fakultet va guruhlarni boshqarish uchun universitet nomini bosing"
         actions={
           <>
             <ImportDialog kind="universities" />
@@ -44,6 +44,7 @@ export default async function UniversitiesPage() {
                 <TableHead>Nomi</TableHead>
                 <TableHead>Qisqa nomi</TableHead>
                 <TableHead>Shahar</TableHead>
+                <TableHead>Fakultet / guruh</TableHead>
                 <TableHead>Talabalar</TableHead>
                 <TableHead>Testlar</TableHead>
                 <TableHead className="text-right">Amallar</TableHead>
@@ -52,9 +53,14 @@ export default async function UniversitiesPage() {
             <TableBody>
               {universities.map((u) => (
                 <TableRow key={u.id}>
-                  <TableCell className="font-semibold text-midnight">{u.name}</TableCell>
+                  <TableCell>
+                    <Link href={`/admin/universities/${u.id}`} className="font-semibold text-midnight hover:text-royal">{u.name}</Link>
+                  </TableCell>
                   <TableCell>{u.shortName}</TableCell>
                   <TableCell className="text-muted-foreground">{u.city ?? "—"}</TableCell>
+                  <TableCell>
+                    <Link href={`/admin/universities/${u.id}`} className="text-royal hover:underline">{u._count.faculties} / {u._count.groups}</Link>
+                  </TableCell>
                   <TableCell>
                     <Link href={`/admin/students?university=${u.id}`} className="font-semibold text-royal hover:underline">{u._count.students}</Link>
                   </TableCell>

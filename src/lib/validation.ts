@@ -43,9 +43,26 @@ export const studentSchema = z.object({
   fullName: trimmed(120).min(3, "F.I.Sh. ni kiriting"),
   login: loginField,
   universityId: z.string().min(1, "Universitetni tanlang"),
+  facultyName: trimmed(120).optional().transform((v) => v || null),
   groupName: trimmed(40).optional().transform((v) => v || null),
+  studyForm: z
+    .enum(["", "KUNDUZGI", "SIRTQI", "KECHKI", "MASOFAVIY"])
+    .optional()
+    .transform((v) => v || null),
   isActive: z.boolean(),
 });
+
+export const staffSchema = z
+  .object({
+    fullName: trimmed(120).min(3, "F.I.Sh. ni kiriting"),
+    login: loginField,
+    role: z.enum(["ADMIN", "MANAGER"], { message: "Rolni tanlang" }),
+    universityId: z.string().optional().transform((v) => v || null),
+    isActive: z.boolean(),
+  })
+  .refine((u) => u.role !== "MANAGER" || u.universityId, { path: ["universityId"], message: "Menejer uchun universitetni tanlang" });
+
+export const nameSchema = (label: string, max = 120) => trimmed(max).min(1, `${label} nomini kiriting`);
 
 export const questionSchema = z
   .object({

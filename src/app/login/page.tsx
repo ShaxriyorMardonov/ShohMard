@@ -15,7 +15,8 @@ const FEATURES = [
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getCurrentUser();
-  if (user) redirect(homeFor(user.role));
+  // Universitetsiz qolgan talaba/menejer qayta yo'naltirish halqasiga tushmasligi uchun
+  if (user && (user.role === "ADMIN" || user.university)) redirect(homeFor(user.role));
   const { error } = await searchParams;
   const notice = error === "university" ? "Hisobingiz universitetga biriktirilmagan. Administrator bilan bog'laning." : undefined;
 

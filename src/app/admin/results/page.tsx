@@ -1,75 +1,103 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BarChart3, Download, Search } from "lucide-react";
+import { BarChart3, FileSpreadsheet, FileText } from "lucide-react";
+import { FilterBar } from "@/components/admin/filter-bar";
 import { Pagination, parsePage } from "@/components/admin/pagination";
 import { EmptyState, PageHeader } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { STUDY_FORMS, studyFormLabel } from "@/lib/labels";
 import { formatDateTime } from "@/lib/time";
 import { finalizeExpiredAttempts } from "@/server/exam";
-import { resultSelect, resultsWhere } from "@/server/results";
+import { orgOptions } from "@/server/filters";
+import { RESULT_FILTER_KEYS, resultSelect, resultsWhere, type ResultFilters } from "@/server/results";
 
 export const metadata: Metadata = { title: "Natijalar" };
 const PER_PAGE = 30;
 
-export default async function AdminResultsPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ test?: string; university?: string; q?: string; page?: string }>;
-}) {
+export default async function AdminResultsPage({ searchParams }: { searchParams: Promise<ResultFilters & { page?: string }> }) {
   await requireAdmin();
   await finalizeExpiredAttempts();
   const sp = await searchParams;
   const page = parsePage(sp.page);
-  const where = resultsWhere(sp);
-  const [tests, universities, total, agg, rows] = await Promise.all([
-    prisma.test.findMany({ orderBy: { startsAt: "desc" }, select: { id: true, title: true } }),
-    prisma.university.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  const where = await resultsWhere(sp);
+  const [tests, subjects, options, total, agg, passedCount, rows] = await Promise.all([
+    prisma.test.findMany({
+      where: sp.subject ? { subject: sp.subject === "__none" ? null : sp.subject } : {},
+      orderBy: { startsAt: "desc" },
+      select: { id: true, title: true },
+    }),
+    prisma.test.findMany({ distinct: ["subject"], select: { subject: true }, orderBy: { subject: "asc" } }),
+    orgOptions(null, sp),
     prisma.attempt.count({ where }),
     prisma.attempt.aggregate({ where, _avg: { percent: true } }),
+    sp.status ? Promise.resolve(null) : resultsWhere({ ...sp, status: "passed" }).then((w) => prisma.attempt.count({ where: w })),
     prisma.attempt.findMany({ where, orderBy: { submittedAt: "desc" }, skip: (page - 1) * PER_PAGE, take: PER_PAGE, select: resultSelect }),
   ]);
+  const params: Record<string, string | undefined> = {};
+  for (const k of RESULT_FILTER_KEYS) params[k] = sp[k];
   const exportParams = new URLSearchParams();
-  for (const k of ["test", "university", "q"] as const) if (sp[k]) exportParams.set(k, sp[k]!);
+  for (const [k, v] of Object.entries(params)) if (v) exportParams.set(k, v);
+  const csvParams = new URLSearchParams(exportParams);
+  csvParams.set("format", "csv");
+
+  const summary = [
+    `Topshirilgan: ${total}`,
+    agg._avg.percent !== null ? `o'rtacha ${agg._avg.percent.toFixed(1)}%` : null,
+    passedCount !== null && total ? `o'tganlar ${passedCount} (${Math.round((passedCount / total) * 100)}%)` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <>
       <PageHeader
         title="Natijalar"
-        description={`Topshirilgan urinishlar: ${total}${agg._avg.percent !== null ? ` · o'rtacha ${agg._avg.percent.toFixed(1)}%` : ""}`}
+        description={summary}
         actions={
-          <Button asChild variant="success">
-            <a href={`/admin/results/export?${exportParams.toString()}`} download>
-              <Download /> CSV yuklab olish
-            </a>
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <a href={`/admin/results/export?${csvParams.toString()}`} download><FileText /> CSV</a>
+            </Button>
+            <Button asChild variant="success">
+              <a href={`/admin/results/export?${exportParams.toString()}`} download><FileSpreadsheet /> Excel jadval</a>
+            </Button>
+          </>
         }
       />
-      <form className="mb-4 grid gap-3 md:grid-cols-[1fr_220px_220px_auto]" role="search">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input name="q" defaultValue={sp.q} placeholder="Talaba ismi yoki logini" className="pl-9" aria-label="Qidirish" />
-        </div>
-        <NativeSelect name="test" defaultValue={sp.test ?? ""} aria-label="Test">
-          <option value="">Barcha testlar</option>
-          {tests.map((t) => (
-            <option key={t.id} value={t.id}>{t.title}</option>
-          ))}
-        </NativeSelect>
-        <NativeSelect name="university" defaultValue={sp.university ?? ""} aria-label="Universitet">
-          <option value="">Barcha universitetlar</option>
-          {universities.map((u) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </NativeSelect>
-        <Button type="submit" variant="midnight">Filtrlash</Button>
-      </form>
+      <FilterBar
+        search={{ placeholder: "Talaba ismi yoki logini" }}
+        values={sp}
+        fields={[
+          {
+            name: "subject",
+            label: "Fan",
+            all: "Barcha fanlar",
+            options: subjects.map((s) => (s.subject ? { value: s.subject, label: s.subject } : { value: "__none", label: "Fan ko'rsatilmagan" })),
+            resets: ["test"],
+          },
+          { name: "test", label: "Test", all: "Barcha testlar", options: tests.map((t) => ({ value: t.id, label: t.title })) },
+          { name: "university", label: "Universitet", all: "Barcha universitetlar", options: options.universities, resets: ["faculty", "group"] },
+          { name: "faculty", label: "Fakultet", all: "Barcha fakultetlar", options: options.faculties, resets: ["group"] },
+          { name: "group", label: "Guruh", all: "Barcha guruhlar", options: options.groups },
+          { name: "form", label: "Ta'lim shakli", all: "Barcha ta'lim shakllari", options: STUDY_FORMS },
+          {
+            name: "status",
+            label: "Natija",
+            all: "O'tgan va o'tmaganlar",
+            options: [
+              { value: "passed", label: "Faqat o'tganlar" },
+              { value: "failed", label: "Faqat o'tmaganlar" },
+            ],
+          },
+          { type: "date", name: "from", label: "Sanadan" },
+          { type: "date", name: "to", label: "Sanagacha" },
+        ]}
+      />
       {rows.length === 0 ? (
         <EmptyState icon={<BarChart3 />} title="Natijalar topilmadi" />
       ) : (
@@ -78,7 +106,7 @@ export default async function AdminResultsPage({
             <TableHeader>
               <TableRow>
                 <TableHead>Talaba</TableHead>
-                <TableHead>Universitet</TableHead>
+                <TableHead>Universitet / guruh</TableHead>
                 <TableHead>Test</TableHead>
                 <TableHead>Topshirilgan</TableHead>
                 <TableHead>Ball</TableHead>
@@ -92,8 +120,16 @@ export default async function AdminResultsPage({
                     <Link href={`/admin/results/${r.id}`} className="font-semibold text-midnight hover:text-royal">{r.user.fullName}</Link>
                     <span className="block font-mono text-xs text-muted-foreground">{r.user.login}</span>
                   </TableCell>
-                  <TableCell>{r.user.university?.shortName ?? "—"}{r.user.groupName && <span className="block text-xs text-muted-foreground">{r.user.groupName}</span>}</TableCell>
-                  <TableCell className="max-w-[240px]"><span className="line-clamp-2">{r.test.title}</span></TableCell>
+                  <TableCell>
+                    {r.user.university?.shortName ?? "—"}
+                    <span className="block text-xs text-muted-foreground">
+                      {[r.user.faculty?.name, r.user.group?.name, r.user.studyForm ? studyFormLabel(r.user.studyForm) : null].filter(Boolean).join(" · ")}
+                    </span>
+                  </TableCell>
+                  <TableCell className="max-w-[240px]">
+                    <span className="line-clamp-2">{r.test.title}</span>
+                    {r.test.subject && <span className="block text-xs text-muted-foreground">{r.test.subject}</span>}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
                     {formatDateTime(r.submittedAt)}
                     {r.autoSubmitted && <span className="block text-xs">avtomatik</span>}
@@ -106,7 +142,7 @@ export default async function AdminResultsPage({
               ))}
             </TableBody>
           </Table>
-          <Pagination page={page} pages={Math.ceil(total / PER_PAGE)} total={total} params={{ test: sp.test, university: sp.university, q: sp.q }} />
+          <Pagination page={page} pages={Math.ceil(total / PER_PAGE)} total={total} params={params} />
         </Card>
       )}
     </>

@@ -9,7 +9,15 @@ datasource db {
 
 enum Role {
   ADMIN
+  MANAGER
   STUDENT
+}
+
+enum StudyForm {
+  KUNDUZGI
+  SIRTQI
+  KECHKI
+  MASOFAVIY
 }
 
 enum QuestionType {
@@ -37,8 +45,38 @@ model University {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  students  User[]
+  faculties Faculty[]
+  groups    Group[]
+  tests     Test[]    @relation("TestUniversities")
+}
+
+model Faculty {
+  id           String     @id @default(cuid())
+  name         String
+  universityId String
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+
+  groups   Group[]
   students User[]
-  tests    Test[]  @relation("TestUniversities")
+
+  @@unique([universityId, name])
+}
+
+model Group {
+  id           String     @id @default(cuid())
+  name         String
+  universityId String
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  facultyId    String?
+  faculty      Faculty?   @relation(fields: [facultyId], references: [id], onDelete: SetNull)
+  createdAt    DateTime   @default(now())
+
+  students User[]
+
+  @@unique([universityId, name])
+  @@index([facultyId])
 }
 
 model User {
@@ -48,9 +86,13 @@ model User {
   fullName       String
   role           Role      @default(STUDENT)
   isActive       Boolean   @default(true)
-  groupName      String?
+  studyForm      StudyForm?
   universityId   String?
   university     University? @relation(fields: [universityId], references: [id], onDelete: Restrict)
+  facultyId      String?
+  faculty        Faculty?  @relation(fields: [facultyId], references: [id], onDelete: SetNull)
+  groupId        String?
+  group          Group?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
   failedLogins   Int       @default(0)
   lockedUntil    DateTime?
   lastLoginAt    DateTime?
@@ -60,8 +102,11 @@ model User {
   sessions  Session[]
   attempts  Attempt[]
   testsMade Test[]     @relation("TestAuthor")
+  testAccess TestAccess[]
 
   @@index([universityId])
+  @@index([facultyId])
+  @@index([groupId])
   @@index([role])
 }
 
@@ -88,6 +133,7 @@ model Test {
   passingPercent  Int           @default(60)
   resultRelease   ResultRelease @default(AFTER_END)
   resultsReleasedAt DateTime?
+  restrictedAccess  Boolean       @default(false)
   createdById     String?
   createdBy       User?         @relation("TestAuthor", fields: [createdById], references: [id], onDelete: SetNull)
   createdAt       DateTime      @default(now())
@@ -96,8 +142,22 @@ model Test {
   universities University[]   @relation("TestUniversities")
   questions    TestQuestion[]
   attempts     Attempt[]
+  access       TestAccess[]
 
   @@index([startsAt, endsAt])
+  @@index([subject])
+}
+
+/// Test "faqat ruxsat berilgan talabalar" rejimida bo'lsa, kim topshira olishi.
+model TestAccess {
+  testId    String
+  userId    String
+  test      Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([testId, userId])
+  @@index([userId])
 }
 
 model Question {
@@ -142,7 +202,7 @@ model TestQuestion {
 model Attempt {
   id            String        @id @default(cuid())
   testId        String
-  test          Test          @relation(fields: [testId], references: [id], onDelete: Restrict)
+  test          Test          @relation(fields: [testId], references: [id], onDelete: Cascade)
   userId        String
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   status        AttemptStatus @default(IN_PROGRESS)

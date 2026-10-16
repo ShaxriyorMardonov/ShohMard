@@ -17,12 +17,12 @@ const XLSX: Record<string, { file: string; header: string[]; rows: string[][]; w
   },
   "talabalar.xlsx": {
     file: "talabalar.xlsx",
-    header: ["F.I.Sh.", "Login", "Parol", "Universitet (qisqa nomi)", "Guruh"],
+    header: ["F.I.Sh.", "Login", "Parol", "Universitet (qisqa nomi)", "Fakultet", "Guruh", "Ta'lim shakli"],
     rows: [
-      ["Aliyev Vali Karimovich", "vali.aliyev", "Parol2026", "TDTU", "KI-21"],
-      ["Karimova Nodira Akramovna", "nodira.karimova", "Parol2026", "SamDU", "MT-11"],
+      ["Aliyev Vali Karimovich", "vali.aliyev", "Parol2026", "TDTU", "Kompyuter injiniringi", "KI-21", "Kunduzgi"],
+      ["Karimova Nodira Akramovna", "nodira.karimova", "Parol2026", "SamDU", "Matematika", "MT-11", "Sirtqi"],
     ],
-    widths: [32, 20, 14, 26, 10],
+    widths: [32, 20, 14, 24, 26, 10, 14],
   },
   "savollar.xlsx": {
     file: "savollar.xlsx",
@@ -37,39 +37,32 @@ const XLSX: Record<string, { file: string; header: string[]; rows: string[][]; w
 };
 
 const WORD_LINES = [
-  "SAMU — savollar namunasi",
-  "Har bir savol raqam bilan boshlanadi. To'g'ri javob oldiga * belgisini qo'ying.",
-  "Bir nechta to'g'ri javob bo'lsa, har biriga * qo'ying. \"Fan:\" qatori keyingi savollarga qo'llanadi.",
-  "",
-  "Fan: Matematika",
-  "1. 2 + 2 nechaga teng?",
-  "A) 3",
-  "*B) 4",
-  "C) 5",
-  "D) 6",
-  "",
-  "2. Qaysilari tub son?",
-  "*A) 2",
-  "B) 4",
-  "*C) 13",
-  "D) 21",
-  "Izoh: Tub son faqat 1 va o'ziga bo'linadi.",
-  "",
-  "Fan: Tabiiy fanlar",
-  "3. Yer Quyosh atrofida aylanadi.",
-  "*A) To'g'ri",
-  "B) Noto'g'ri",
-  "",
-  "4. Suvning qaynash harorati (normal bosimda) necha gradus?",
-  "A) 90",
-  "B) 100",
-  "C) 120",
-  "Javob: B",
+  "Fan: Iqtisodiyot",
+  "Ishlab chiqarishning qanday turlari mavjud?",
+  "====",
+  "#moddiy va nomoddiy",
+  "====",
+  "barter va tovar",
+  "====",
+  "tovarlar va daromadlar",
+  "====",
+  "oraliq va yakuniy",
+  "++++",
+  "Quyidagilardan qaysilari iqtisodiy resurslar? (bir nechta to'g'ri javob)",
+  "====",
+  "#yer",
+  "====",
+  "#kapital",
+  "====",
+  "soliq",
+  "====",
+  "narx",
+  "++++",
 ];
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ kind: string }> }) {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
+  if (!user || (user.role !== "ADMIN" && user.role !== "MANAGER")) return NextResponse.json({ error: "Ruxsat yo'q" }, { status: 403 });
   const { kind } = await params;
 
   let body: Buffer;

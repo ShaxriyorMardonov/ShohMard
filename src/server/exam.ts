@@ -26,9 +26,13 @@ export class ExamError extends Error {
   }
 }
 
-/** Talaba universitetiga biriktirilgan va nashr etilgan testlar sharti. */
-export function studentTestWhere(universityId: string): Prisma.TestWhereInput {
-  return { isPublished: true, universities: { some: { id: universityId } } };
+/** Talaba ko'ra oladigan testlar: faol, universitetiga biriktirilgan va (cheklangan bo'lsa) ruxsat berilgan. */
+export function studentTestWhere(userId: string, universityId: string): Prisma.TestWhereInput {
+  return {
+    isPublished: true,
+    universities: { some: { id: universityId } },
+    OR: [{ restrictedAccess: false }, { access: { some: { userId } } }],
+  };
 }
 
 /**
@@ -113,7 +117,7 @@ export async function finalizeExpiredAttempts(filter: { userId?: string; testId?
 export async function startAttempt(userId: string, universityId: string, testId: string) {
   const now = new Date();
   const test = await prisma.test.findFirst({
-    where: { id: testId, ...studentTestWhere(universityId) },
+    where: { id: testId, ...studentTestWhere(userId, universityId) },
     select: {
       id: true,
       isPublished: true,

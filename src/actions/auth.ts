@@ -44,7 +44,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   if (!user.isActive) {
     return { message: "Hisobingiz faol emas. Administrator bilan bog'laning." };
   }
-  if (user.role === "STUDENT" && !user.universityId) {
+  if (user.role !== "ADMIN" && !user.universityId) {
     return { message: "Hisobingiz universitetga biriktirilmagan. Administrator bilan bog'laning." };
   }
 

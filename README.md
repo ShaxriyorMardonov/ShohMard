@@ -121,3 +121,11 @@ Palitra `src/app/globals.css` da: Midnight Blue `#101D3A`, Royal Blue `#315ECA`,
   - HEMIS formati: savollar `++++`, variantlar `====` bilan ajratiladi, to'g'ri javob oldiga `#` qo'yiladi.
   - Raqamli format: `1. Savol`, `A) variant`, to'g'ri javob oldiga `*` yoki `Javob: B` qatori.
 - Imtihonda variantlar har bir talaba uchun aralashtiriladi.
+
+## Rollar va tuzilma
+
+- **Administrator**: hamma narsani boshqaradi, "Rollar" sahifasida menejer va administratorlarni qo'shadi.
+- **Universitet menejeri**: faqat o'z universiteti uchun talaba qo'shadi/yuklaydi, test yaratadi, savol yuklaydi va testni faol/nofaol qiladi.
+- Universitet → Fakultet → Guruh. Talabada ta'lim shakli (Kunduzgi, Sirtqi, Kechki, Masofaviy) bor. Excel'dan yuklashda fakultet va guruh avtomatik yaratiladi.
+- Testni "Faqat ruxsat berilgan talabalar" rejimiga o'tkazib, guruh, fakultet yoki loginlar bo'yicha ruxsat berish mumkin.
+- Natijalar Excel jadval (.xlsx) yoki CSV ko'rinishida filtrlar bilan yuklab olinadi.

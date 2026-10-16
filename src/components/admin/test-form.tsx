@@ -27,7 +27,18 @@ export type TestInitial = {
   questionCount: number;
 };
 
-export function TestForm({ initial, universities }: { initial?: TestInitial; universities: { id: string; name: string }[] }) {
+export function TestForm({
+  initial,
+  universities,
+  subjects = [],
+  fixedUniversity,
+}: {
+  initial?: TestInitial;
+  universities: { id: string; name: string }[];
+  subjects?: string[];
+  /** Menejer uchun: test faqat shu universitetga biriktiriladi. */
+  fixedUniversity?: string;
+}) {
   const { state, onSubmit, pending } = useFormAction(saveTestAction);
   const e = state.errors ?? {};
   return (
@@ -41,7 +52,8 @@ export function TestForm({ initial, universities }: { initial?: TestInitial; uni
             <Input id="t-title" name="title" defaultValue={initial?.title} placeholder="Masalan: Oliy matematika — oraliq nazorat" aria-invalid={!!e.title} />
           </Field>
           <Field label="Fan" htmlFor="t-subject" error={e.subject}>
-            <Input id="t-subject" name="subject" defaultValue={initial?.subject ?? ""} placeholder="Oliy matematika" />
+            <Input id="t-subject" name="subject" list="t-subjects" defaultValue={initial?.subject ?? ""} placeholder="Oliy matematika" autoComplete="off" />
+            <datalist id="t-subjects">{subjects.map((s) => <option key={s} value={s} />)}</datalist>
           </Field>
           <Field label="Tavsif va ko'rsatmalar" htmlFor="t-desc" error={e.description}>
             <Textarea id="t-desc" name="description" rows={3} defaultValue={initial?.description ?? ""} />
@@ -83,6 +95,9 @@ export function TestForm({ initial, universities }: { initial?: TestInitial; uni
         </CardContent>
       </Card>
 
+      {fixedUniversity ? (
+        <p className="text-sm text-muted-foreground">Test <b className="text-midnight">{fixedUniversity}</b> talabalari uchun yaratiladi.</p>
+      ) : (
       <Card>
         <CardHeader><CardTitle>Universitetlar</CardTitle></CardHeader>
         <CardContent className="grid gap-2">
@@ -98,18 +113,19 @@ export function TestForm({ initial, universities }: { initial?: TestInitial; uni
           </div>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardContent className="grid gap-2 pt-5">
           <label className="flex items-center gap-2.5 text-sm font-semibold">
             <input type="checkbox" name="isPublished" defaultChecked={initial?.isPublished} className="size-4 accent-[#315ECA]" />
-            Nashr etish (talabalarga ko&apos;rinadi)
+            Faol (talabalarga ko&apos;rinadi)
           </label>
           {e.isPublished ? (
             <p className="text-xs font-medium text-error">{e.isPublished}</p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              {initial ? `Testda ${initial.questionCount} ta savol bor.` : "Yangi testni saqlagach, savollar qo'shib, so'ng nashr eting."}
+              {initial ? `Testda ${initial.questionCount} ta savol bor.` : "Yangi testni saqlagach, savollar qo'shib, so'ng faollashtiring."}
             </p>
           )}
         </CardContent>

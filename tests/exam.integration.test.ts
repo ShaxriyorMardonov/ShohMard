@@ -194,4 +194,24 @@ describe.skipIf(!enabled)("imtihon jarayoni (PostgreSQL bilan integratsion)", as
     const a = await exam.startAttempt(alice, uniA, testId);
     expect(a.deadlineAt.getTime()).toBe(endsAt.getTime());
   });
+
+  it("cheklangan testni faqat ruxsat berilgan talaba boshlaydi", async () => {
+    await prisma.test.update({ where: { id: testId }, data: { restrictedAccess: true } });
+    await prisma.testAccess.create({ data: { testId, userId: alice } });
+    await expect(exam.startAttempt(bob, uniA, testId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const a = await exam.startAttempt(alice, uniA, testId);
+    expect(a.status).toBe("IN_PROGRESS");
+  });
+
+  it("nofaol testni boshlab bo'lmaydi", async () => {
+    await prisma.test.update({ where: { id: testId }, data: { isPublished: false } });
+    await expect(exam.startAttempt(alice, uniA, testId)).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("testni o'chirish natijalarni ham o'chiradi", async () => {
+    const a = await exam.startAttempt(alice, uniA, testId);
+    await exam.submitAttempt(alice, a.id);
+    await prisma.test.delete({ where: { id: testId } });
+    expect(await prisma.attempt.count({ where: { id: a.id } })).toBe(0);
+  });
 });

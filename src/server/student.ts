@@ -10,7 +10,7 @@ export async function getStudentTests(userId: string, universityId: string) {
   await finalizeExpiredAttempts({ userId });
   const now = new Date();
   const tests = await prisma.test.findMany({
-    where: studentTestWhere(universityId),
+    where: studentTestWhere(userId, universityId),
     orderBy: { startsAt: "asc" },
     select: {
       id: true,

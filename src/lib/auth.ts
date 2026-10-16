@@ -62,16 +62,16 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
           fullName: true,
           role: true,
           isActive: true,
-          groupName: true,
+          group: { select: { name: true } },
           university: { select: { id: true, name: true, shortName: true } },
         },
       },
     },
   });
   if (!session || session.expiresAt < new Date() || !session.user.isActive) return null;
-  const { isActive: _active, ...user } = session.user;
+  const { isActive: _active, group, ...user } = session.user;
   void _active;
-  return user;
+  return { ...user, groupName: group?.name ?? null };
 });
 
 export async function requireUser(): Promise<CurrentUser> {
@@ -82,8 +82,24 @@ export async function requireUser(): Promise<CurrentUser> {
 
 export async function requireAdmin(): Promise<CurrentUser> {
   const user = await requireUser();
-  if (user.role !== "ADMIN") redirect("/student");
+  if (user.role !== "ADMIN") redirect(homeFor(user.role));
   return user;
+}
+
+/**
+ * Administrator yoki universitet menejeri.
+ * `scope` — menejer uchun uning universiteti, administrator uchun null (hammasi).
+ */
+export type StaffUser = CurrentUser & { scope: string | null };
+
+export async function requireStaff(): Promise<StaffUser> {
+  const user = await requireUser();
+  if (user.role === "ADMIN") return { ...user, scope: null };
+  if (user.role === "MANAGER") {
+    if (!user.university) redirect("/login?error=university");
+    return { ...user, scope: user.university.id };
+  }
+  redirect("/student");
 }
 
 export async function requireStudent(): Promise<CurrentUser & { university: NonNullable<CurrentUser["university"]> }> {
@@ -94,5 +110,5 @@ export async function requireStudent(): Promise<CurrentUser & { university: NonN
 }
 
 export function homeFor(role: Role) {
-  return role === "ADMIN" ? "/admin" : "/student";
+  return role === "ADMIN" ? "/admin" : role === "MANAGER" ? "/admin/tests" : "/student";
 }

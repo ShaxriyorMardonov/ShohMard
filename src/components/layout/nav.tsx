@@ -14,6 +14,7 @@ import {
   LogOut,
   Menu,
   Settings,
+  ShieldCheck,
   UserRound,
   Users,
   X,
@@ -24,7 +25,9 @@ import { cn } from "@/lib/utils";
 
 type Item = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean };
 
-const NAV: Record<"ADMIN" | "STUDENT", Item[]> = {
+type NavRole = "ADMIN" | "MANAGER" | "STUDENT";
+
+const NAV: Record<NavRole, Item[]> = {
   STUDENT: [
     { href: "/student", label: "Bosh sahifa", icon: LayoutDashboard, exact: true },
     { href: "/student/tests", label: "Mavjud testlar", icon: BookOpenCheck },
@@ -39,11 +42,17 @@ const NAV: Record<"ADMIN" | "STUDENT", Item[]> = {
     { href: "/admin/tests", label: "Testlar", icon: ClipboardList },
     { href: "/admin/questions", label: "Savollar banki", icon: Library },
     { href: "/admin/results", label: "Natijalar", icon: BarChart3 },
+    { href: "/admin/users", label: "Rollar", icon: ShieldCheck },
+    { href: "/admin/settings", label: "Sozlamalar", icon: Settings },
+  ],
+  MANAGER: [
+    { href: "/admin/tests", label: "Testlar", icon: ClipboardList },
+    { href: "/admin/students", label: "Talabalar", icon: Users },
     { href: "/admin/settings", label: "Sozlamalar", icon: Settings },
   ],
 };
 
-function NavLinks({ role, onNavigate }: { role: "ADMIN" | "STUDENT"; onNavigate?: () => void }) {
+function NavLinks({ role, onNavigate }: { role: NavRole; onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
     <nav className="grid gap-1" aria-label="Asosiy menyu">
@@ -78,13 +87,13 @@ function NavLinks({ role, onNavigate }: { role: "ADMIN" | "STUDENT"; onNavigate?
   );
 }
 
-export function Sidebar({ role, footer }: { role: "ADMIN" | "STUDENT"; footer?: React.ReactNode }) {
+export function Sidebar({ role, footer }: { role: NavRole; footer?: React.ReactNode }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col bg-midnight px-4 py-6 lg:flex">
       <div className="px-2">
         <SamuLogo tone="dark" size="sm" />
         <p className="mt-2 text-[11px] font-medium text-white/45">
-          {role === "ADMIN" ? "Administrator paneli" : "Talaba kabineti"}
+          {role === "ADMIN" ? "Administrator paneli" : role === "MANAGER" ? "Menejer paneli" : "Talaba kabineti"}
         </p>
       </div>
       <div className="mt-8 flex-1 overflow-y-auto">
@@ -95,7 +104,7 @@ export function Sidebar({ role, footer }: { role: "ADMIN" | "STUDENT"; footer?: 
   );
 }
 
-export function MobileNav({ role }: { role: "ADMIN" | "STUDENT" }) {
+export function MobileNav({ role }: { role: NavRole }) {
   const [open, setOpen] = React.useState(false);
   React.useEffect(() => {
     if (!open) return;

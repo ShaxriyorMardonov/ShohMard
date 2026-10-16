@@ -2,11 +2,13 @@ import "server-only";
 import ExcelJS from "exceljs";
 import mammoth from "mammoth";
 import WordExtractor from "word-extractor";
-import type { QuestionType } from "@prisma/client";
+import type { QuestionType, StudyForm } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { parseQuestionText, type ParsedQuestion } from "@/lib/question-text-parser";
+import { parseStudyForm } from "@/lib/labels";
 import { loginField, passwordSchema } from "@/lib/validation";
+import { resolveFacultyGroup } from "@/server/org";
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -79,32 +81,75 @@ export async function importUniversities(file: File): Promise<ImportResult> {
 }
 
 /* ===================== Talabalar ===================== */
-// Ustunlar: F.I.Sh. | Login | Parol | Universitet (qisqa yoki to'liq nomi) | Guruh
-export async function importStudents(file: File): Promise<ImportResult> {
-  const { rows } = await readSheet(file);
+// Ustunlar: F.I.Sh. | Login | Parol | Universitet | Fakultet | Guruh | Ta'lim shakli
+// Ustunlar sarlavha bo'yicha topiladi; sarlavha tanilmasa, shu tartibda deb olinadi.
+const STUDENT_COLS: { key: string; match: (h: string) => boolean }[] = [
+  { key: "fullName", match: (h) => h.includes("f.i") || h.includes("fio") || h.includes("ism") },
+  { key: "login", match: (h) => h.startsWith("login") },
+  { key: "password", match: (h) => h.startsWith("parol") || h.startsWith("password") },
+  { key: "university", match: (h) => h.startsWith("universitet") || h.startsWith("oliy") },
+  { key: "faculty", match: (h) => h.startsWith("fakultet") },
+  { key: "group", match: (h) => h.startsWith("guruh") },
+  { key: "studyForm", match: (h) => h.includes("shakl") },
+];
+
+function columnMap(header: string[]): Record<string, number> {
+  const map: Record<string, number> = {};
+  header.forEach((h, i) => {
+    const n = norm(h);
+    const c = STUDENT_COLS.find((c) => !(c.key in map) && c.match(n));
+    if (c) map[c.key] = i;
+  });
+  const recognized = Object.keys(map).length >= 3;
+  if (!recognized) STUDENT_COLS.forEach((c, i) => (map[c.key] = i));
+  // Eski namuna: F.I.Sh. | Login | Parol | Universitet | Guruh
+  if (recognized && !("faculty" in map) && !("group" in map) && header.length >= 5) map.group = 4;
+  return map;
+}
+
+export async function importStudents(file: File, scope: string | null = null): Promise<ImportResult> {
+  const { header, rows } = await readSheet(file);
   if (rows.length > 300) return { ok: false, message: "Bir martada ko'pi bilan 300 ta talaba yuklash mumkin" };
-  const unis = await prisma.university.findMany({ select: { id: true, name: true, shortName: true } });
+  const col = columnMap(header);
+  const get = (cells: string[], key: string) => (col[key] === undefined ? "" : (cells[col[key]!] ?? "").trim());
+  const unis = await prisma.university.findMany({
+    where: scope ? { id: scope } : {},
+    select: { id: true, name: true, shortName: true },
+  });
   const uniBy = new Map<string, string>();
   for (const u of unis) {
     uniBy.set(norm(u.name), u.id);
     uniBy.set(norm(u.shortName), u.id);
   }
   const errors: string[] = [];
-  const data: { fullName: string; login: string; password: string; universityId: string; groupName: string | null }[] = [];
+  type Row = { fullName: string; login: string; password: string; universityId: string; faculty: string; group: string; studyForm: StudyForm | null };
+  const data: Row[] = [];
   const logins = new Set<string>();
   for (const { line, cells } of rows) {
-    const [fullName = "", rawLogin = "", password = "", uni = "", group = ""] = cells;
-    const lg = loginField.safeParse(rawLogin);
+    const fullName = get(cells, "fullName");
+    const uni = get(cells, "university");
+    const lg = loginField.safeParse(get(cells, "login"));
+    const password = get(cells, "password");
     const pw = passwordSchema.safeParse(password);
-    const universityId = uniBy.get(norm(uni));
+    const universityId = scope ?? uniBy.get(norm(uni));
+    const studyForm = parseStudyForm(get(cells, "studyForm"));
     if (fullName.length < 3) errors.push(`${line}-qator: F.I.Sh. kiritilmagan`);
     else if (!lg.success) errors.push(`${line}-qator: login — ${lg.error.issues[0]?.message}`);
     else if (!pw.success) errors.push(`${line}-qator: parol — ${pw.error.issues[0]?.message}`);
     else if (!universityId) errors.push(`${line}-qator: "${uni}" universiteti topilmadi`);
+    else if (studyForm === undefined) errors.push(`${line}-qator: ta'lim shakli Kunduzgi, Sirtqi, Kechki yoki Masofaviy bo'lishi kerak`);
     else if (logins.has(lg.data)) errors.push(`${line}-qator: "${lg.data}" logini faylda takrorlangan`);
     else {
       logins.add(lg.data);
-      data.push({ fullName: fullName.slice(0, 120), login: lg.data, password, universityId, groupName: group.slice(0, 40) || null });
+      data.push({
+        fullName: fullName.slice(0, 120),
+        login: lg.data,
+        password,
+        universityId,
+        faculty: get(cells, "faculty").slice(0, 120),
+        group: get(cells, "group").slice(0, 40),
+        studyForm,
+      });
     }
   }
   if (errors.length) return { ok: false, errors: errors.slice(0, 50) };
@@ -112,13 +157,21 @@ export async function importStudents(file: File): Promise<ImportResult> {
   if (taken.length) {
     return { ok: false, errors: taken.slice(0, 50).map((t) => `"${t.login}" logini allaqachon band`) };
   }
+  const orgCache = new Map<string, { facultyId: string | null; groupId: string | null }>();
   const prepared = [];
   for (const d of data) {
+    const key = `${d.universityId}|${norm(d.faculty)}|${norm(d.group)}`;
+    let org = orgCache.get(key);
+    if (!org) {
+      org = await resolveFacultyGroup(d.universityId, d.faculty, d.group);
+      orgCache.set(key, org);
+    }
     prepared.push({
       fullName: d.fullName,
       login: d.login,
       universityId: d.universityId,
-      groupName: d.groupName,
+      ...org,
+      studyForm: d.studyForm,
       role: "STUDENT" as const,
       passwordHash: await hashPassword(d.password),
     });

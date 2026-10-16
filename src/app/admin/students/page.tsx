@@ -1,40 +1,39 @@
 import type { Metadata } from "next";
-import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import type { Prisma } from "@prisma/client";
-import { deleteStudentAction } from "@/actions/admin";
+import { FilterBar } from "@/components/admin/filter-bar";
 import { ImportDialog } from "@/components/admin/import-dialog";
 import { Pagination, parsePage } from "@/components/admin/pagination";
-import { StudentDialog } from "@/components/admin/student-dialog";
+import { StudentDialog, type OrgNames } from "@/components/admin/student-dialog";
+import { StudentsTable } from "@/components/admin/students-table";
 import { EmptyState, PageHeader } from "@/components/layout/app-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ConfirmAction } from "@/components/ui/confirm-action";
-import { Input } from "@/components/ui/input";
-import { NativeSelect } from "@/components/ui/native-select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { requireAdmin } from "@/lib/auth";
+import { requireStaff } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { formatDateTime } from "@/lib/time";
+import { STUDY_FORMS } from "@/lib/labels";
+import { orgOptions, studentOrgWhere } from "@/server/filters";
 
 export const metadata: Metadata = { title: "Talabalar" };
 export const maxDuration = 60;
-const PER_PAGE = 25;
+const PER_PAGE = 30;
 
-export default async function StudentsPage({ searchParams }: { searchParams: Promise<{ q?: string; university?: string; page?: string }> }) {
-  await requireAdmin();
+type SP = { q?: string; form?: string; university?: string; faculty?: string; group?: string; page?: string };
+
+export default async function StudentsPage({ searchParams }: { searchParams: Promise<SP> }) {
+  const staff = await requireStaff();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().slice(0, 100);
   const page = parsePage(sp.page);
   const where: Prisma.UserWhereInput = {
     role: "STUDENT",
-    ...(sp.university ? { universityId: sp.university } : {}),
-    ...(q
-      ? { OR: [{ fullName: { contains: q, mode: "insensitive" } }, { login: { contains: q, mode: "insensitive" } }, { groupName: { contains: q, mode: "insensitive" } }] }
-      : {}),
+    ...studentOrgWhere(staff.scope, sp),
+    ...(q ? { OR: [{ fullName: { contains: q, mode: "insensitive" } }, { login: { contains: q, mode: "insensitive" } }] } : {}),
   };
-  const [universities, total, students] = await Promise.all([
-    prisma.university.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  const uniFilter = staff.scope ? { id: staff.scope } : {};
+  const [universities, options, total, students, faculties, groups] = await Promise.all([
+    prisma.university.findMany({ where: uniFilter, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    orgOptions(staff.scope, sp),
     prisma.user.count({ where }),
     prisma.user.findMany({
       where,
@@ -45,91 +44,64 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         id: true,
         fullName: true,
         login: true,
-        groupName: true,
         isActive: true,
         universityId: true,
+        studyForm: true,
         lastLoginAt: true,
         university: { select: { shortName: true } },
+        faculty: { select: { name: true } },
+        group: { select: { name: true } },
         _count: { select: { attempts: true } },
       },
     }),
+    prisma.faculty.findMany({ where: staff.scope ? { universityId: staff.scope } : {}, select: { name: true, universityId: true }, orderBy: { name: "asc" } }),
+    prisma.group.findMany({ where: staff.scope ? { universityId: staff.scope } : {}, select: { name: true, universityId: true }, orderBy: { name: "asc" } }),
   ]);
+  const orgNames: OrgNames = {};
+  for (const u of universities) orgNames[u.id] = { faculties: [], groups: [] };
+  for (const f of faculties) orgNames[f.universityId]?.faculties.push(f.name);
+  for (const g of groups) orgNames[g.universityId]?.groups.push(g.name);
+  const fixedUniversity = staff.scope ?? undefined;
 
   return (
     <>
       <PageHeader
         title="Talabalar"
-        description="Talaba hisoblari faqat administrator tomonidan yaratiladi"
+        description={staff.scope ? `${staff.university?.name} talabalari` : "Talaba hisoblari administrator yoki universitet menejeri tomonidan yaratiladi"}
         actions={
           <>
             <ImportDialog kind="students" />
-            <StudentDialog universities={universities} trigger={<Button disabled={!universities.length}><Plus /> Talaba qo&apos;shish</Button>} />
+            <StudentDialog
+              universities={universities}
+              orgNames={orgNames}
+              fixedUniversity={fixedUniversity}
+              trigger={<Button disabled={!universities.length}><Plus /> Talaba qo&apos;shish</Button>}
+            />
           </>
         }
       />
-      <form className="mb-4 grid gap-3 sm:grid-cols-[1fr_260px_auto]" role="search">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input name="q" defaultValue={q} placeholder="Ism, login yoki guruh bo'yicha qidirish" className="pl-9" aria-label="Qidirish" />
-        </div>
-        <NativeSelect name="university" defaultValue={sp.university ?? ""} aria-label="Universitet">
-          <option value="">Barcha universitetlar</option>
-          {universities.map((u) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </NativeSelect>
-        <Button type="submit" variant="midnight">Filtrlash</Button>
-      </form>
+      <FilterBar
+        search={{ placeholder: "Ism yoki login bo'yicha qidirish" }}
+        values={sp}
+        fields={[
+          { name: "form", label: "Ta'lim shakli", all: "Barcha ta'lim shakllari", options: STUDY_FORMS },
+          ...(staff.scope ? [] : [{ name: "university", label: "Universitet", all: "Barcha universitetlar", options: options.universities, resets: ["faculty", "group"] }]),
+          { name: "faculty", label: "Fakultet", all: "Barcha fakultetlar", options: options.faculties, resets: ["group"] },
+          { name: "group", label: "Guruh", all: "Barcha guruhlar", options: options.groups },
+        ]}
+      />
       {students.length === 0 ? (
         <EmptyState icon={<Users />} title="Talabalar topilmadi" description={universities.length ? "Filtrni o'zgartiring yoki yangi talaba qo'shing." : "Avval universitet qo'shing."} />
       ) : (
         <Card className="overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>F.I.Sh.</TableHead>
-                <TableHead>Login</TableHead>
-                <TableHead>Universitet</TableHead>
-                <TableHead>Guruh</TableHead>
-                <TableHead>Holat</TableHead>
-                <TableHead>Oxirgi kirish</TableHead>
-                <TableHead className="text-right">Amallar</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {students.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-semibold text-midnight">{s.fullName}</TableCell>
-                  <TableCell className="font-mono text-xs">{s.login}</TableCell>
-                  <TableCell>{s.university?.shortName ?? "—"}</TableCell>
-                  <TableCell>{s.groupName ?? "—"}</TableCell>
-                  <TableCell>{s.isActive ? <Badge variant="success">Faol</Badge> : <Badge variant="muted">Nofaol</Badge>}</TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(s.lastLoginAt)}</TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-1">
-                      <StudentDialog
-                        student={s}
-                        universities={universities}
-                        trigger={<Button size="icon-sm" variant="ghost" aria-label="Tahrirlash"><Pencil /></Button>}
-                      />
-                      <ConfirmAction
-                        trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label="O'chirish"><Trash2 /></Button>}
-                        title="Talabani o'chirish"
-                        description={
-                          s._count.attempts
-                            ? `${s.fullName} imtihon topshirgan. Natijalarni saqlash uchun hisobni nofaol qilish tavsiya etiladi.`
-                            : `${s.fullName} hisobi butunlay o'chiriladi.`
-                        }
-                        confirmLabel="O'chirish"
-                        action={deleteStudentAction.bind(null, s.id)}
-                      />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Pagination page={page} pages={Math.ceil(total / PER_PAGE)} total={total} params={{ q, university: sp.university }} />
+          <StudentsTable
+            rows={students.map(({ _count, lastLoginAt, ...s }) => ({ ...s, lastLoginAt: lastLoginAt?.toISOString() ?? null, attempts: _count.attempts }))}
+            universities={universities}
+            orgNames={orgNames}
+            fixedUniversity={fixedUniversity}
+            canDelete={!staff.scope}
+          />
+          <Pagination page={page} pages={Math.ceil(total / PER_PAGE)} total={total} params={{ q, form: sp.form, university: sp.university, faculty: sp.faculty, group: sp.group }} />
         </Card>
       )}
     </>

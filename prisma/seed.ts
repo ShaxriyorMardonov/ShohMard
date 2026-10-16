@@ -31,21 +31,34 @@ async function main() {
 
   const studentPassword = await bcrypt.hash(process.env.SEED_STUDENT_PASSWORD ?? "Talaba2026", 12);
   const students = [
-    { login: "talaba1", fullName: "Karimov Jasur Anvarovich", groupName: "KI-21", uni: 0 },
-    { login: "talaba2", fullName: "Rahimova Malika Shavkatovna", groupName: "KI-22", uni: 0 },
-    { login: "talaba3", fullName: "Tursunov Bekzod Olimovich", groupName: "MT-11", uni: 1 },
-    { login: "talaba4", fullName: "Yusupova Dilnoza Rustamovna", groupName: "FM-31", uni: 2 },
+    { login: "talaba1", fullName: "Karimov Jasur Anvarovich", faculty: "Kompyuter injiniringi", groupName: "KI-21", uni: 0 },
+    { login: "talaba2", fullName: "Rahimova Malika Shavkatovna", faculty: "Kompyuter injiniringi", groupName: "KI-22", uni: 0 },
+    { login: "talaba3", fullName: "Tursunov Bekzod Olimovich", faculty: "Matematika", groupName: "MT-11", uni: 1 },
+    { login: "talaba4", fullName: "Yusupova Dilnoza Rustamovna", faculty: "Fizika-matematika", groupName: "FM-31", uni: 2 },
   ];
   for (const s of students) {
+    const universityId = unis[s.uni]!.id;
+    const faculty = await prisma.faculty.upsert({
+      where: { universityId_name: { universityId, name: s.faculty } },
+      update: {},
+      create: { universityId, name: s.faculty },
+    });
+    const group = await prisma.group.upsert({
+      where: { universityId_name: { universityId, name: s.groupName } },
+      update: {},
+      create: { universityId, name: s.groupName, facultyId: faculty.id },
+    });
     await prisma.user.upsert({
       where: { login: s.login },
       update: {},
       create: {
         login: s.login,
         fullName: s.fullName,
-        groupName: s.groupName,
         role: "STUDENT",
-        universityId: unis[s.uni]!.id,
+        universityId,
+        facultyId: faculty.id,
+        groupId: group.id,
+        studyForm: "KUNDUZGI",
         passwordHash: studentPassword,
       },
     });
