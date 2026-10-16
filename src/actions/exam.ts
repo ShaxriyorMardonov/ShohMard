@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { requireStudent } from "@/lib/auth";
 import { saveAnswerSchema } from "@/lib/validation";
-import { ExamError, saveAnswer, startAttempt, submitAttempt } from "@/server/exam";
+import { ExamError, getAttemptStatus, saveAnswer, startAttempt, submitAttempt } from "@/server/exam";
 
 export type ExamActionResult =
   | { ok: true; serverNow: string }
@@ -49,5 +49,16 @@ export async function submitAttemptAction(attemptId: string): Promise<ExamAction
     return { ok: true, serverNow: new Date().toISOString() };
   } catch (e) {
     return fail(e);
+  }
+}
+
+/** Imtihon oynasi vaqti-vaqti bilan so'raydi: muddat o'zgargan yoki test yakunlangan bo'lsa bilib oladi. */
+export async function examStatusAction(attemptId: string): Promise<{ status?: "IN_PROGRESS" | "SUBMITTED"; deadlineAt?: string; serverNow: string }> {
+  const user = await requireStudent();
+  try {
+    const s = await getAttemptStatus(user.id, String(attemptId));
+    return { status: s.status, deadlineAt: s.deadlineAt.toISOString(), serverNow: new Date().toISOString() };
+  } catch {
+    return { serverNow: new Date().toISOString() };
   }
 }

@@ -6,7 +6,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAdmin, requireStaff, sortRoles } from "@/lib/auth";
 import { canManageTest, resolveFacultyGroup } from "@/server/org";
-import { recomputeDeadlines, rescoreTest } from "@/server/exam";
+import { endTestNow, ExamError, liveAttempts, recomputeDeadlines, rescoreTest } from "@/server/exam";
 import { saveQuestions } from "@/server/import";
 import { parseQuestionText, type ParsedQuestion } from "@/lib/question-text-parser";
 import { hashPassword } from "@/lib/password";
@@ -708,4 +708,29 @@ export async function deleteResultsAction(ids: string[]): Promise<Result & { cou
   revalidatePath("/admin/tests");
   revalidatePath("/admin");
   return { count: r.count };
+}
+
+/** Hozir testni ishlayotgan talabalar (yakunlash yoki vaqtni o'zgartirishdan oldin ogohlantirish uchun). */
+export async function liveAttemptsAction(testId: string): Promise<{ count: number; names: string[] }> {
+  const staff = await requireStaff();
+  if (!(await canManageTest(staff.scope, testId))) return { count: 0, names: [] };
+  const rows = await liveAttempts(testId);
+  return { count: rows.length, names: rows.slice(0, 20).map((r) => r.user.fullName) };
+}
+
+/** Ochiq testni muddatidan oldin yakunlash. */
+export async function endTestNowAction(testId: string): Promise<{ error?: string; finalized?: number }> {
+  const staff = await requireStaff();
+  if (!(await canManageTest(staff.scope, testId))) return { error: "Test topilmadi" };
+  try {
+    const finalized = await endTestNow(testId);
+    revalidatePath(`/admin/tests/${testId}`);
+    revalidatePath("/admin/tests");
+    revalidatePath("/admin/results");
+    revalidatePath("/admin");
+    return { finalized };
+  } catch (e) {
+    if (e instanceof ExamError) return { error: e.message };
+    throw e;
+  }
 }

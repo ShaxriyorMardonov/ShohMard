@@ -14,7 +14,7 @@ import {
   Send,
   Timer,
 } from "lucide-react";
-import { saveAnswerAction, submitAttemptAction } from "@/actions/exam";
+import { examStatusAction, saveAnswerAction, submitAttemptAction } from "@/actions/exam";
 import { SamuLogo, SamuMark } from "@/components/brand/samu-logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -62,7 +62,9 @@ export function ExamClient(props: {
   const { attemptId, questions } = props;
   const { t } = useT();
   const router = useRouter();
-  const deadline = React.useMemo(() => new Date(props.deadlineAt).getTime(), [props.deadlineAt]);
+  // Muddat test davomida o'zgarishi mumkin (o'qituvchi vaqtni o'zgartirsa yoki testni yakunlasa)
+  const [deadline, setDeadline] = React.useState(() => new Date(props.deadlineAt).getTime());
+  const [notice, setNotice] = React.useState<string | null>(null);
   // Server va brauzer soatlari orasidagi farq: taymer faqat server muddatiga tayanadi.
   const offsetRef = React.useRef(new Date(props.serverNow).getTime() - Date.now());
   const serverNow = () => Date.now() + offsetRef.current;
@@ -203,6 +205,40 @@ export function ExamClient(props: {
     [attemptId, flush, goToHistory],
   );
 
+  // ---- Muddat o'zgarishini kuzatish ----
+  React.useEffect(() => {
+    const check = async () => {
+      if (stopped.current) return;
+      try {
+        const res = await examStatusAction(attemptId);
+        offsetRef.current = new Date(res.serverNow).getTime() - Date.now();
+        if (res.status === "SUBMITTED") {
+          setNotice(t("Test muddatidan oldin yakunlandi. Javoblaringiz avtomatik topshirildi."));
+          stopped.current = true;
+          setTimeout(goToHistory, 3000);
+          return;
+        }
+        if (res.deadlineAt) {
+          const next = new Date(res.deadlineAt).getTime();
+          setDeadline((prev) => {
+            if (Math.abs(prev - next) > 1000) {
+              setNotice(t("Diqqat: test vaqti o'zgartirildi. Taymer yangi vaqtga moslandi."));
+              return next;
+            }
+            return prev;
+          });
+        }
+      } catch {}
+    };
+    const id = setInterval(check, 15_000);
+    const onVisible = () => document.visibilityState === "visible" && void check();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [attemptId, goToHistory, t]);
+
   // ---- Taymer ----
   const autoFired = React.useRef(false);
   React.useEffect(() => {
@@ -332,6 +368,14 @@ export function ExamClient(props: {
           <div className="h-full bg-royal transition-[width]" style={{ width: `${progress}%` }} />
         </div>
       </header>
+      {notice && (
+        <div role="alert" className="border-b border-warning/40 bg-warning/15 px-4 py-3 text-center text-sm font-semibold text-midnight">
+          {notice}
+          <button type="button" onClick={() => setNotice(null)} className="ml-3 cursor-pointer text-xs font-medium text-muted-foreground underline">
+            {t("Yopish")}
+          </button>
+        </div>
+      )}
 
       <div className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_300px]">
         <section aria-labelledby="question-title" className="flex flex-col">

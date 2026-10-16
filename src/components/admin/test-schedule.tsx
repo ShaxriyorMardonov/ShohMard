@@ -1,7 +1,11 @@
 "use client";
 
+import * as React from "react";
+import { LiveStudentsAlert, type Live } from "@/components/admin/live-warning";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle2 } from "lucide-react";
-import { updateTestScheduleAction } from "@/actions/admin";
+import { liveAttemptsAction, updateTestScheduleAction } from "@/actions/admin";
 import { Field } from "@/components/forms/field";
 import { useFormAction } from "@/components/forms/use-form-action";
 import { Alert } from "@/components/ui/alert";
@@ -35,7 +39,26 @@ export function TestScheduleCard({
   locked: boolean;
 }) {
   const { t } = useT();
-  const { state, onSubmit, pending } = useFormAction(updateTestScheduleAction.bind(null, testId));
+  const { state, submit, pending } = useFormAction(updateTestScheduleAction.bind(null, testId));
+  const [confirm, setConfirm] = React.useState<{ fd: FormData; live: Live } | null>(null);
+  const [checking, setChecking] = React.useState(false);
+  // Vaqt o'zgarsa va hozir test ishlayotganlar bo'lsa, avval ogohlantiramiz
+  const onSubmit = async (ev: React.FormEvent<HTMLFormElement>) => {
+    ev.preventDefault();
+    const fd = new FormData(ev.currentTarget);
+    const timeChanged =
+      fd.get("startsAt") !== startsAt || fd.get("endsAt") !== endsAt || Number(fd.get("durationMinutes")) !== durationMinutes;
+    if (timeChanged) {
+      setChecking(true);
+      try {
+        const live = await liveAttemptsAction(testId);
+        if (live.count) return setConfirm({ fd, live });
+      } finally {
+        setChecking(false);
+      }
+    }
+    submit(fd);
+  };
   const e = state.errors ?? {};
   return (
     <Card>
@@ -82,8 +105,33 @@ export function TestScheduleCard({
             {t("Jami ball bo'sh qolsa, savollar ballari yig'indisi ({rawMax}) olinadi; o'zgarsa, mavjud natijalar qayta hisoblanadi.", { rawMax })}{" "}
             {t("Urinishlar soni: talaba testni necha marta topshira oladi.")}
           </p>
-          <SubmitButton pending={pending} pendingText={t("Saqlanmoqda...")}>{t("Saqlash")}</SubmitButton>
+          <SubmitButton pending={pending || checking} pendingText={t("Saqlanmoqda...")}>{t("Saqlash")}</SubmitButton>
         </form>
+        <Dialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t("Test vaqtini o'zgartirish")}</DialogTitle>
+              <DialogDescription>{t("Yangi vaqt testni hozir ishlayotgan talabalarga ham darhol qo'llanadi.")}</DialogDescription>
+            </DialogHeader>
+            {confirm && (
+              <LiveStudentsAlert
+                live={confirm.live}
+                note={t("Ularning taymeri yangi vaqtga moslanadi va ekranida ogohlantirish chiqadi. Agar vaqt qisqarib, tugab qolsa, javoblari avtomatik topshiriladi.")}
+              />
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirm(null)}>{t("Bekor qilish")}</Button>
+              <Button
+                onClick={() => {
+                  if (confirm) submit(confirm.fd);
+                  setConfirm(null);
+                }}
+              >
+                {t("Baribir o'zgartirish")}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );

@@ -335,3 +335,36 @@ export async function recomputeDeadlines(testId: string) {
     await prisma.attempt.update({ where: { id: a.id }, data: { deadlineAt: computeDeadline(test, a.startedAt) } });
   }
 }
+
+/** Talaba imtihon oynasi uchun: urinish holati va (o'zgargan bo'lishi mumkin) muddati. */
+export async function getAttemptStatus(userId: string, attemptId: string) {
+  const a = await loadOwnAttempt(userId, attemptId);
+  return { status: a.status, deadlineAt: a.deadlineAt };
+}
+
+/** Hozir testni ishlayotgan (muddati tugamagan) talabalar. */
+export async function liveAttempts(testId: string) {
+  const now = new Date();
+  return prisma.attempt.findMany({
+    where: { testId, status: "IN_PROGRESS", deadlineAt: { gt: now } },
+    orderBy: { startedAt: "asc" },
+    select: { id: true, user: { select: { fullName: true } } },
+  });
+}
+
+/** Ochiq testni muddatidan oldin yakunlaydi: jarayondagi urinishlar saqlangan javoblar bilan topshiriladi. */
+export async function endTestNow(testId: string) {
+  const now = new Date();
+  const test = await prisma.test.findUnique({ where: { id: testId }, select: { startsAt: true, endsAt: true } });
+  if (!test) throw new ExamError("Test topilmadi", "NOT_FOUND");
+  if (test.endsAt <= now) throw new ExamError("Test allaqachon yakunlangan", "NOT_OPEN");
+  // Hali boshlanmagan bo'lsa, oraliq bo'sh bo'lmasligi uchun boshlanishni ham hozirga suramiz
+  await prisma.test.update({
+    where: { id: testId },
+    data: { endsAt: now, ...(test.startsAt > now ? { startsAt: now } : {}) },
+  });
+  await recomputeDeadlines(testId);
+  const open = await prisma.attempt.findMany({ where: { testId, status: "IN_PROGRESS" }, select: { id: true } });
+  for (const a of open) await finalizeAttempt(a.id, { auto: true, now });
+  return open.length;
+}

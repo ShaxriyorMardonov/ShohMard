@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BarChart3, Lock, Megaphone, Pencil, Trash2, Undo2, Upload } from "lucide-react";
 import { deleteTestAction, setResultsReleasedAction } from "@/actions/admin";
 import { ImportDialog } from "@/components/admin/import-dialog";
+import { EndTestButton } from "@/components/admin/live-warning";
 import { WordImportDialog } from "@/components/admin/word-import-dialog";
 import { TEST_STATE_BADGE } from "@/components/admin/test-state";
 import { TestQuestions } from "@/components/admin/test-questions";
@@ -137,6 +138,11 @@ export default async function TestDetailPage({ params, searchParams }: { params:
                 <span className="text-sm font-semibold text-midnight">{test.isPublished ? t("Faol: talabalarga ko'rinadi") : t("Nofaol: talabalarga ko'rinmaydi")}</span>
                 <ActiveSwitch id={test.id} active={test.isPublished} />
               </div>
+              {testState(test, now) === "open" && (
+                <div className="mb-4">
+                  <EndTestButton testId={test.id} />
+                </div>
+              )}
               <dl className="grid gap-2.5 text-sm">
                 {[
                   [t("Boshlanish"), formatDateTime(test.startsAt, lang)],

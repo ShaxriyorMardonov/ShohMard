@@ -14,5 +14,6 @@ export function useFormAction(action: (prev: FormState, fd: FormData) => Promise
     const fd = new FormData(e.currentTarget);
     startTransition(() => dispatch(fd));
   };
-  return { state, onSubmit, pending };
+  const submit = (fd: FormData) => startTransition(() => dispatch(fd));
+  return { state, onSubmit, submit, pending };
 }

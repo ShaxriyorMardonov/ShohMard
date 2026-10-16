@@ -253,4 +253,14 @@ describe.skipIf(!enabled)("imtihon jarayoni (PostgreSQL bilan integratsion)", as
     await prisma.attempt.delete({ where: { id: a2.id } });
     expect((await exam.startAttempt(alice, uniA, testId)).attemptNo).toBe(2);
   });
+  it("testni muddatidan oldin yakunlash jarayondagi urinishlarni topshiradi", async () => {
+    const a = await exam.startAttempt(alice, uniA, testId);
+    expect((await exam.liveAttempts(testId)).length).toBe(1);
+    expect(await exam.endTestNow(testId)).toBe(1);
+    const after = await prisma.attempt.findUniqueOrThrow({ where: { id: a.id } });
+    expect(after.status).toBe("SUBMITTED");
+    expect(after.autoSubmitted).toBe(true);
+    await expect(exam.startAttempt(bob, uniA, testId)).rejects.toMatchObject({ code: "NOT_OPEN" });
+    expect((await exam.getAttemptStatus(alice, a.id)).status).toBe("SUBMITTED");
+  });
 });
