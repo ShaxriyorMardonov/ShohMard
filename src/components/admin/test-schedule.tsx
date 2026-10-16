@@ -17,6 +17,9 @@ export function TestScheduleCard({
   durationMinutes,
   maxScore,
   rawMax,
+  questionsPerAttempt,
+  totalQuestions,
+  locked,
 }: {
   testId: string;
   startsAt: string;
@@ -24,13 +27,16 @@ export function TestScheduleCard({
   durationMinutes: number;
   maxScore: number | null;
   rawMax: number;
+  questionsPerAttempt: number | null;
+  totalQuestions: number;
+  locked: boolean;
 }) {
   const { state, onSubmit, pending } = useFormAction(updateTestScheduleAction.bind(null, testId));
   const e = state.errors ?? {};
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Vaqt va baho</CardTitle>
+        <CardTitle>Vaqt, savollar soni va jami ball</CardTitle>
         <CardDescription>Test boshlangan bo&apos;lsa ham o&apos;zgartirish mumkin</CardDescription>
       </CardHeader>
       <CardContent>
@@ -43,16 +49,30 @@ export function TestScheduleCard({
           <Field label="Tugash" htmlFor="s-end" error={e.endsAt}>
             <Input id="s-end" name="endsAt" type="datetime-local" defaultValue={endsAt} />
           </Field>
+          <Field label="Davomiylik (daqiqa)" htmlFor="s-dur" error={e.durationMinutes}>
+            <Input id="s-dur" name="durationMinutes" type="number" min={1} max={600} defaultValue={durationMinutes} />
+          </Field>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Davomiylik (daq.)" htmlFor="s-dur" error={e.durationMinutes}>
-              <Input id="s-dur" name="durationMinutes" type="number" min={1} max={600} defaultValue={durationMinutes} />
+            <Field label="Savollar soni" htmlFor="s-qc" error={e.questionsPerAttempt}>
+              <Input
+                id="s-qc"
+                name="questionsPerAttempt"
+                type="number"
+                min={1}
+                max={1000}
+                defaultValue={questionsPerAttempt ?? ""}
+                placeholder={`Hammasi (${totalQuestions})`}
+                readOnly={locked}
+                title={locked ? "Test boshlangan, o'zgartirib bo'lmaydi" : undefined}
+              />
             </Field>
-            <Field label="Jami baho" htmlFor="s-max" error={e.maxScore}>
+            <Field label="Jami ball" htmlFor="s-max" error={e.maxScore}>
               <Input id="s-max" name="maxScore" type="number" min={1} max={1000} defaultValue={maxScore ?? ""} placeholder={String(rawMax)} />
             </Field>
           </div>
           <p className="text-xs text-muted-foreground">
-            Jami baho bo&apos;sh qolsa, savollar ballari yig&apos;indisi ({rawMax}) olinadi. Baho o&apos;zgarsa, mavjud natijalar ham qayta hisoblanadi.
+            Savollar soni: har bir talabaga testdagi {totalQuestions} ta savoldan nechtasi tasodifiy tushadi (bo&apos;sh — hammasi).
+            Jami ball bo&apos;sh qolsa, savollar ballari yig&apos;indisi ({rawMax}) olinadi; o&apos;zgarsa, mavjud natijalar qayta hisoblanadi.
           </p>
           <SubmitButton pending={pending} pendingText="Saqlanmoqda...">Saqlash</SubmitButton>
         </form>

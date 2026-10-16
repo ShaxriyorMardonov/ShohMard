@@ -11,7 +11,6 @@ import {
   History,
   LayoutDashboard,
   Library,
-  LogOut,
   Menu,
   Settings,
   ShieldCheck,
@@ -19,8 +18,8 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { logoutAction } from "@/actions/auth";
 import { SamuLogo } from "@/components/brand/samu-logo";
+import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 type Item = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean };
@@ -54,8 +53,9 @@ const NAV: Record<NavRole, Item[]> = {
 
 function NavLinks({ role, onNavigate }: { role: NavRole; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const { t } = useT();
   return (
-    <nav className="grid gap-1" aria-label="Asosiy menyu">
+    <nav className="grid gap-1" aria-label={t("Asosiy menyu")}>
       {NAV[role].map(({ href, label, icon: Icon, exact }) => {
         const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
         return (
@@ -70,30 +70,22 @@ function NavLinks({ role, onNavigate }: { role: NavRole; onNavigate?: () => void
             )}
           >
             <Icon className="size-[18px]" />
-            {label}
+            {t(label)}
           </Link>
         );
       })}
-      <form action={logoutAction} className="mt-2 border-t border-white/10 pt-2">
-        <button
-          type="submit"
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/70 transition-colors hover:bg-error/15 hover:text-white cursor-pointer"
-        >
-          <LogOut className="size-[18px]" />
-          Tizimdan chiqish
-        </button>
-      </form>
     </nav>
   );
 }
 
 export function Sidebar({ role, footer }: { role: NavRole; footer?: React.ReactNode }) {
+  const { t } = useT();
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col bg-midnight px-4 py-6 lg:flex">
       <div className="px-2">
         <SamuLogo tone="dark" size="sm" />
         <p className="mt-2 text-[11px] font-medium text-white/45">
-          {role === "ADMIN" ? "Administrator paneli" : role === "MANAGER" ? "Menejer paneli" : "Talaba kabineti"}
+          {t(role === "ADMIN" ? "Administrator paneli" : role === "MANAGER" ? "Menejer paneli" : "Talaba kabineti")}
         </p>
       </div>
       <div className="mt-8 flex-1 overflow-y-auto">
@@ -105,6 +97,7 @@ export function Sidebar({ role, footer }: { role: NavRole; footer?: React.ReactN
 }
 
 export function MobileNav({ role }: { role: NavRole }) {
+  const { t } = useT();
   const [open, setOpen] = React.useState(false);
   React.useEffect(() => {
     if (!open) return;
@@ -118,13 +111,13 @@ export function MobileNav({ role }: { role: NavRole }) {
         type="button"
         onClick={() => setOpen(true)}
         className="flex size-10 items-center justify-center rounded-lg text-midnight hover:bg-muted lg:hidden cursor-pointer"
-        aria-label="Menyuni ochish"
+        aria-label={t("Menyuni ochish")}
         aria-expanded={open}
       >
         <Menu className="size-5" />
       </button>
       {open && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Menyu">
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label={t("Asosiy menyu")}>
           <div className="absolute inset-0 bg-midnight/50" onClick={() => setOpen(false)} />
           <div className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col bg-midnight px-4 py-5 shadow-xl">
             <div className="flex items-center justify-between px-2">
@@ -133,7 +126,7 @@ export function MobileNav({ role }: { role: NavRole }) {
                 type="button"
                 onClick={() => setOpen(false)}
                 className="flex size-9 items-center justify-center rounded-lg text-white/70 hover:bg-white/10 cursor-pointer"
-                aria-label="Menyuni yopish"
+                aria-label={t("Menyuni yopish")}
               >
                 <X className="size-5" />
               </button>

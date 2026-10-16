@@ -391,15 +391,29 @@ export async function updateTestScheduleAction(testId: string, _prev: FormState,
   const duration = Number(str(fd.get("durationMinutes")));
   const maxRaw = str(fd.get("maxScore")).trim();
   const maxScore = maxRaw === "" ? null : Number(maxRaw);
+  const qRaw = str(fd.get("questionsPerAttempt")).trim();
+  const questionsPerAttempt = qRaw === "" ? null : Number(qRaw);
   const errors: Record<string, string> = {};
+  if (questionsPerAttempt !== null && (!Number.isInteger(questionsPerAttempt) || questionsPerAttempt < 1 || questionsPerAttempt > 1000)) {
+    errors.questionsPerAttempt = "1–1000 ta";
+  }
   if (!startsAt) errors.startsAt = "Boshlanish vaqtini kiriting";
   if (!endsAt) errors.endsAt = "Tugash vaqtini kiriting";
   if (startsAt && endsAt && endsAt <= startsAt) errors.endsAt = "Tugash vaqti boshlanishdan keyin bo'lsin";
   if (!Number.isInteger(duration) || duration < 1 || duration > 600) errors.durationMinutes = "1–600 daqiqa";
   if (maxScore !== null && (!Number.isInteger(maxScore) || maxScore < 1 || maxScore > 1000)) errors.maxScore = "1–1000 ball";
   if (Object.keys(errors).length) return { errors };
-  const before = await prisma.test.findUniqueOrThrow({ where: { id: testId }, select: { maxScore: true } });
-  await prisma.test.update({ where: { id: testId }, data: { startsAt: startsAt!, endsAt: endsAt!, durationMinutes: duration, maxScore } });
+  const before = await prisma.test.findUniqueOrThrow({
+    where: { id: testId },
+    select: { maxScore: true, questionsPerAttempt: true, _count: { select: { attempts: true } } },
+  });
+  if (before._count.attempts > 0 && before.questionsPerAttempt !== questionsPerAttempt) {
+    return { errors: { questionsPerAttempt: "Test boshlangan, savollar sonini o'zgartirib bo'lmaydi" } };
+  }
+  await prisma.test.update({
+    where: { id: testId },
+    data: { startsAt: startsAt!, endsAt: endsAt!, durationMinutes: duration, maxScore, questionsPerAttempt },
+  });
   await recomputeDeadlines(testId);
   let rescored = 0;
   if (before.maxScore !== maxScore) rescored = await rescoreTest(testId);
@@ -418,37 +432,70 @@ export async function setTestRestrictedAction(testId: string, restricted: boolea
   revalidatePath(`/admin/tests/${testId}`);
 }
 
-/** Guruh, fakultet yoki loginlar ro'yxati bo'yicha talabalarga ruxsat beradi. */
+type AccessFilter = { universityId?: string; facultyId?: string; groupId?: string; q?: string };
+
+async function accessBase(testId: string, f: AccessFilter): Promise<Prisma.UserWhereInput> {
+  const test = await prisma.test.findUnique({ where: { id: testId }, select: { universities: { select: { id: true } } } });
+  const uniIds = test?.universities.map((u) => u.id) ?? [];
+  const q = (f.q ?? "").trim().slice(0, 100);
+  return {
+    roles: { has: "STUDENT" },
+    universityId: f.universityId && uniIds.includes(f.universityId) ? f.universityId : { in: uniIds },
+    ...(f.facultyId ? { facultyId: f.facultyId } : {}),
+    ...(f.groupId ? { groupId: f.groupId } : {}),
+    ...(q ? { OR: [{ fullName: { contains: q, mode: "insensitive" } }, { login: { contains: q, mode: "insensitive" } }] } : {}),
+  };
+}
+
+/** Ruxsat berish uchun talabalar ro'yxati (filtr bo'yicha, ruxsati bor-yo'qligi bilan). */
+export async function listAccessCandidatesAction(testId: string, f: AccessFilter) {
+  const staff = await requireStaff();
+  if (!(await canManageTest(staff.scope, testId))) return { error: "Test topilmadi", rows: [], total: 0 };
+  const where = await accessBase(testId, f);
+  const [total, rows] = await Promise.all([
+    prisma.user.count({ where }),
+    prisma.user.findMany({
+      where,
+      orderBy: { fullName: "asc" },
+      take: 500,
+      select: {
+        id: true,
+        fullName: true,
+        login: true,
+        group: { select: { name: true } },
+        testAccess: { where: { testId }, select: { testId: true } },
+      },
+    }),
+  ]);
+  return {
+    total,
+    rows: rows.map((r) => ({ id: r.id, fullName: r.fullName, login: r.login, group: r.group?.name ?? null, allowed: r.testAccess.length > 0 })),
+  };
+}
+
+/** Tanlangan talabalarga yoki filtrga mos barcha talabalarga ruxsat beradi. */
 export async function addTestAccessAction(
   testId: string,
-  input: { groupId?: string; facultyId?: string; logins?: string },
-): Promise<Result & { added?: number; notFound?: string[] }> {
+  input: AccessFilter & { userIds?: string[]; all?: boolean },
+): Promise<Result & { added?: number }> {
   const staff = await requireStaff();
   if (!(await canManageTest(staff.scope, testId))) return { error: "Test topilmadi" };
-  const test = await prisma.test.findUnique({ where: { id: testId }, select: { universities: { select: { id: true } } } });
-  const uniIds = test!.universities.map((u) => u.id);
-  const base = { roles: { has: "STUDENT" as const }, universityId: { in: uniIds } };
-  let students: { id: string; login: string }[] = [];
-  let notFound: string[] = [];
-  if (input.groupId) {
-    students = await prisma.user.findMany({ where: { ...base, groupId: input.groupId }, select: { id: true, login: true } });
-  } else if (input.facultyId) {
-    students = await prisma.user.findMany({ where: { ...base, facultyId: input.facultyId }, select: { id: true, login: true } });
-  } else if (input.logins) {
-    const logins = Array.from(new Set(input.logins.toLowerCase().split(/[\s,;]+/).filter(Boolean))).slice(0, 2000);
-    students = await prisma.user.findMany({ where: { ...base, login: { in: logins } }, select: { id: true, login: true } });
-    const found = new Set(students.map((s) => s.login));
-    notFound = logins.filter((l) => !found.has(l));
-  }
-  if (!students.length) {
-    return { error: notFound.length ? `Bu test universitetlarida topilmadi: ${notFound.slice(0, 10).join(", ")}` : "Talabalar topilmadi" };
-  }
-  const r = await prisma.testAccess.createMany({
-    data: students.map((s) => ({ testId, userId: s.id })),
-    skipDuplicates: true,
-  });
+  const base = await accessBase(testId, input);
+  const where: Prisma.UserWhereInput = input.all ? base : { AND: [base, { id: { in: (input.userIds ?? []).slice(0, 5000) } }] };
+  const students = await prisma.user.findMany({ where, select: { id: true } });
+  if (!students.length) return { error: "Talabalar topilmadi" };
+  const r = await prisma.testAccess.createMany({ data: students.map((s) => ({ testId, userId: s.id })), skipDuplicates: true });
   revalidatePath(`/admin/tests/${testId}`);
-  return { added: r.count, notFound };
+  return { added: r.count };
+}
+
+/** Filtrga mos barcha talabalar ruxsatini olib tashlaydi. */
+export async function removeTestAccessByFilterAction(testId: string, f: AccessFilter): Promise<Result> {
+  const staff = await requireStaff();
+  if (!(await canManageTest(staff.scope, testId))) return { error: "Test topilmadi" };
+  const base = await accessBase(testId, f);
+  await prisma.testAccess.deleteMany({ where: { testId, user: base } });
+  revalidatePath(`/admin/tests/${testId}`);
 }
 
 export async function removeTestAccessAction(testId: string, userIds: string[]): Promise<Result> {

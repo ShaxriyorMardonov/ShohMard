@@ -4,7 +4,10 @@ import * as React from "react";
 import type { Role } from "@prisma/client";
 import { Check, ChevronDown, LogOut, Repeat } from "lucide-react";
 import { logoutAction, switchRoleAction } from "@/actions/auth";
+import { useT } from "@/i18n/client";
+import type { TFunction } from "@/i18n/translate";
 import { cn } from "@/lib/utils";
+import { LangSwitcher } from "./lang-switcher";
 
 function initials(name: string) {
   return name
@@ -15,14 +18,15 @@ function initials(name: string) {
     .join("");
 }
 
-export function roleTitle(role: Role, uni?: string | null) {
-  if (role === "ADMIN") return "Administrator";
-  if (role === "MANAGER") return `Menejer${uni ? ` · ${uni}` : ""}`;
-  return `Talaba${uni ? ` · ${uni}` : ""}`;
+export function roleTitle(role: Role, uni: string | null | undefined, t: TFunction) {
+  if (role === "ADMIN") return t("Administrator");
+  if (role === "MANAGER") return `${t("Menejer")}${uni ? ` · ${uni}` : ""}`;
+  return `${t("Talaba")}${uni ? ` · ${uni}` : ""}`;
 }
 
 /** Ekranning o'ng yuqori burchagidagi foydalanuvchi menyusi: rolni almashtirish va chiqish. */
 export function UserMenu({ fullName, role, roles, university }: { fullName: string; role: Role; roles: Role[]; university: string | null }) {
+  const { t } = useT();
   const [open, setOpen] = React.useState(false);
   const [pending, start] = React.useTransition();
   const ref = React.useRef<HTMLDivElement>(null);
@@ -52,7 +56,7 @@ export function UserMenu({ fullName, role, roles, university }: { fullName: stri
           <span className="block text-sm font-semibold leading-tight text-foreground">{fullName}</span>
           <span className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
             {many && <Repeat className="size-3" />}
-            {roleTitle(role, university)}
+            {roleTitle(role, university, t)}
           </span>
         </span>
         <span className="flex size-9 items-center justify-center rounded-full bg-royal text-sm font-bold text-white" aria-hidden>
@@ -61,14 +65,14 @@ export function UserMenu({ fullName, role, roles, university }: { fullName: stri
         <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-xl border bg-card p-1.5 shadow-xl">
+        <div role="menu" className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border bg-card p-1.5 shadow-xl">
           <div className="px-3 py-2 sm:hidden">
             <p className="text-sm font-semibold text-midnight">{fullName}</p>
-            <p className="text-xs text-muted-foreground">{roleTitle(role, university)}</p>
+            <p className="text-xs text-muted-foreground">{roleTitle(role, university, t)}</p>
           </div>
           {many && (
             <>
-              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Rolni almashtirish</p>
+              <p className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{t("Rolni almashtirish")}</p>
               {roles.map((r) => (
                 <button
                   key={r}
@@ -82,16 +86,18 @@ export function UserMenu({ fullName, role, roles, university }: { fullName: stri
                     r === role ? "font-semibold text-royal" : "text-foreground",
                   )}
                 >
-                  {roleTitle(r, university)}
+                  {roleTitle(r, university, t)}
                   {r === role && <Check className="size-4" />}
                 </button>
               ))}
               <div className="my-1 border-t" />
             </>
           )}
+          <LangSwitcher className="py-1.5" />
+          <div className="my-1 border-t" />
           <form action={logoutAction}>
             <button type="submit" role="menuitem" className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-2 text-sm text-error hover:bg-error/10">
-              <LogOut className="size-4" /> Tizimdan chiqish
+              <LogOut className="size-4" /> {t("Tizimdan chiqish")}
             </button>
           </form>
         </div>

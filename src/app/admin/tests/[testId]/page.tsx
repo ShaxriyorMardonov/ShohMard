@@ -33,10 +33,7 @@ export default async function TestDetailPage({ params, searchParams }: { params:
     where: { id: testId, ...testScopeWhere(staff.scope) },
     include: {
       universities: { select: { id: true, name: true, shortName: true } },
-      access: {
-        orderBy: { user: { fullName: "asc" } },
-        select: { user: { select: { id: true, fullName: true, login: true, group: { select: { name: true } } } } },
-      },
+      _count: { select: { access: true } },
       questions: {
         orderBy: { position: "asc" },
         include: { question: { select: { id: true, text: true, subject: true, type: true } } },
@@ -45,13 +42,12 @@ export default async function TestDetailPage({ params, searchParams }: { params:
   });
   if (!test) notFound();
   const uniIds = test.universities.map((u) => u.id);
-  const multiUni = uniIds.length > 1;
   const [bank, stats, inProgress, groups, faculties] = await Promise.all([
     prisma.question.findMany({ orderBy: { createdAt: "desc" }, take: 1000, select: { id: true, text: true, subject: true, type: true } }),
     prisma.attempt.aggregate({ where: { testId, status: "SUBMITTED" }, _count: true, _avg: { percent: true }, _max: { percent: true }, _min: { percent: true } }),
     prisma.attempt.count({ where: { testId, status: "IN_PROGRESS" } }),
-    prisma.group.findMany({ where: { universityId: { in: uniIds } }, orderBy: { name: "asc" }, select: { id: true, name: true, university: { select: { shortName: true } } } }),
-    prisma.faculty.findMany({ where: { universityId: { in: uniIds } }, orderBy: { name: "asc" }, select: { id: true, name: true, university: { select: { shortName: true } } } }),
+    prisma.group.findMany({ where: { universityId: { in: uniIds } }, orderBy: { name: "asc" }, select: { id: true, name: true, universityId: true, facultyId: true } }),
+    prisma.faculty.findMany({ where: { universityId: { in: uniIds } }, orderBy: { name: "asc" }, select: { id: true, name: true, universityId: true } }),
   ]);
   const totalAttempts = stats._count + inProgress;
   // Bitta talabaga tushadigan savollar ballari (taxminiy: birinchi N ta savol bo'yicha)
@@ -162,13 +158,17 @@ export default async function TestDetailPage({ params, searchParams }: { params:
             durationMinutes={test.durationMinutes}
             maxScore={test.maxScore}
             rawMax={rawMax}
+            questionsPerAttempt={test.questionsPerAttempt}
+            totalQuestions={test.questions.length}
+            locked={locked}
           />
           <TestAccessCard
             testId={test.id}
             restricted={test.restrictedAccess}
-            allowed={test.access.map((a) => ({ id: a.user.id, fullName: a.user.fullName, login: a.user.login, group: a.user.group?.name ?? null }))}
-            groups={groups.map((g) => ({ value: g.id, label: multiUni ? `${g.name} (${g.university.shortName})` : g.name }))}
-            faculties={faculties.map((f) => ({ value: f.id, label: multiUni ? `${f.name} (${f.university.shortName})` : f.name }))}
+            allowedCount={test._count.access}
+            universities={test.universities.map((u) => ({ id: u.id, name: u.name }))}
+            faculties={faculties}
+            groups={groups}
           />
           <Card>
             <CardHeader><CardTitle>Statistika</CardTitle></CardHeader>

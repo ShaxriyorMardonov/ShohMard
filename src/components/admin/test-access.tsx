@@ -2,77 +2,115 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { UserCheck, X } from "lucide-react";
-import { addTestAccessAction, removeTestAccessAction, setTestRestrictedAction } from "@/actions/admin";
+import { Loader2, Search } from "lucide-react";
+import {
+  addTestAccessAction,
+  listAccessCandidatesAction,
+  removeTestAccessAction,
+  removeTestAccessByFilterAction,
+  setTestRestrictedAction,
+} from "@/actions/admin";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
-import { Textarea } from "@/components/ui/textarea";
 
-type Option = { value: string; label: string };
+type Row = { id: string; fullName: string; login: string; group: string | null; allowed: boolean };
 
 export function TestAccessCard({
   testId,
   restricted,
-  allowed,
-  groups,
+  allowedCount,
+  universities,
   faculties,
+  groups,
 }: {
   testId: string;
   restricted: boolean;
-  allowed: { id: string; fullName: string; login: string; group: string | null }[];
-  groups: Option[];
-  faculties: Option[];
+  allowedCount: number;
+  universities: { id: string; name: string }[];
+  faculties: { id: string; name: string; universityId: string }[];
+  groups: { id: string; name: string; universityId: string; facultyId: string | null }[];
 }) {
   const router = useRouter();
-  const [pending, start] = React.useTransition();
-  const [msg, setMsg] = React.useState<{ ok: boolean; text: string } | null>(null);
-  const [by, setBy] = React.useState<"group" | "faculty" | "logins">("group");
-  const [value, setValue] = React.useState("");
-  const [filter, setFilter] = React.useState("");
   const [mode, setMode] = React.useState(restricted);
   React.useEffect(() => setMode(restricted), [restricted]);
+  const [uni, setUni] = React.useState(universities.length === 1 ? universities[0]!.id : "");
+  const [fac, setFac] = React.useState("");
+  const [grp, setGrp] = React.useState("");
+  const [q, setQ] = React.useState("");
+  const [query, setQuery] = React.useState("");
+  const [rows, setRows] = React.useState<Row[]>([]);
+  const [total, setTotal] = React.useState(0);
+  const [loading, setLoading] = React.useState(false);
+  const [busy, start] = React.useTransition();
+  const [error, setError] = React.useState<string | null>(null);
+  const filter = React.useMemo(() => ({ universityId: uni || undefined, facultyId: fac || undefined, groupId: grp || undefined, q: query || undefined }), [uni, fac, grp, query]);
 
-  const run = (fn: () => Promise<{ error?: string; added?: number; notFound?: string[] } | void>) =>
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    const r = await listAccessCandidatesAction(testId, filter);
+    setRows(r.rows);
+    setTotal(r.total);
+    setError("error" in r && r.error ? r.error : null);
+    setLoading(false);
+  }, [testId, filter]);
+
+  React.useEffect(() => {
+    if (mode) void load();
+  }, [mode, load]);
+
+  // Qidiruv kiritilgandan biroz keyin qo'llanadi
+  React.useEffect(() => {
+    const t = setTimeout(() => setQuery(q.trim()), 350);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const facOptions = faculties.filter((f) => !uni || f.universityId === uni);
+  const grpOptions = groups.filter((g) => (!uni || g.universityId === uni) && (!fac || g.facultyId === fac));
+  const multiUni = universities.length > 1;
+  const allChecked = rows.length > 0 && rows.every((r) => r.allowed);
+
+  const mutate = (fn: () => Promise<{ error?: string } | void>) =>
     start(async () => {
       const r = await fn();
-      if (r?.error) setMsg({ ok: false, text: r.error });
-      else if (r && "added" in r)
-        setMsg({
-          ok: true,
-          text: `${r.added} ta talabaga ruxsat berildi.${r.notFound?.length ? ` Topilmadi: ${r.notFound.slice(0, 10).join(", ")}` : ""}`,
-        });
-      else setMsg(null);
+      if (r && r.error) setError(r.error);
+      await load();
       router.refresh();
     });
 
-  const shown = filter
-    ? allowed.filter((a) => (a.fullName + " " + a.login + " " + (a.group ?? "")).toLowerCase().includes(filter.toLowerCase()))
-    : allowed;
+  const toggleOne = (row: Row) => {
+    setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, allowed: !r.allowed } : r)));
+    mutate(() => (row.allowed ? removeTestAccessAction(testId, [row.id]) : addTestAccessAction(testId, { ...filter, userIds: [row.id] })));
+  };
+
+  const toggleAll = () => {
+    setRows((rs) => rs.map((r) => ({ ...r, allowed: !allChecked })));
+    mutate(() => (allChecked ? removeTestAccessByFilterAction(testId, filter) : addTestAccessAction(testId, { ...filter, all: true })));
+  };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Kimlar topshira oladi</CardTitle>
-        <CardDescription>Testni barcha talabalarga yoki faqat ruxsat berilganlarga ochish</CardDescription>
+        <CardDescription>Testni barcha talabalarga yoki faqat belgilanganlarga ochish</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 text-sm">
         <div className="grid gap-2">
           {[
             { v: false, t: "Tanlangan universitetlarning barcha talabalari" },
-            { v: true, t: "Faqat ruxsat berilgan talabalar" },
+            { v: true, t: "Faqat belgilangan talabalar" },
           ].map((o) => (
             <label key={String(o.v)} className="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 has-[:checked]:border-royal has-[:checked]:bg-royal/5">
               <input
                 type="radio"
                 name="access-mode"
                 checked={mode === o.v}
-                disabled={pending}
+                disabled={busy}
                 onChange={() => {
                   setMode(o.v);
-                  run(() => setTestRestrictedAction(testId, o.v));
+                  mutate(() => setTestRestrictedAction(testId, o.v));
                 }}
                 className="size-4 accent-[#315ECA]"
               />
@@ -83,70 +121,60 @@ export function TestAccessCard({
 
         {mode && (
           <>
-            {allowed.length === 0 && (
-              <Alert variant="warning"><span>Hozircha hech kimga ruxsat berilmagan, test hech kimga ko&apos;rinmaydi.</span></Alert>
+            <p className="font-semibold text-midnight">
+              Ruxsat berilgan: <Badge variant={allowedCount ? "success" : "muted"}>{allowedCount}</Badge>
+            </p>
+            {allowedCount === 0 && (
+              <Alert variant="warning"><span>Hozircha hech kim belgilanmagan, test hech kimga ko&apos;rinmaydi.</span></Alert>
             )}
-            <form
-              className="grid gap-2 rounded-lg bg-muted/60 p-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!value.trim()) return;
-                run(() =>
-                  addTestAccessAction(testId, by === "group" ? { groupId: value } : by === "faculty" ? { facultyId: value } : { logins: value }),
-                );
-                setValue("");
-              }}
-            >
-              <p className="font-semibold text-midnight">Ruxsat berish</p>
-              <NativeSelect value={by} onChange={(e) => { setBy(e.target.value as typeof by); setValue(""); }} aria-label="Qanday qo'shish">
-                <option value="group">Guruh bo&apos;yicha</option>
-                <option value="faculty">Fakultet bo&apos;yicha</option>
-                <option value="logins">Loginlar ro&apos;yxati</option>
-              </NativeSelect>
-              {by === "logins" ? (
-                <Textarea value={value} onChange={(e) => setValue(e.target.value)} rows={3} placeholder="talaba1, talaba2 (vergul yoki yangi qatordan)" aria-label="Loginlar" />
-              ) : (
-                <NativeSelect value={value} onChange={(e) => setValue(e.target.value)} aria-label={by === "group" ? "Guruh" : "Fakultet"}>
-                  <option value="">{by === "group" ? "Guruhni tanlang" : "Fakultetni tanlang"}</option>
-                  {(by === "group" ? groups : faculties).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            <div className="grid gap-2">
+              {multiUni && (
+                <NativeSelect value={uni} onChange={(e) => { setUni(e.target.value); setFac(""); setGrp(""); }} aria-label="Universitet">
+                  <option value="">Barcha universitetlar</option>
+                  {universities.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </NativeSelect>
               )}
-              <Button type="submit" size="sm" disabled={pending || !value.trim()}><UserCheck /> Ruxsat berish</Button>
-            </form>
-            {msg && <p className={`text-xs font-medium ${msg.ok ? "text-success" : "text-error"}`}>{msg.text}</p>}
-
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between gap-2">
-                <p className="font-semibold text-midnight">Ruxsat berilganlar <Badge variant="muted">{allowed.length}</Badge></p>
-                {allowed.length > 0 && (
-                  <Button size="sm" variant="ghost" className="text-error" disabled={pending} onClick={() => run(() => removeTestAccessAction(testId, []))}>
-                    Hammasini olib tashlash
-                  </Button>
-                )}
+              <NativeSelect value={fac} onChange={(e) => { setFac(e.target.value); setGrp(""); }} aria-label="Fakultet">
+                <option value="">Barcha fakultetlar</option>
+                {facOptions.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </NativeSelect>
+              <NativeSelect value={grp} onChange={(e) => setGrp(e.target.value)} aria-label="Guruh">
+                <option value="">Barcha guruhlar</option>
+                {grpOptions.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </NativeSelect>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ism yoki login" className="pl-9" aria-label="Talabani qidirish" />
               </div>
-              {allowed.length > 8 && (
-                <input
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  placeholder="Ro'yxatdan qidirish"
-                  className="h-9 rounded-lg border border-input bg-card px-3 text-sm"
-                  aria-label="Ruxsat berilganlardan qidirish"
-                />
-              )}
-              <ul className="max-h-72 divide-y overflow-y-auto rounded-lg border">
-                {shown.map((a) => (
-                  <li key={a.id} className="flex items-center justify-between gap-2 px-3 py-2">
-                    <span className="min-w-0">
-                      <span className="block truncate font-medium text-midnight">{a.fullName}</span>
-                      <span className="text-xs text-muted-foreground">{a.login}{a.group ? ` · ${a.group}` : ""}</span>
-                    </span>
-                    <Button size="icon-sm" variant="ghost" aria-label={`${a.fullName} ruxsatini olib tashlash`} disabled={pending} onClick={() => run(() => removeTestAccessAction(testId, [a.id]))}>
-                      <X />
-                    </Button>
+            </div>
+            {error && <p className="text-xs font-medium text-error">{error}</p>}
+            <div className="overflow-hidden rounded-lg border">
+              <label className="flex cursor-pointer items-center gap-2.5 border-b bg-muted/60 px-3 py-2 font-semibold text-midnight">
+                <input type="checkbox" checked={allChecked} disabled={busy || loading || rows.length === 0} onChange={toggleAll} className="size-4 accent-[#315ECA]" />
+                Hammasini belgilash
+                <span className="ml-auto text-xs font-normal text-muted-foreground">
+                  {loading || busy ? <Loader2 className="size-3.5 animate-spin" /> : `${total} ta talaba`}
+                </span>
+              </label>
+              <ul className="max-h-80 divide-y overflow-y-auto">
+                {rows.map((r) => (
+                  <li key={r.id}>
+                    <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2 hover:bg-muted/40">
+                      <input type="checkbox" checked={r.allowed} disabled={busy} onChange={() => toggleOne(r)} className="size-4 accent-[#315ECA]" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium text-midnight">{r.fullName}</span>
+                        <span className="text-xs text-muted-foreground">{r.login}{r.group ? ` · ${r.group}` : ""}</span>
+                      </span>
+                    </label>
                   </li>
                 ))}
-                {shown.length === 0 && <li className="px-3 py-2 text-xs text-muted-foreground">Bo&apos;sh</li>}
+                {!loading && rows.length === 0 && <li className="px-3 py-3 text-xs text-muted-foreground">Talabalar topilmadi</li>}
               </ul>
+              {total > rows.length && (
+                <p className="border-t px-3 py-2 text-xs text-muted-foreground">
+                  Birinchi {rows.length} tasi ko&apos;rsatildi. &quot;Hammasini belgilash&quot; filtrga mos barcha {total} ta talabaga ta&apos;sir qiladi.
+                </p>
+              )}
             </div>
           </>
         )}
