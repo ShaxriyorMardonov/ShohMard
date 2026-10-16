@@ -7,7 +7,8 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { parseQuestionText, type ParsedQuestion } from "@/lib/question-text-parser";
 import { parseStudyForm } from "@/lib/labels";
-import { loginField, passwordSchema } from "@/lib/validation";
+import { pinflField } from "@/lib/validation";
+import { DEFAULT_STUDENT_PASSWORD, generateStudentLogins } from "@/server/student-account";
 import { resolveFacultyGroup } from "@/server/org";
 import { getT } from "@/i18n/server";
 import type { TFunction } from "@/i18n/translate";
@@ -20,6 +21,8 @@ export type ImportResult = {
   skipped?: number;
   message?: string;
   errors?: string[];
+  /** Yangi yaratilgan talaba hisoblari (login avtomatik beriladi). */
+  accounts?: { fullName: string; login: string }[];
 };
 
 /** Birinchi varaqni o'qiydi: sarlavha qatori + ma'lumot qatorlari (matn ko'rinishida). */
@@ -84,12 +87,12 @@ export async function importUniversities(file: File): Promise<ImportResult> {
 }
 
 /* ===================== Talabalar ===================== */
-// Ustunlar: F.I.Sh. | Login | Parol | Universitet | Fakultet | Guruh | Ta'lim shakli
+// Ustunlar: F.I.Sh. | JShShIR | Universitet | Fakultet | Guruh | Ta'lim shakli
 // Ustunlar sarlavha bo'yicha topiladi; sarlavha tanilmasa, shu tartibda deb olinadi.
+// Login (7 xonali raqam) va boshlang'ich parol avtomatik beriladi.
 const STUDENT_COLS: { key: string; match: (h: string) => boolean }[] = [
   { key: "fullName", match: (h) => h.includes("f.i") || h.includes("fio") || h.includes("ism") },
-  { key: "login", match: (h) => h.startsWith("login") },
-  { key: "password", match: (h) => h.startsWith("parol") || h.startsWith("password") },
+  { key: "pinfl", match: (h) => h.includes("jshshir") || h.includes("jshir") || h.includes("pinfl") || h.includes("shaxsiy") },
   { key: "university", match: (h) => h.startsWith("universitet") || h.startsWith("oliy") },
   { key: "faculty", match: (h) => h.startsWith("fakultet") },
   { key: "group", match: (h) => h.startsWith("guruh") },
@@ -103,18 +106,16 @@ function columnMap(header: string[]): Record<string, number> {
     const c = STUDENT_COLS.find((c) => !(c.key in map) && c.match(n));
     if (c) map[c.key] = i;
   });
-  const recognized = Object.keys(map).length >= 3;
-  if (!recognized) STUDENT_COLS.forEach((c, i) => (map[c.key] = i));
-  // Eski namuna: F.I.Sh. | Login | Parol | Universitet | Guruh
-  if (recognized && !("faculty" in map) && !("group" in map) && header.length >= 5) map.group = 4;
+  if (Object.keys(map).length < 3) STUDENT_COLS.forEach((c, i) => (map[c.key] = i));
   return map;
 }
 
 export async function importStudents(file: File, scope: string | null = null): Promise<ImportResult> {
   const { t } = await getT();
   const { header, rows } = await readSheet(file);
-  if (rows.length > 300) return { ok: false, message: "Bir martada ko'pi bilan 300 ta talaba yuklash mumkin" };
+  if (rows.length > 1000) return { ok: false, message: "Bir martada ko'pi bilan 1000 ta talaba yuklash mumkin" };
   const col = columnMap(header);
+  if (col.pinfl === undefined) return { ok: false, message: "Faylda JShShIR ustuni topilmadi" };
   const get = (cells: string[], key: string) => (col[key] === undefined ? "" : (cells[col[key]!] ?? "").trim());
   const unis = await prisma.university.findMany({
     where: scope ? { id: scope } : {},
@@ -126,29 +127,26 @@ export async function importStudents(file: File, scope: string | null = null): P
     uniBy.set(norm(u.shortName), u.id);
   }
   const errors: string[] = [];
-  type Row = { fullName: string; login: string; password: string; universityId: string; faculty: string; group: string; studyForm: StudyForm | null };
+  type Row = { line: number; fullName: string; pinfl: string; universityId: string; faculty: string; group: string; studyForm: StudyForm | null };
   const data: Row[] = [];
-  const logins = new Set<string>();
+  const seen = new Map<string, number>();
   for (const { line, cells } of rows) {
     const fullName = get(cells, "fullName");
     const uni = get(cells, "university");
-    const lg = loginField.safeParse(get(cells, "login"));
-    const password = get(cells, "password");
-    const pw = passwordSchema.safeParse(password);
+    const pf = pinflField.safeParse(get(cells, "pinfl"));
     const universityId = scope ?? uniBy.get(norm(uni));
     const studyForm = parseStudyForm(get(cells, "studyForm"));
     if (fullName.length < 3) errors.push(t("{line}-qator: F.I.Sh. kiritilmagan", { line }));
-    else if (!lg.success) errors.push(t("{line}-qator: login — {error}", { line, error: t(lg.error.issues[0]?.message ?? "") }));
-    else if (!pw.success) errors.push(t("{line}-qator: parol — {error}", { line, error: t(pw.error.issues[0]?.message ?? "") }));
+    else if (!pf.success) errors.push(t("{line}-qator: JShShIR — {error}", { line, error: t(pf.error.issues[0]?.message ?? "") }));
     else if (!universityId) errors.push(t('{line}-qator: "{university}" universiteti topilmadi', { line, university: uni }));
     else if (studyForm === undefined) errors.push(t("{line}-qator: ta'lim shakli Kunduzgi, Sirtqi, Kechki yoki Masofaviy bo'lishi kerak", { line }));
-    else if (logins.has(lg.data)) errors.push(t('{line}-qator: "{login}" logini faylda takrorlangan', { line, login: lg.data }));
+    else if (seen.has(pf.data)) errors.push(t("{line}-qator: JShShIR {pinfl} faylda takrorlangan ({first}-qator bilan)", { line, pinfl: pf.data, first: seen.get(pf.data)! }));
     else {
-      logins.add(lg.data);
+      seen.set(pf.data, line);
       data.push({
+        line,
         fullName: fullName.slice(0, 120),
-        login: lg.data,
-        password,
+        pinfl: pf.data,
         universityId,
         faculty: get(cells, "faculty").slice(0, 120),
         group: get(cells, "group").slice(0, 40),
@@ -157,13 +155,16 @@ export async function importStudents(file: File, scope: string | null = null): P
     }
   }
   if (errors.length) return { ok: false, errors: errors.slice(0, 50) };
-  const taken = await prisma.user.findMany({ where: { login: { in: data.map((d) => d.login) } }, select: { login: true } });
-  if (taken.length) {
-    return { ok: false, errors: taken.slice(0, 50).map((u) => t('"{login}" logini allaqachon band', { login: u.login })) };
-  }
+  // Bazada shu JShShIR bilan talaba bo'lsa, u qayta qo'shilmaydi
+  const existing = await prisma.user.findMany({ where: { pinfl: { in: data.map((d) => d.pinfl) } }, select: { pinfl: true, fullName: true } });
+  const existingBy = new Map(existing.map((u) => [u.pinfl!, u.fullName]));
+  const skippedRows = data.filter((d) => existingBy.has(d.pinfl));
+  const fresh = data.filter((d) => !existingBy.has(d.pinfl));
+  const logins = await generateStudentLogins(fresh.length);
+  const passwordHash = await hashPassword(DEFAULT_STUDENT_PASSWORD);
   const orgCache = new Map<string, { facultyId: string | null; groupId: string | null }>();
   const prepared = [];
-  for (const d of data) {
+  for (const [i, d] of fresh.entries()) {
     const key = `${d.universityId}|${norm(d.faculty)}|${norm(d.group)}`;
     let org = orgCache.get(key);
     if (!org) {
@@ -172,16 +173,26 @@ export async function importStudents(file: File, scope: string | null = null): P
     }
     prepared.push({
       fullName: d.fullName,
-      login: d.login,
+      login: logins[i]!,
+      pinfl: d.pinfl,
       universityId: d.universityId,
       ...org,
       studyForm: d.studyForm,
       role: "STUDENT" as const,
-      passwordHash: await hashPassword(d.password),
+      passwordHash,
+      mustChangePassword: true,
     });
   }
-  await prisma.user.createMany({ data: prepared });
-  return { ok: true, created: prepared.length };
+  if (prepared.length) await prisma.user.createMany({ data: prepared });
+  return {
+    ok: true,
+    created: prepared.length,
+    skipped: skippedRows.length,
+    errors: skippedRows.slice(0, 50).map((d) =>
+      t("{line}-qator: JShShIR {pinfl} bilan talaba allaqachon mavjud ({name}), qayta qo'shilmadi", { line: d.line, pinfl: d.pinfl, name: existingBy.get(d.pinfl)! }),
+    ),
+    accounts: prepared.map((p) => ({ fullName: p.fullName, login: p.login })),
+  };
 }
 
 /* ===================== Savollar ===================== */

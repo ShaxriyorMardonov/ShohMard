@@ -8,6 +8,7 @@ import { requireAdmin, requireStaff, sortRoles } from "@/lib/auth";
 import { canManageTest, resolveFacultyGroup } from "@/server/org";
 import { endTestNow, ExamError, liveAttempts, recomputeDeadlines, rescoreTest } from "@/server/exam";
 import { saveQuestions } from "@/server/import";
+import { DEFAULT_STUDENT_PASSWORD, generateStudentLogins } from "@/server/student-account";
 import { parseQuestionText, type ParsedQuestion } from "@/lib/question-text-parser";
 import { hashPassword } from "@/lib/password";
 import { fromLocalInput } from "@/lib/time";
@@ -133,26 +134,28 @@ export async function saveStudentAction(_prev: FormState, fd: FormData): Promise
   const id = str(fd.get("id"));
   const parsed = studentSchema.safeParse({
     fullName: str(fd.get("fullName")),
-    login: str(fd.get("login")),
+    pinfl: str(fd.get("pinfl")),
     universityId: staff.scope ?? str(fd.get("universityId")),
     facultyName: str(fd.get("facultyName")),
     groupName: str(fd.get("groupName")),
     studyForm: str(fd.get("studyForm")),
     isActive: fd.get("isActive") === "on",
   });
-  // Menejer mavjud talabaning parolini o'zgartira olmaydi (faqat yangi talabaga parol beradi)
-  const password = staff.scope && id ? "" : str(fd.get("password"));
-  const errors = parsed.success ? {} : fieldErrors(parsed.error);
-  if (!id || password) {
-    const pw = passwordSchema.safeParse(password);
-    if (!pw.success) errors.password = pw.error.issues[0]?.message;
-  }
-  if (!parsed.success || Object.keys(errors).length) return { errors };
+  if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const { facultyName, groupName, ...data } = parsed.data;
+  // Faqat Super admin mavjud talabaning parolini boshlang'ich parolga tiklay oladi
+  const resetPassword = !staff.scope && !!id && fd.get("resetPassword") === "on";
 
   const uni = await prisma.university.findUnique({ where: { id: data.universityId } });
   if (!uni) return { errors: { universityId: "Universitet topilmadi" } };
 
+  const dup = await prisma.user.findFirst({ where: { pinfl: data.pinfl, ...(id ? { NOT: { id } } : {}) }, select: { fullName: true, login: true } });
+  if (dup) {
+    const { t } = await getT();
+    return { errors: { pinfl: t("Bu JShShIR bilan talaba allaqachon mavjud: {name} ({login})", { name: dup.fullName, login: dup.login }) } };
+  }
+
+  let createdLogin: string | null = null;
   try {
     const org = await resolveFacultyGroup(data.universityId, facultyName, groupName);
     if (id) {
@@ -165,21 +168,36 @@ export async function saveStudentAction(_prev: FormState, fd: FormData): Promise
         data: {
           ...data,
           ...org,
-          ...(password ? { passwordHash: await hashPassword(password), failedLogins: 0, lockedUntil: null } : {}),
+          ...(resetPassword
+            ? { passwordHash: await hashPassword(DEFAULT_STUDENT_PASSWORD), mustChangePassword: true, failedLogins: 0, lockedUntil: null }
+            : {}),
         },
       });
-      if (password || !data.isActive) await prisma.session.deleteMany({ where: { userId: id } });
+      if (resetPassword || !data.isActive) await prisma.session.deleteMany({ where: { userId: id } });
     } else {
-      await prisma.user.create({
-        data: { ...data, ...org, role: "STUDENT", passwordHash: await hashPassword(password) },
-      });
+      // Login avtomatik: 7 xonali raqam. Parol: boshlang'ich, birinchi kirishda almashtiriladi.
+      const passwordHash = await hashPassword(DEFAULT_STUDENT_PASSWORD);
+      for (let i = 0; i < 3 && !createdLogin; i++) {
+        const [login] = await generateStudentLogins(1);
+        try {
+          await prisma.user.create({ data: { ...data, ...org, login: login!, role: "STUDENT", passwordHash, mustChangePassword: true } });
+          createdLogin = login!;
+        } catch (e) {
+          if (!(isUnique(e) && String((e as Prisma.PrismaClientKnownRequestError).meta?.target).includes("login"))) throw e;
+        }
+      }
+      if (!createdLogin) return { message: "Login yaratib bo'lmadi, qayta urinib ko'ring" };
     }
   } catch (e) {
-    if (isUnique(e)) return { errors: { login: "Bu login band" } };
+    if (isUnique(e)) return { errors: { pinfl: "Bu JShShIR bilan talaba allaqachon mavjud" } };
     throw e;
   }
   revalidatePath("/admin/students");
-  return { ok: true, message: id ? "Talaba ma'lumotlari yangilandi" : "Talaba qo'shildi" };
+  const { t } = await getT();
+  if (createdLogin) {
+    return { ok: true, message: t("Talaba qo'shildi. Login: {login}, boshlang'ich parol: {password}", { login: createdLogin, password: DEFAULT_STUDENT_PASSWORD }) };
+  }
+  return { ok: true, message: resetPassword ? t("Ma'lumotlar yangilandi, parol {password} ga tiklandi", { password: DEFAULT_STUDENT_PASSWORD }) : "Talaba ma'lumotlari yangilandi" };
 }
 
 /** Tanlangan talabalarni bitta guruhga (va fakultetga) biriktiradi. */
@@ -733,4 +751,15 @@ export async function endTestNowAction(testId: string): Promise<{ error?: string
     if (e instanceof ExamError) return { error: e.message };
     throw e;
   }
+}
+
+/** Universitetni faol yoki nofaol qiladi. Nofaol universitet talabalari va menejerlari tizimga kira olmaydi. */
+export async function setUniversityActiveAction(id: string, active: boolean): Promise<Result> {
+  await requireAdmin();
+  await prisma.university.update({ where: { id }, data: { isActive: active } });
+  if (!active) {
+    await prisma.session.deleteMany({ where: { user: { universityId: id, NOT: { roles: { has: "ADMIN" } } } } });
+  }
+  revalidatePath("/admin/universities");
+  revalidatePath("/admin");
 }

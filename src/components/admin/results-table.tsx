@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { deleteResultsAction } from "@/actions/admin";
+import { GradeBadge } from "@/components/grade-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -101,7 +102,10 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
               </TableCell>
               <TableCell className="whitespace-nowrap">{r.score}</TableCell>
               <TableCell>
-                <Badge variant={r.passed ? "success" : "error"}>{r.percent}%</Badge>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge variant={r.passed ? "success" : "error"}>{r.percent}%</Badge>
+                  <GradeBadge percent={r.percent} />
+                </div>
               </TableCell>
               <TableCell>
                 <Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label={t("Natijani o'chirish")} onClick={() => setConfirm([r.id])}>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GradeBadge } from "@/components/grade-badge";
 import { History } from "lucide-react";
 import { EmptyState, PageHeader } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -64,9 +65,12 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                   </TableCell>
                   <TableCell>
                     {a.released && a.percent !== null ? (
-                      <Badge variant={a.percent >= a.test.passingPercent ? "success" : "error"}>
-                        {a.score}/{a.maxScore} · {a.percent}%
-                      </Badge>
+                      <span className="inline-flex flex-wrap gap-1.5">
+                        <Badge variant={a.percent >= a.test.passingPercent ? "success" : "error"}>
+                          {a.score}/{a.maxScore} · {a.percent}%
+                        </Badge>
+                        <GradeBadge percent={a.percent} />
+                      </span>
                     ) : a.status === "SUBMITTED" ? (
                       <span className="text-xs text-muted-foreground">{t("E'lon qilinmagan")}</span>
                     ) : (

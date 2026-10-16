@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { Award } from "lucide-react";
+import { GradeBadge } from "@/components/grade-badge";
+import { hasCertificate } from "@/lib/grade";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Check, Clock, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/app-shell";
@@ -108,9 +111,17 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ a
             <br />
             {t("O'tish chegarasi: {p}%", { p: attempt.test.passingPercent })}
           </div>
-          <Badge variant={pass ? "success" : "error"} className="ml-auto text-sm">
-            {pass ? t("Muvaffaqiyatli") : t("O'tmadi")}
-          </Badge>
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <Badge variant={pass ? "success" : "error"} className="text-sm">
+              {pass ? t("Muvaffaqiyatli") : t("O'tmadi")}
+            </Badge>
+            <GradeBadge percent={attempt.percent} className="text-sm" />
+            {hasCertificate(attempt.percent) && (
+              <Button asChild variant="success">
+                <Link href={`/certificate/${attemptId}`}><Award /> {t("Sertifikatni olish")}</Link>
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 

@@ -17,12 +17,12 @@ const XLSX: Record<string, { file: string; header: string[]; rows: string[][]; w
   },
   "talabalar.xlsx": {
     file: "talabalar.xlsx",
-    header: ["F.I.Sh.", "Login", "Parol", "Universitet (qisqa nomi)", "Fakultet", "Guruh", "Ta'lim shakli"],
+    header: ["F.I.Sh.", "JShShIR", "Universitet (qisqa nomi)", "Fakultet", "Guruh", "Ta'lim shakli"],
     rows: [
-      ["Aliyev Vali Karimovich", "vali.aliyev", "Parol2026", "TDTU", "Kompyuter injiniringi", "KI-21", "Kunduzgi"],
-      ["Karimova Nodira Akramovna", "nodira.karimova", "Parol2026", "SamDU", "Matematika", "MT-11", "Sirtqi"],
+      ["Aliyev Vali Karimovich", "31234567890123", "TDTU", "Kompyuter injiniringi", "KI-21", "Kunduzgi"],
+      ["Karimova Nodira Akramovna", "41234567890123", "SamDU", "Matematika", "MT-11", "Sirtqi"],
     ],
-    widths: [32, 20, 14, 24, 26, 10, 14],
+    widths: [32, 18, 24, 26, 10, 14],
   },
   "savollar.xlsx": {
     file: "savollar.xlsx",

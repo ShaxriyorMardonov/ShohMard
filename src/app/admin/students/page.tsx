@@ -32,7 +32,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const where: Prisma.UserWhereInput = {
     roles: { has: "STUDENT" },
     ...studentOrgWhere(staff.scope, sp),
-    ...(q ? { OR: [{ fullName: { contains: q, mode: "insensitive" } }, { login: { contains: q, mode: "insensitive" } }] } : {}),
+    ...(q ? { OR: [{ fullName: { contains: q, mode: "insensitive" } }, { login: { contains: q, mode: "insensitive" } }, { pinfl: { contains: q } }] } : {}),
   };
   const uniFilter = staff.scope ? { id: staff.scope } : {};
   const [universities, options, total, students, faculties, groups] = await Promise.all([
@@ -48,6 +48,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         id: true,
         fullName: true,
         login: true,
+        pinfl: true,
         isActive: true,
         universityId: true,
         studyForm: true,
@@ -85,7 +86,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
         }
       />
       <FilterBar
-        search={{ placeholder: t("Ism yoki login bo'yicha qidirish") }}
+        search={{ placeholder: t("Ism, login yoki JShShIR bo'yicha qidirish") }}
         values={sp}
         fields={[
           { name: "form", label: t("Ta'lim shakli"), all: t("Barcha ta'lim shakllari"), options: STUDY_FORMS.map((f) => ({ value: f.value, label: t(f.label) })) },

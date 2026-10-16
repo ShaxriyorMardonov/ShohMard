@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GradeBadge } from "@/components/grade-badge";
 import { Activity, BarChart3, Building2, ClipboardList, Trophy, Users } from "lucide-react";
 import { EmptyState, PageHeader, StatCard } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
@@ -146,7 +147,10 @@ export default async function AdminDashboard() {
                     <TableCell className="max-w-[220px] truncate">{r.test.title}</TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(r.submittedAt, lang)}</TableCell>
                     <TableCell className="text-right">
-                      <Badge variant={(r.percent ?? 0) >= r.test.passingPercent ? "success" : "error"}>{r.percent}%</Badge>
+                      <div className="flex justify-end gap-1.5">
+                        <Badge variant={(r.percent ?? 0) >= r.test.passingPercent ? "success" : "error"}>{r.percent}%</Badge>
+                        <GradeBadge percent={r.percent} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

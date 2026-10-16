@@ -5,7 +5,8 @@ import type { StudyForm } from "@prisma/client";
 import { useFormAction } from "@/components/forms/use-form-action";
 import { saveStudentAction } from "@/actions/admin";
 import { Field } from "@/components/forms/field";
-import { PasswordInput } from "@/components/forms/password-input";
+import { CheckCircle2 } from "lucide-react";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ export type StudentRow = {
   id: string;
   fullName: string;
   login: string;
+  pinfl: string | null;
   universityId: string | null;
   faculty: { name: string } | null;
   group: { name: string } | null;
@@ -45,13 +47,25 @@ function StudentForm({
   const { t } = useT();
   const { state, onSubmit, pending } = useFormAction(async (prev: FormState, fd: FormData) => {
     const res = await saveStudentAction(prev, fd);
-    if (res.ok) onDone();
+    // Yangi talaba yaratilganda login va parolni ko'rsatish uchun oyna ochiq qoladi
+    if (res.ok && student) onDone();
     return res;
   });
   const [uni, setUni] = React.useState(fixedUniversity ?? student?.universityId ?? "");
   const names = orgNames[uni] ?? { faculties: [], groups: [] };
   const e = state.errors ?? {};
   const listId = React.useId();
+  if (state.ok && !student) {
+    return (
+      <div className="grid gap-4">
+        <Alert variant="success"><CheckCircle2 /><span className="font-semibold">{t(state.message ?? "")}</span></Alert>
+        <p className="text-sm text-muted-foreground">{t("Talaba birinchi marta shu login va parol bilan kiradi, so'ng tizim undan yangi parol qo'yishni so'raydi.")}</p>
+        <DialogFooter>
+          <Button type="button" onClick={onDone}>{t("Yopish")}</Button>
+        </DialogFooter>
+      </div>
+    );
+  }
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
       {student && <input type="hidden" name="id" value={student.id} />}
@@ -60,8 +74,8 @@ function StudentForm({
         <Input id="s-name" name="fullName" defaultValue={student?.fullName} placeholder={t("Familiya Ism Sharif")} aria-invalid={!!e.fullName} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t("Login")} htmlFor="s-login" error={e.login}>
-          <Input id="s-login" name="login" defaultValue={student?.login} placeholder="ali.valiyev" autoComplete="off" aria-invalid={!!e.login} />
+        <Field label={t("JShShIR")} htmlFor="s-pinfl" error={e.pinfl} hint={t("14 ta raqam")}>
+          <Input id="s-pinfl" name="pinfl" defaultValue={student?.pinfl ?? ""} inputMode="numeric" maxLength={14} placeholder="31234567890123" autoComplete="off" aria-invalid={!!e.pinfl} />
         </Field>
         <Field label={t("Ta'lim shakli")} htmlFor="s-form" error={e.studyForm}>
           <NativeSelect id="s-form" name="studyForm" defaultValue={student?.studyForm ?? ""}>
@@ -92,16 +106,21 @@ function StudentForm({
           <datalist id={`${listId}-g`}>{names.groups.map((n) => <option key={n} value={n} />)}</datalist>
         </Field>
       </div>
-      {/* Menejer mavjud talabaning parolini o'zgartira olmaydi */}
-      {!(student && fixedUniversity) && (
-        <Field
-          label={student ? t("Yangi parol (ixtiyoriy)") : t("Parol")}
-          htmlFor="s-pass"
-          error={e.password}
-          hint={student ? t("Bo'sh qoldirilsa, parol o'zgarmaydi") : t("Kamida 8 ta belgi, harf va raqam bilan")}
-        >
-          <PasswordInput id="s-pass" name="password" autoComplete="new-password" aria-invalid={!!e.password} />
-        </Field>
+      {student ? (
+        <div className="grid gap-2 rounded-lg bg-muted/50 px-3 py-2.5 text-sm">
+          <span>{t("Login:")} <b className="font-mono">{student.login}</b></span>
+          {/* Faqat Super admin parolni tiklay oladi */}
+          {!fixedUniversity && (
+            <label className="flex items-center gap-2">
+              <input type="checkbox" name="resetPassword" className="size-4 accent-[#315ECA]" />
+              {t("Parolni boshlang'ich parolga (12345678a) tiklash")}
+            </label>
+          )}
+        </div>
+      ) : (
+        <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
+          {t("Login (7 xonali raqam) avtomatik beriladi. Boshlang'ich parol: 12345678a. Talaba birinchi kirishda yangi parol qo'yadi.")}
+        </p>
       )}
       <label className="flex items-center gap-2 text-sm font-medium">
         <input type="checkbox" name="isActive" defaultChecked={student?.isActive ?? true} className="size-4 accent-[#315ECA]" />

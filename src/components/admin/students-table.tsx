@@ -79,6 +79,7 @@ export function StudentsTable({
             </TableHead>
             <TableHead>{t("F.I.Sh.")}</TableHead>
             <TableHead>{t("Login")}</TableHead>
+            <TableHead>{t("JShShIR")}</TableHead>
             {!fixedUniversity && <TableHead>{t("Universitet")}</TableHead>}
             <TableHead>{t("Fakultet")}</TableHead>
             <TableHead>{t("Guruh")}</TableHead>
@@ -95,6 +96,7 @@ export function StudentsTable({
               </TableCell>
               <TableCell className="font-semibold text-midnight">{s.fullName}</TableCell>
               <TableCell className="font-mono text-xs">{s.login}</TableCell>
+              <TableCell className="font-mono text-xs">{s.pinfl ?? "—"}</TableCell>
               {!fixedUniversity && <TableCell>{s.university?.shortName ?? "—"}</TableCell>}
               <TableCell className="max-w-[180px] text-xs">{s.faculty?.name ?? "—"}</TableCell>
               <TableCell>{s.group?.name ?? "—"}</TableCell>

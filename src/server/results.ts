@@ -63,6 +63,7 @@ export const resultSelect = {
     select: {
       fullName: true,
       login: true,
+      pinfl: true,
       studyForm: true,
       group: { select: { name: true } },
       faculty: { select: { name: true } },

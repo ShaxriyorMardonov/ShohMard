@@ -40,9 +40,15 @@ export const loginField = z
   .regex(/^[a-zA-Z0-9._-]+$/, "Loginda faqat lotin harflari, raqamlar va . _ - belgilari bo'lishi mumkin")
   .transform((v) => v.toLowerCase());
 
+/** JShShIR — 14 ta raqam. */
+export const pinflField = z
+  .string()
+  .transform((v) => v.replace(/\s+/g, ""))
+  .pipe(z.string().min(1, "JShShIR ni kiriting").regex(/^\d{14}$/, "JShShIR 14 ta raqamdan iborat bo'lishi kerak"));
+
 export const studentSchema = z.object({
   fullName: trimmed(120).min(3, "F.I.Sh. ni kiriting"),
-  login: loginField,
+  pinfl: pinflField,
   universityId: z.string().min(1, "Universitetni tanlang"),
   facultyName: trimmed(120).optional().transform((v) => v || null),
   groupName: trimmed(40).optional().transform((v) => v || null),

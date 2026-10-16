@@ -82,12 +82,12 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
                         </TableHead>
                       )}
                       <TableHead className="w-[28%]">{t("Test")}</TableHead>
-                      <TableHead className="w-20">{t("Faol")}</TableHead>
                       <TableHead className="w-36">{t("Holat")}</TableHead>
                       <TableHead className="w-48">{t("Vaqt oralig'i")}</TableHead>
                       <TableHead className="w-24">{t("Savollar")}</TableHead>
                       <TableHead className="w-28">{t("Topshirgan")}</TableHead>
                       <TableHead>{t("Universitetlar")}</TableHead>
+                      <TableHead className="w-20">{t("Faol")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -104,12 +104,12 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
                             <Link href={`/admin/tests/${row.id}`} className="font-semibold text-midnight hover:text-royal">{row.title}</Link>
                             <span className="block text-xs text-muted-foreground">{row.duration}</span>
                           </TableCell>
-                          <TableCell><ActiveSwitch id={row.id} active={row.isPublished} /></TableCell>
                           <TableCell><Badge variant={st.variant}>{t(st.label)}</Badge></TableCell>
                           <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{row.startsAt}<br />{row.endsAt}</TableCell>
                           <TableCell>{row.questions}</TableCell>
                           <TableCell>{row.attempts}</TableCell>
                           <TableCell className="text-xs">{row.universities || "—"}</TableCell>
+                          <TableCell><ActiveSwitch id={row.id} active={row.isPublished} /></TableCell>
                         </TableRow>
                       );
                     })}

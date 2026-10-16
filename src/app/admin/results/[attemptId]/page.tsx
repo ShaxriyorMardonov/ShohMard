@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { Award } from "lucide-react";
+import { GradeBadge } from "@/components/grade-badge";
+import { hasCertificate } from "@/lib/grade";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/app-shell";
@@ -44,7 +47,7 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
         <CardContent className="flex flex-wrap items-center gap-6 pt-5 text-sm">
           {a.status === "SUBMITTED" ? (
             <div>
-              <p className="text-3xl font-extrabold text-midnight">{a.percent}%</p>
+              <p className="flex items-center gap-2 text-3xl font-extrabold text-midnight">{a.percent}% <GradeBadge percent={a.percent} className="text-sm" /></p>
               <p className="text-muted-foreground">{t("{score}/{max} ball · {correct}/{total} to'g'ri", { score: a.score, max: a.maxScore, correct: a.correctCount, total: a.totalQuestions })}</p>
             </div>
           ) : (
@@ -54,6 +57,11 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
             {t("Boshlangan: {date}", { date: formatDateTime(a.startedAt, lang) })}<br />
             {t("Topshirilgan: {date}", { date: formatDateTime(a.submittedAt, lang) })} {a.autoSubmitted && t("(avtomatik)")}
           </div>
+          {a.status === "SUBMITTED" && hasCertificate(a.percent) && (
+            <Button asChild variant="success" size="sm" className="ml-auto">
+              <Link href={`/certificate/${a.id}`}><Award /> {t("Sertifikat")}</Link>
+            </Button>
+          )}
         </CardContent>
       </Card>
       <ol className="grid gap-4">

@@ -23,7 +23,7 @@ const META: Record<Kind, { title: string; description: string; accept: string; t
   },
   students: {
     title: "Talabalarni Excel'dan yuklash",
-    description: "Ustunlar: F.I.Sh., Login, Parol, Universitet (qisqa nomi), Fakultet, Guruh, Ta'lim shakli. Fakultet va guruh bo'lmasa, avtomatik yaratiladi.",
+    description: "Ustunlar: F.I.Sh., JShShIR (majburiy), Universitet (qisqa nomi), Fakultet, Guruh, Ta'lim shakli. Login (7 xonali) avtomatik beriladi, boshlang'ich parol 12345678a. JShShIR takrorlangan talaba qayta qo'shilmaydi.",
     accept: ".xlsx",
     templates: [{ href: "/admin/templates/talabalar.xlsx", label: "Excel namuna" }],
     created: "{n} ta talaba qo'shildi",
@@ -107,6 +107,16 @@ function ImportForm({ kind, testId, onDone }: { kind: Kind; testId?: string; onD
           </span>
         </Alert>
       )}
+      {state?.ok && !!state.errors?.length && (
+        <ul className="max-h-40 list-disc overflow-y-auto rounded-lg bg-warning/10 py-2 pr-2 pl-6 text-xs text-midnight">
+          {state.errors.map((e) => <li key={e}>{t(e)}</li>)}
+        </ul>
+      )}
+      {state?.ok && !!state.accounts?.length && (
+        <Button type="button" variant="success" onClick={() => downloadAccounts(state.accounts!, t)}>
+          <Download /> {t("Loginlar ro'yxatini yuklab olish")}
+        </Button>
+      )}
       {state && !state.ok && (
         <Alert variant="error">
           <AlertCircle />
@@ -132,4 +142,17 @@ function ImportForm({ kind, testId, onDone }: { kind: Kind; testId?: string; onD
       </DialogFooter>
     </form>
   );
+}
+
+/** Yangi talabalar login va boshlang'ich parollari ro'yxati (Excel ochadigan CSV). */
+function downloadAccounts(rows: { fullName: string; login: string }[], t: (k: string) => string) {
+  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const lines = [[t("F.I.Sh."), t("Login"), t("Boshlang'ich parol")].map(esc).join(";")];
+  for (const r of rows) lines.push([r.fullName, r.login, "12345678a"].map(esc).join(";"));
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "talabalar-loginlari.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
 }

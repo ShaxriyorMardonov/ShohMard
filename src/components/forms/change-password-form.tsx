@@ -10,7 +10,7 @@ import { useT } from "@/i18n/client";
 import { Field } from "./field";
 import { PasswordInput } from "./password-input";
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ firstLogin = false }: { firstLogin?: boolean }) {
   const { t } = useT();
   const { state, onSubmit, pending } = useFormAction(changePasswordAction);
   const ref = useRef<HTMLFormElement>(null);
@@ -26,9 +26,11 @@ export function ChangePasswordForm() {
           <span>{state.message ? t(state.message) : null}</span>
         </Alert>
       )}
-      <Field label={t("Joriy parol")} htmlFor="currentPassword" error={e.currentPassword}>
-        <PasswordInput id="currentPassword" name="currentPassword" autoComplete="current-password" aria-invalid={!!e.currentPassword} />
-      </Field>
+      {!firstLogin && (
+        <Field label={t("Joriy parol")} htmlFor="currentPassword" error={e.currentPassword}>
+          <PasswordInput id="currentPassword" name="currentPassword" autoComplete="current-password" aria-invalid={!!e.currentPassword} />
+        </Field>
+      )}
       <Field label={t("Yangi parol")} htmlFor="newPassword" error={e.newPassword} hint={t("Kamida 8 ta belgi, harf va raqam bilan")}>
         <PasswordInput id="newPassword" name="newPassword" autoComplete="new-password" aria-invalid={!!e.newPassword} />
       </Field>

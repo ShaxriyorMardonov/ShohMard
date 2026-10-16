@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { gradeLabel } from "@/lib/grade";
 import ExcelJS from "exceljs";
 import { getT } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
@@ -13,10 +14,10 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const HEADER_KEYS = [
-  "№", "F.I.Sh.", "Login", "Universitet", "Fakultet", "Guruh", "Ta'lim shakli", "Test", "Fan",
-  "Boshlangan", "Topshirilgan", "Avtomatik", "Ball", "Maksimal ball", "To'g'ri javoblar", "Savollar", "Foiz", "Holat",
+  "№", "F.I.Sh.", "Login", "JShShIR", "Universitet", "Fakultet", "Guruh", "Ta'lim shakli", "Test", "Fan",
+  "Boshlangan", "Topshirilgan", "Avtomatik", "Ball", "Maksimal ball", "To'g'ri javoblar", "Savollar", "Foiz", "Holat", "Baho",
 ];
-const WIDTHS = [6, 32, 18, 28, 26, 10, 13, 34, 18, 20, 20, 10, 8, 10, 10, 9, 8, 10];
+const WIDTHS = [6, 32, 12, 17, 28, 26, 10, 13, 34, 18, 20, 20, 10, 8, 10, 10, 9, 8, 10, 13];
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
       i + 1,
       r.user.fullName,
       r.user.login,
+      r.user.pinfl ?? "",
       r.user.university?.name ?? "",
       r.user.faculty?.name ?? "",
       r.user.group?.name ?? "",
@@ -57,6 +59,7 @@ export async function GET(req: NextRequest) {
       r.totalQuestions,
       r.percent,
       passed ? PASSED : t("O'tmadi"),
+      t(gradeLabel(r.percent)),
     ] as (string | number | null)[];
   });
   const stamp = new Date().toISOString().slice(0, 10);
@@ -82,7 +85,13 @@ export async function GET(req: NextRequest) {
   head.alignment = { vertical: "middle", wrapText: true };
   head.height = 30;
   ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: HEADER.length } };
-  const statusCol = HEADER.length;
+  const statusCol = HEADER.length - 1;
+  const GRADE_COLOR: Record<string, string> = {
+    [t("Qoniqarsiz")]: "FFDC4545",
+    [t("Qoniqarli")]: "FFD97706",
+    [t("Yaxshi")]: "FF315ECA",
+    [t("A'lo")]: "FF21A67A",
+  };
   ws.eachRow((row, n) => {
     if (n === 1) return;
     row.eachCell((c) => {
@@ -90,8 +99,10 @@ export async function GET(req: NextRequest) {
     });
     const st = row.getCell(statusCol);
     st.font = { bold: true, color: { argb: st.value === PASSED ? "FF21A67A" : "FFDC4545" } };
+    const gr = row.getCell(HEADER.length);
+    gr.font = { bold: true, color: { argb: GRADE_COLOR[String(gr.value)] ?? "FF101D3A" } };
   });
-  ws.getColumn(HEADER.length - 1).numFmt = "0.0";
+  ws.getColumn(HEADER.length - 2).numFmt = "0.0";
   const buf = await wb.xlsx.writeBuffer();
   return new NextResponse(Buffer.from(buf), {
     headers: {

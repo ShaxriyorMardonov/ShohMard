@@ -42,6 +42,7 @@ model University {
   name      String   @unique
   shortName String
   city      String?
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -88,6 +89,10 @@ model User {
   /// Foydalanuvchining barcha rollari (role — asosiy rol, kirganda shu ochiladi)
   roles          Role[]    @default([STUDENT])
   isActive       Boolean   @default(true)
+  /// JShShIR (shaxsiy identifikatsiya raqami, 14 ta raqam) — talabalar takrorlanmasligi uchun
+  pinfl          String?   @unique
+  /// Birinchi kirishda (yoki parol tiklangach) yangi parol qo'yish majburiy
+  mustChangePassword Boolean @default(false)
   studyForm      StudyForm?
   universityId   String?
   university     University? @relation(fields: [universityId], references: [id], onDelete: Restrict)

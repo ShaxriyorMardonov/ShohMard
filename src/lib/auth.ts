@@ -46,6 +46,8 @@ export type CurrentUser = {
   role: Role;
   roles: Role[];
   groupName: string | null;
+  /** Birinchi kirish: yangi parol qo'ymaguncha tizimdan foydalanib bo'lmaydi. */
+  mustChangePassword: boolean;
   university: { id: string; name: string; shortName: string } | null;
 };
 
@@ -65,23 +67,28 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
           role: true,
           roles: true,
           isActive: true,
+          mustChangePassword: true,
           group: { select: { name: true } },
-          university: { select: { id: true, name: true, shortName: true } },
+          university: { select: { id: true, name: true, shortName: true, isActive: true } },
         },
       },
     },
   });
   if (!session || session.expiresAt < new Date() || !session.user.isActive) return null;
-  const { isActive: _active, group, roles: rawRoles, ...user } = session.user;
+  const { isActive: _active, group, roles: rawRoles, university: uni, ...user } = session.user;
   void _active;
   const roles = rawRoles.length ? sortRoles(rawRoles) : [user.role];
+  // Universitet nofaol bo'lsa, uning talaba va menejerlari tizimdan foydalana olmaydi
+  if (uni && !uni.isActive && !roles.includes("ADMIN")) return null;
+  const university = uni ? { id: uni.id, name: uni.name, shortName: uni.shortName } : null;
   const role = session.activeRole && roles.includes(session.activeRole) ? session.activeRole : roles.includes(user.role) ? user.role : roles[0]!;
-  return { ...user, role, roles, groupName: group?.name ?? null };
+  return { ...user, university, role, roles, groupName: group?.name ?? null };
 });
 
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (user.mustChangePassword) redirect("/change-password");
   return user;
 }
 

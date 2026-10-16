@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { GradeBadge } from "@/components/grade-badge";
+import { hasCertificate } from "@/lib/grade";
 import { Award, BarChart3, CheckCircle2, Target } from "lucide-react";
 import { EmptyState, PageHeader, StatCard } from "@/components/layout/app-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getT } from "@/i18n/server";
 import { requireStudent } from "@/lib/auth";
@@ -56,7 +57,12 @@ export default async function ResultsPage() {
                       {t("{score}/{max} ball · {correct}/{total} to'g'ri", { score: a.score, max: a.maxScore, correct: a.correctCount, total: a.totalQuestions })}
                     </p>
                   </div>
-                  <Badge variant={pass ? "success" : "error"}>{pass ? t("O'tdi") : t("O'tmadi")}</Badge>
+                  <GradeBadge percent={a.percent} />
+                  {hasCertificate(a.percent) && (
+                    <Button asChild size="sm" variant="success">
+                      <Link href={`/certificate/${a.id}`}><Award /> {t("Sertifikat")}</Link>
+                    </Button>
+                  )}
                   <Button asChild size="sm" variant="outline">
                     <Link href={`/student/results/${a.id}`}>{t("Batafsil")}</Link>
                   </Button>

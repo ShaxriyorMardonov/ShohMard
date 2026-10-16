@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UniversityActiveSwitch } from "@/components/admin/user-active-switch";
 import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteUniversityAction } from "@/actions/admin";
 import { ImportDialog } from "@/components/admin/import-dialog";
@@ -52,6 +53,7 @@ export default async function UniversitiesPage() {
                 <TableHead>{t("Talabalar")}</TableHead>
                 <TableHead>{t("Testlar")}</TableHead>
                 <TableHead className="text-right">{t("Amallar")}</TableHead>
+                <TableHead className="w-20">{t("Faol")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -88,6 +90,7 @@ export default async function UniversitiesPage() {
                       />
                     </div>
                   </TableCell>
+                  <TableCell><UniversityActiveSwitch id={u.id} active={u.isActive} /></TableCell>
                 </TableRow>
               ))}
             </TableBody>
