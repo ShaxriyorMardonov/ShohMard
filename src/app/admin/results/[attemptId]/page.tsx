@@ -8,11 +8,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { QUESTION_TYPE_LABEL } from "@/lib/exam-rules";
+import { getT } from "@/i18n/server";
 import { formatDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 export default async function AdminAttemptPage({ params }: { params: Promise<{ attemptId: string }> }) {
   await requireAdmin();
+  const { t, lang } = await getT();
   const { attemptId } = await params;
   const a = await prisma.attempt.findUnique({
     where: { id: attemptId },
@@ -35,7 +37,7 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
-        <Link href="/admin/results"><ArrowLeft /> Natijalar</Link>
+        <Link href="/admin/results"><ArrowLeft /> {t("Natijalar")}</Link>
       </Button>
       <PageHeader title={a.user.fullName} description={`${a.user.university?.name ?? ""}${a.user.group ? ` · ${a.user.group.name}` : ""} · ${a.test.title}`} />
       <Card className="mb-6">
@@ -43,14 +45,14 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
           {a.status === "SUBMITTED" ? (
             <div>
               <p className="text-3xl font-extrabold text-midnight">{a.percent}%</p>
-              <p className="text-muted-foreground">{a.score}/{a.maxScore} ball · {a.correctCount}/{a.totalQuestions} to&apos;g&apos;ri</p>
+              <p className="text-muted-foreground">{t("{score}/{max} ball · {correct}/{total} to'g'ri", { score: a.score, max: a.maxScore, correct: a.correctCount, total: a.totalQuestions })}</p>
             </div>
           ) : (
-            <Badge variant="warning">Jarayonda</Badge>
+            <Badge variant="warning">{t("Jarayonda")}</Badge>
           )}
           <div className="text-muted-foreground">
-            Boshlangan: {formatDateTime(a.startedAt)}<br />
-            Topshirilgan: {formatDateTime(a.submittedAt)} {a.autoSubmitted && "(avtomatik)"}
+            {t("Boshlangan: {date}", { date: formatDateTime(a.startedAt, lang) })}<br />
+            {t("Topshirilgan: {date}", { date: formatDateTime(a.submittedAt, lang) })} {a.autoSubmitted && t("(avtomatik)")}
           </div>
         </CardContent>
       </Card>
@@ -63,10 +65,10 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
               <Card>
                 <CardContent className="pt-5">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-royal">{i + 1}-savol</span>
-                    <Badge variant="muted">{QUESTION_TYPE_LABEL[q.type]}</Badge>
+                    <span className="text-sm font-bold text-royal">{t("{n}-savol", { n: i + 1 })}</span>
+                    <Badge variant="muted">{t(QUESTION_TYPE_LABEL[q.type])}</Badge>
                     <span className="ml-auto text-xs text-muted-foreground">
-                      {ans?.pointsAwarded ?? 0}/{points} ball
+                      {t("{got}/{points} ball", { got: ans?.pointsAwarded ?? 0, points })}
                     </span>
                   </div>
                   <p className="whitespace-pre-line font-semibold text-midnight">{q.text}</p>
@@ -75,7 +77,7 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
                       <li key={o.id} className={cn("flex items-center gap-2 rounded-md border px-3 py-2 text-sm", o.isCorrect ? "border-success/40 bg-success/8" : sel.has(o.id) ? "border-error/40 bg-error/6" : "border-border")}>
                         {o.isCorrect ? <Check className="size-4 text-success" /> : sel.has(o.id) ? <X className="size-4 text-error" /> : <span className="size-4" />}
                         <span className="flex-1">{o.text}</span>
-                        {sel.has(o.id) && <span className="text-xs font-semibold text-muted-foreground">Tanlangan</span>}
+                        {sel.has(o.id) && <span className="text-xs font-semibold text-muted-foreground">{t("Tanlangan")}</span>}
                       </li>
                     ))}
                   </ul>

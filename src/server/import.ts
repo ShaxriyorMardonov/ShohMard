@@ -9,6 +9,8 @@ import { parseQuestionText, type ParsedQuestion } from "@/lib/question-text-pars
 import { parseStudyForm } from "@/lib/labels";
 import { loginField, passwordSchema } from "@/lib/validation";
 import { resolveFacultyGroup } from "@/server/org";
+import { getT } from "@/i18n/server";
+import type { TFunction } from "@/i18n/translate";
 
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -57,6 +59,7 @@ const norm = (s: string) =>
 /* ===================== Universitetlar ===================== */
 // Ustunlar: Nomi | Qisqa nomi | Shahar
 export async function importUniversities(file: File): Promise<ImportResult> {
+  const { t } = await getT();
   const { rows } = await readSheet(file);
   if (rows.length > 500) return { ok: false, message: "Bir martada ko'pi bilan 500 ta universitet" };
   const errors: string[] = [];
@@ -64,10 +67,10 @@ export async function importUniversities(file: File): Promise<ImportResult> {
   const seen = new Set<string>();
   for (const { line, cells } of rows) {
     const [name = "", shortName = "", city = ""] = cells;
-    if (name.length < 3) errors.push(`${line}-qator: universitet nomi kamida 3 belgi bo'lsin`);
-    else if (!shortName) errors.push(`${line}-qator: qisqa nomi kiritilmagan`);
-    else if (name.length > 160 || shortName.length > 20) errors.push(`${line}-qator: nom juda uzun`);
-    else if (seen.has(norm(name))) errors.push(`${line}-qator: "${name}" faylda takrorlangan`);
+    if (name.length < 3) errors.push(t("{line}-qator: universitet nomi kamida 3 belgi bo'lsin", { line }));
+    else if (!shortName) errors.push(t("{line}-qator: qisqa nomi kiritilmagan", { line }));
+    else if (name.length > 160 || shortName.length > 20) errors.push(t("{line}-qator: nom juda uzun", { line }));
+    else if (seen.has(norm(name))) errors.push(t('{line}-qator: "{name}" faylda takrorlangan', { line, name }));
     else {
       seen.add(norm(name));
       data.push({ name, shortName, city: city || null });
@@ -108,6 +111,7 @@ function columnMap(header: string[]): Record<string, number> {
 }
 
 export async function importStudents(file: File, scope: string | null = null): Promise<ImportResult> {
+  const { t } = await getT();
   const { header, rows } = await readSheet(file);
   if (rows.length > 300) return { ok: false, message: "Bir martada ko'pi bilan 300 ta talaba yuklash mumkin" };
   const col = columnMap(header);
@@ -133,12 +137,12 @@ export async function importStudents(file: File, scope: string | null = null): P
     const pw = passwordSchema.safeParse(password);
     const universityId = scope ?? uniBy.get(norm(uni));
     const studyForm = parseStudyForm(get(cells, "studyForm"));
-    if (fullName.length < 3) errors.push(`${line}-qator: F.I.Sh. kiritilmagan`);
-    else if (!lg.success) errors.push(`${line}-qator: login — ${lg.error.issues[0]?.message}`);
-    else if (!pw.success) errors.push(`${line}-qator: parol — ${pw.error.issues[0]?.message}`);
-    else if (!universityId) errors.push(`${line}-qator: "${uni}" universiteti topilmadi`);
-    else if (studyForm === undefined) errors.push(`${line}-qator: ta'lim shakli Kunduzgi, Sirtqi, Kechki yoki Masofaviy bo'lishi kerak`);
-    else if (logins.has(lg.data)) errors.push(`${line}-qator: "${lg.data}" logini faylda takrorlangan`);
+    if (fullName.length < 3) errors.push(t("{line}-qator: F.I.Sh. kiritilmagan", { line }));
+    else if (!lg.success) errors.push(t("{line}-qator: login — {error}", { line, error: t(lg.error.issues[0]?.message ?? "") }));
+    else if (!pw.success) errors.push(t("{line}-qator: parol — {error}", { line, error: t(pw.error.issues[0]?.message ?? "") }));
+    else if (!universityId) errors.push(t('{line}-qator: "{university}" universiteti topilmadi', { line, university: uni }));
+    else if (studyForm === undefined) errors.push(t("{line}-qator: ta'lim shakli Kunduzgi, Sirtqi, Kechki yoki Masofaviy bo'lishi kerak", { line }));
+    else if (logins.has(lg.data)) errors.push(t('{line}-qator: "{login}" logini faylda takrorlangan', { line, login: lg.data }));
     else {
       logins.add(lg.data);
       data.push({
@@ -155,7 +159,7 @@ export async function importStudents(file: File, scope: string | null = null): P
   if (errors.length) return { ok: false, errors: errors.slice(0, 50) };
   const taken = await prisma.user.findMany({ where: { login: { in: data.map((d) => d.login) } }, select: { login: true } });
   if (taken.length) {
-    return { ok: false, errors: taken.slice(0, 50).map((t) => `"${t.login}" logini allaqachon band`) };
+    return { ok: false, errors: taken.slice(0, 50).map((u) => t('"{login}" logini allaqachon band', { login: u.login })) };
   }
   const orgCache = new Map<string, { facultyId: string | null; groupId: string | null }>();
   const prepared = [];
@@ -193,6 +197,7 @@ function parseType(raw: string): QuestionType | null {
 }
 
 export async function importQuestions(file: File, testId?: string): Promise<ImportResult> {
+  const { t } = await getT();
   if (testId) {
     const test = await prisma.test.findUnique({ where: { id: testId }, select: { _count: { select: { attempts: true } } } });
     if (!test) return { ok: false, message: "Test topilmadi" };
@@ -207,7 +212,7 @@ export async function importQuestions(file: File, testId?: string): Promise<Impo
     } catch {
       return { ok: false, message: "Word faylni o'qib bo'lmadi. U .docx formatida ekanini tekshiring" };
     }
-    parsed = parseQuestionText(text);
+    parsed = parseQuestionText(text, t);
   } else if (/\.doc$/i.test(file.name)) {
     checkSize(file);
     let text: string;
@@ -216,9 +221,9 @@ export async function importQuestions(file: File, testId?: string): Promise<Impo
     } catch {
       return { ok: false, message: "Word (.doc) faylni o'qib bo'lmadi" };
     }
-    parsed = parseQuestionText(text);
+    parsed = parseQuestionText(text, t);
   } else if (/\.xlsx$/i.test(file.name)) {
-    parsed = parseQuestionSheet(await readSheet(file));
+    parsed = parseQuestionSheet(await readSheet(file), t);
   } else {
     return { ok: false, message: "Savollar uchun Word (.doc, .docx) yoki Excel (.xlsx) fayl yuklang" };
   }
@@ -228,7 +233,7 @@ export async function importQuestions(file: File, testId?: string): Promise<Impo
   return { ok: true, created: parsed.questions.length };
 }
 
-function parseQuestionSheet({ rows }: Awaited<ReturnType<typeof readSheet>>): { questions: ParsedQuestion[]; errors: string[] } {
+function parseQuestionSheet({ rows }: Awaited<ReturnType<typeof readSheet>>, t: TFunction): { questions: ParsedQuestion[]; errors: string[] } {
   const errors: string[] = [];
   const questions: ParsedQuestion[] = [];
   for (const { line, cells } of rows) {
@@ -238,11 +243,11 @@ function parseQuestionSheet({ rows }: Awaited<ReturnType<typeof readSheet>>): { 
     const explanation = rest[7] ?? "";
     const type = parseType(rawType);
     if (text.length < 3) {
-      errors.push(`${line}-qator: savol matni kiritilmagan`);
+      errors.push(t("{line}-qator: savol matni kiritilmagan", { line }));
       continue;
     }
     if (!type) {
-      errors.push(`${line}-qator: turi noto'g'ri ("bitta", "ko'p" yoki "to'g'ri/noto'g'ri" yozing)`);
+      errors.push(t(`{line}-qator: turi noto'g'ri ("bitta", "ko'p" yoki "to'g'ri/noto'g'ri" yozing)`, { line }));
       continue;
     }
     let options: { text: string; isCorrect: boolean }[];
@@ -251,7 +256,7 @@ function parseQuestionSheet({ rows }: Awaited<ReturnType<typeof readSheet>>): { 
       const truth = a === "togri" || a === "ha" || a === "true" || a === "a";
       const falsy = a === "notogri" || a === "yoq" || a === "false" || a === "b";
       if (!truth && !falsy) {
-        errors.push(`${line}-qator: to'g'ri javob ustuniga "To'g'ri" yoki "Noto'g'ri" yozing`);
+        errors.push(t(`{line}-qator: to'g'ri javob ustuniga "To'g'ri" yoki "Noto'g'ri" yozing`, { line }));
         continue;
       }
       options = [
@@ -262,16 +267,16 @@ function parseQuestionSheet({ rows }: Awaited<ReturnType<typeof readSheet>>): { 
       const filled = optionCells.map((t, i) => ({ letter: LETTERS[i]!, text: t })).filter((o) => o.text);
       const correct = new Set(answer.toUpperCase().split(/[\s,;]+/).filter(Boolean));
       if (filled.length < 2) {
-        errors.push(`${line}-qator: kamida 2 ta variant (A, B ...) kerak`);
+        errors.push(t("{line}-qator: kamida 2 ta variant (A, B ...) kerak", { line }));
         continue;
       }
       const bad = [...correct].filter((c) => !filled.some((o) => o.letter === c));
       if (correct.size === 0 || bad.length) {
-        errors.push(`${line}-qator: to'g'ri javob harfi(lari) noto'g'ri: "${answer}"`);
+        errors.push(t(`{line}-qator: to'g'ri javob harfi(lari) noto'g'ri: "{answer}"`, { line, answer }));
         continue;
       }
       if (type === "SINGLE" && correct.size > 1) {
-        errors.push(`${line}-qator: bitta javobli savolda faqat bitta to'g'ri javob bo'ladi`);
+        errors.push(t("{line}-qator: bitta javobli savolda faqat bitta to'g'ri javob bo'ladi", { line }));
         continue;
       }
       options = filled.map((o) => ({ text: o.text.slice(0, 1000), isCorrect: correct.has(o.letter) }));

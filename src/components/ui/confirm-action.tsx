@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
+import { useT } from "@/i18n/client";
 import { Button } from "./button";
 import {
   Dialog,
@@ -32,7 +33,7 @@ export function ConfirmAction({
   trigger,
   title,
   description,
-  confirmLabel = "Tasdiqlash",
+  confirmLabel,
   variant = "destructive",
   action,
 }: {
@@ -43,6 +44,7 @@ export function ConfirmAction({
   variant?: "destructive" | "default";
   action: () => Promise<ActionResult>;
 }) {
+  const { t } = useT();
   const [open, setOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   return (
@@ -59,7 +61,7 @@ export function ConfirmAction({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        {error && <p className="text-sm font-medium text-error">{error}</p>}
+        {error && <p className="text-sm font-medium text-error">{t(error)}</p>}
         <form
           action={async () => {
             const res = await action();
@@ -70,10 +72,10 @@ export function ConfirmAction({
           <DialogFooter>
             <DialogClose asChild>
               <Button type="button" variant="outline">
-                Bekor qilish
+                {t("Bekor qilish")}
               </Button>
             </DialogClose>
-            <SubmitBtn label={confirmLabel} variant={variant} />
+            <SubmitBtn label={confirmLabel ?? t("Tasdiqlash")} variant={variant} />
           </DialogFooter>
         </form>
       </DialogContent>

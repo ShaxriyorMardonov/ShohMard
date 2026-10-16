@@ -8,8 +8,10 @@ import { PasswordInput } from "@/components/forms/password-input";
 import { Alert } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { useT } from "@/i18n/client";
 
 export function LoginForm({ notice }: { notice?: string }) {
+  const { t } = useT();
   const { state, onSubmit, pending } = useFormAction(loginAction);
   const e = state.errors ?? {};
   return (
@@ -17,35 +19,35 @@ export function LoginForm({ notice }: { notice?: string }) {
       {(state.message || notice) && (
         <Alert variant="error">
           <AlertCircle />
-          <span>{state.message ?? notice}</span>
+          <span>{state.message ? t(state.message) : notice}</span>
         </Alert>
       )}
-      <Field label="Login" htmlFor="login" error={e.login}>
+      <Field label={t("Login")} htmlFor="login" error={e.login}>
         <Input
           id="login"
           name="login"
           autoComplete="username"
-          placeholder="Masalan: student.ali"
+          placeholder={t("Masalan: student.ali")}
           aria-invalid={!!e.login}
           aria-describedby={e.login ? "login-error" : undefined}
           autoFocus
           required
         />
       </Field>
-      <Field label="Parol" htmlFor="password" error={e.password}>
+      <Field label={t("Parol")} htmlFor="password" error={e.password}>
         <PasswordInput
           id="password"
           name="password"
           autoComplete="current-password"
-          placeholder="Parolingizni kiriting"
+          placeholder={t("Parolingizni kiriting")}
           aria-invalid={!!e.password}
           aria-describedby={e.password ? "password-error" : undefined}
           required
         />
       </Field>
-      <SubmitButton pending={pending} size="lg" className="w-full" pendingText="Tekshirilmoqda...">
+      <SubmitButton pending={pending} size="lg" className="w-full" pendingText={t("Tekshirilmoqda...")}>
         <LogIn />
-        Tizimga kirish
+        {t("Tizimga kirish")}
       </SubmitButton>
     </form>
   );

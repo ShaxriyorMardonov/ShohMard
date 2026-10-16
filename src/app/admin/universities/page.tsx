@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 import { deleteUniversityAction } from "@/actions/admin";
@@ -9,14 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getT } from "@/i18n/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-export const metadata: Metadata = { title: "Universitetlar" };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t("Universitetlar") };
+}
 export const maxDuration = 60;
 
 export default async function UniversitiesPage() {
   await requireAdmin();
+  const { t } = await getT();
   const universities = await prisma.university.findMany({
     orderBy: { name: "asc" },
     include: { _count: { select: { students: true, tests: true, faculties: true, groups: true } } },
@@ -25,29 +29,29 @@ export default async function UniversitiesPage() {
   return (
     <>
       <PageHeader
-        title="Universitetlar"
-        description="Fakultet va guruhlarni boshqarish uchun universitet nomini bosing"
+        title={t("Universitetlar")}
+        description={t("Fakultet va guruhlarni boshqarish uchun universitet nomini bosing")}
         actions={
           <>
             <ImportDialog kind="universities" />
-            <UniversityDialog trigger={<Button><Plus /> Universitet qo&apos;shish</Button>} />
+            <UniversityDialog trigger={<Button><Plus /> {t("Universitet qo'shish")}</Button>} />
           </>
         }
       />
       {universities.length === 0 ? (
-        <EmptyState icon={<Building2 />} title="Universitetlar yo'q" description="Birinchi universitetni qo'shing." />
+        <EmptyState icon={<Building2 />} title={t("Universitetlar yo'q")} description={t("Birinchi universitetni qo'shing.")} />
       ) : (
         <Card className="overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nomi</TableHead>
-                <TableHead>Qisqa nomi</TableHead>
-                <TableHead>Shahar</TableHead>
-                <TableHead>Fakultet / guruh</TableHead>
-                <TableHead>Talabalar</TableHead>
-                <TableHead>Testlar</TableHead>
-                <TableHead className="text-right">Amallar</TableHead>
+                <TableHead>{t("Nomi")}</TableHead>
+                <TableHead>{t("Qisqa nomi")}</TableHead>
+                <TableHead>{t("Shahar")}</TableHead>
+                <TableHead>{t("Fakultet / guruh")}</TableHead>
+                <TableHead>{t("Talabalar")}</TableHead>
+                <TableHead>{t("Testlar")}</TableHead>
+                <TableHead className="text-right">{t("Amallar")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -69,17 +73,17 @@ export default async function UniversitiesPage() {
                     <div className="flex justify-end gap-1">
                       <UniversityDialog
                         university={u}
-                        trigger={<Button size="icon-sm" variant="ghost" aria-label="Tahrirlash"><Pencil /></Button>}
+                        trigger={<Button size="icon-sm" variant="ghost" aria-label={t("Tahrirlash")}><Pencil /></Button>}
                       />
                       <ConfirmAction
-                        trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label="O'chirish"><Trash2 /></Button>}
-                        title="Universitetni o'chirish"
+                        trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label={t("O'chirish")}><Trash2 /></Button>}
+                        title={t("Universitetni o'chirish")}
                         description={
                           u._count.students
-                            ? `"${u.name}" o'chiriladi. Undagi ${u._count.students} ta talaba va ularning natijalari saqlanadi, lekin ularni boshqa universitetga biriktirmaguningizcha tizimga kira olmaydi.`
-                            : `"${u.name}" o'chiriladi.`
+                            ? t("\"{name}\" o'chiriladi. Undagi {n} ta talaba va ularning natijalari saqlanadi, lekin ularni boshqa universitetga biriktirmaguningizcha tizimga kira olmaydi.", { name: u.name, n: u._count.students })
+                            : t("\"{name}\" o'chiriladi.", { name: u.name })
                         }
-                        confirmLabel="O'chirish"
+                        confirmLabel={t("O'chirish")}
                         action={deleteUniversityAction.bind(null, u.id)}
                       />
                     </div>

@@ -1,14 +1,18 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { QuestionForm } from "@/components/admin/question-form";
 import { PageHeader } from "@/components/layout/app-shell";
+import { getT } from "@/i18n/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-export const metadata: Metadata = { title: "Savolni tahrirlash" };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t("Savolni tahrirlash") };
+}
 
 export default async function EditQuestionPage({ params }: { params: Promise<{ questionId: string }> }) {
   await requireAdmin();
+  const { t } = await getT();
   const { questionId } = await params;
   const q = await prisma.question.findUnique({
     where: { id: questionId },
@@ -21,7 +25,7 @@ export default async function EditQuestionPage({ params }: { params: Promise<{ q
   ]);
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Savolni tahrirlash" />
+      <PageHeader title={t("Savolni tahrirlash")} />
       <QuestionForm
         locked={answers > 0 || startedTests > 0}
         initial={{

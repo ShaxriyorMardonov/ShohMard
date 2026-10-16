@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { BarChart3, FileSpreadsheet, FileText } from "lucide-react";
 import { FilterBar } from "@/components/admin/filter-bar";
@@ -11,16 +10,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { STUDY_FORMS, studyFormLabel } from "@/lib/labels";
+import { getT } from "@/i18n/server";
 import { formatDateTime } from "@/lib/time";
 import { finalizeExpiredAttempts } from "@/server/exam";
 import { orgOptions } from "@/server/filters";
 import { RESULT_FILTER_KEYS, resultSelect, resultsWhere, type ResultFilters } from "@/server/results";
 
-export const metadata: Metadata = { title: "Natijalar" };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t("Natijalar") };
+}
 const PER_PAGE = 30;
 
 export default async function AdminResultsPage({ searchParams }: { searchParams: Promise<ResultFilters & { page?: string }> }) {
   await requireAdmin();
+  const { t, lang } = await getT();
   await finalizeExpiredAttempts();
   const sp = await searchParams;
   const page = parsePage(sp.page);
@@ -46,9 +50,9 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
   csvParams.set("format", "csv");
 
   const summary = [
-    `Topshirilgan: ${total}`,
-    agg._avg.percent !== null ? `o'rtacha ${agg._avg.percent.toFixed(1)}%` : null,
-    passedCount !== null && total ? `o'tganlar ${passedCount} (${Math.round((passedCount / total) * 100)}%)` : null,
+    t("Topshirilgan: {n}", { n: total }),
+    agg._avg.percent !== null ? t("o'rtacha {p}%", { p: agg._avg.percent.toFixed(1) }) : null,
+    passedCount !== null && total ? t("o'tganlar {n} ({p}%)", { n: passedCount, p: Math.round((passedCount / total) * 100) }) : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -56,7 +60,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
   return (
     <>
       <PageHeader
-        title="Natijalar"
+        title={t("Natijalar")}
         description={summary}
         actions={
           <>
@@ -64,53 +68,53 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
               <a href={`/admin/results/export?${csvParams.toString()}`} download><FileText /> CSV</a>
             </Button>
             <Button asChild variant="success">
-              <a href={`/admin/results/export?${exportParams.toString()}`} download><FileSpreadsheet /> Excel jadval</a>
+              <a href={`/admin/results/export?${exportParams.toString()}`} download><FileSpreadsheet /> {t("Excel jadval")}</a>
             </Button>
           </>
         }
       />
       <FilterBar
-        search={{ placeholder: "Talaba ismi yoki logini" }}
+        search={{ placeholder: t("Talaba ismi yoki logini") }}
         values={sp}
         fields={[
           {
             name: "subject",
-            label: "Fan",
-            all: "Barcha fanlar",
-            options: subjects.map((s) => (s.subject ? { value: s.subject, label: s.subject } : { value: "__none", label: "Fan ko'rsatilmagan" })),
+            label: t("Fan"),
+            all: t("Barcha fanlar"),
+            options: subjects.map((s) => (s.subject ? { value: s.subject, label: s.subject } : { value: "__none", label: t("Fan ko'rsatilmagan") })),
             resets: ["test"],
           },
-          { name: "test", label: "Test", all: "Barcha testlar", options: tests.map((t) => ({ value: t.id, label: t.title })) },
-          { name: "university", label: "Universitet", all: "Barcha universitetlar", options: options.universities, resets: ["faculty", "group"] },
-          { name: "faculty", label: "Fakultet", all: "Barcha fakultetlar", options: options.faculties, resets: ["group"] },
-          { name: "group", label: "Guruh", all: "Barcha guruhlar", options: options.groups },
-          { name: "form", label: "Ta'lim shakli", all: "Barcha ta'lim shakllari", options: STUDY_FORMS },
+          { name: "test", label: t("Test"), all: t("Barcha testlar"), options: tests.map((x) => ({ value: x.id, label: x.title })) },
+          { name: "university", label: t("Universitet"), all: t("Barcha universitetlar"), options: options.universities, resets: ["faculty", "group"] },
+          { name: "faculty", label: t("Fakultet"), all: t("Barcha fakultetlar"), options: options.faculties, resets: ["group"] },
+          { name: "group", label: t("Guruh"), all: t("Barcha guruhlar"), options: options.groups },
+          { name: "form", label: t("Ta'lim shakli"), all: t("Barcha ta'lim shakllari"), options: STUDY_FORMS.map((f) => ({ ...f, label: t(f.label) })) },
           {
             name: "status",
-            label: "Natija",
-            all: "O'tgan va o'tmaganlar",
+            label: t("Natija"),
+            all: t("O'tgan va o'tmaganlar"),
             options: [
-              { value: "passed", label: "Faqat o'tganlar" },
-              { value: "failed", label: "Faqat o'tmaganlar" },
+              { value: "passed", label: t("Faqat o'tganlar") },
+              { value: "failed", label: t("Faqat o'tmaganlar") },
             ],
           },
-          { type: "date", name: "from", label: "Sanadan" },
-          { type: "date", name: "to", label: "Sanagacha" },
+          { type: "date", name: "from", label: t("Sanadan") },
+          { type: "date", name: "to", label: t("Sanagacha") },
         ]}
       />
       {rows.length === 0 ? (
-        <EmptyState icon={<BarChart3 />} title="Natijalar topilmadi" />
+        <EmptyState icon={<BarChart3 />} title={t("Natijalar topilmadi")} />
       ) : (
         <Card className="overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Talaba</TableHead>
-                <TableHead>Universitet / guruh</TableHead>
-                <TableHead>Test</TableHead>
-                <TableHead>Topshirilgan</TableHead>
-                <TableHead>Ball</TableHead>
-                <TableHead className="text-right">Natija</TableHead>
+                <TableHead>{t("Talaba")}</TableHead>
+                <TableHead>{t("Universitet / guruh")}</TableHead>
+                <TableHead>{t("Test")}</TableHead>
+                <TableHead>{t("Topshirilgan")}</TableHead>
+                <TableHead>{t("Ball")}</TableHead>
+                <TableHead className="text-right">{t("Natija")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -123,7 +127,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                   <TableCell>
                     {r.user.university?.shortName ?? "—"}
                     <span className="block text-xs text-muted-foreground">
-                      {[r.user.faculty?.name, r.user.group?.name, r.user.studyForm ? studyFormLabel(r.user.studyForm) : null].filter(Boolean).join(" · ")}
+                      {[r.user.faculty?.name, r.user.group?.name, r.user.studyForm ? t(studyFormLabel(r.user.studyForm)) : null].filter(Boolean).join(" · ")}
                     </span>
                   </TableCell>
                   <TableCell className="max-w-[240px]">
@@ -131,8 +135,8 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
                     {r.test.subject && <span className="block text-xs text-muted-foreground">{r.test.subject}</span>}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {formatDateTime(r.submittedAt)}
-                    {r.autoSubmitted && <span className="block text-xs">avtomatik</span>}
+                    {formatDateTime(r.submittedAt, lang)}
+                    {r.autoSubmitted && <span className="block text-xs">{t("avtomatik")}</span>}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{r.score}/{r.maxScore}</TableCell>
                   <TableCell className="text-right">

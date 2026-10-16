@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import { CalendarClock, Clock, FileQuestion, PlayCircle, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { StudentTest, StudentTestStatus } from "@/server/student";
 import { formatDateTime, formatDuration } from "@/lib/time";
+import { useT } from "@/i18n/client";
 
 export const STATUS_META: Record<StudentTestStatus, { label: string; variant: "default" | "success" | "warning" | "error" | "muted" }> = {
   open: { label: "Ochiq", variant: "success" },
@@ -14,16 +17,18 @@ export const STATUS_META: Record<StudentTestStatus, { label: string; variant: "d
 };
 
 export function TestStatusBadge({ status }: { status: StudentTestStatus }) {
+  const { t } = useT();
   const m = STATUS_META[status];
-  return <Badge variant={m.variant}>{m.label}</Badge>;
+  return <Badge variant={m.variant}>{t(m.label)}</Badge>;
 }
 
 export function TestAction({ test, size = "sm" }: { test: StudentTest; size?: "sm" | "default" }) {
+  const { t } = useT();
   if (test.status === "open")
     return (
       <Button asChild size={size}>
         <Link href={`/student/tests/${test.id}`}>
-          <PlayCircle /> Testni boshlash
+          <PlayCircle /> {t("Testni boshlash")}
         </Link>
       </Button>
     );
@@ -31,20 +36,21 @@ export function TestAction({ test, size = "sm" }: { test: StudentTest; size?: "s
     return (
       <Button asChild size={size} variant="midnight">
         <Link href={`/exam/${test.attempt.id}`}>
-          <RotateCcw /> Davom ettirish
+          <RotateCcw /> {t("Davom ettirish")}
         </Link>
       </Button>
     );
   if (test.status === "submitted" && test.attempt && test.released)
     return (
       <Button asChild size={size} variant="outline">
-        <Link href={`/student/results/${test.attempt.id}`}>Natijani ko&apos;rish</Link>
+        <Link href={`/student/results/${test.attempt.id}`}>{t("Natijani ko'rish")}</Link>
       </Button>
     );
   return null;
 }
 
 export function TestCard({ test }: { test: StudentTest }) {
+  const { t, lang } = useT();
   return (
     <div className="flex flex-col rounded-xl border border-border/70 bg-card p-5 shadow-[var(--shadow-card)]">
       <div className="flex items-start justify-between gap-3">
@@ -57,19 +63,19 @@ export function TestCard({ test }: { test: StudentTest }) {
       <dl className="mt-4 grid gap-2 text-sm text-muted-foreground">
         <div className="flex items-center gap-2">
           <CalendarClock className="size-4 text-royal/80" />
-          <dt className="sr-only">Vaqt oralig&apos;i</dt>
+          <dt className="sr-only">{t("Vaqt oralig'i")}</dt>
           <dd>
-            {formatDateTime(test.startsAt)} — {formatDateTime(test.endsAt)}
+            {formatDateTime(test.startsAt, lang)} — {formatDateTime(test.endsAt, lang)}
           </dd>
         </div>
         <div className="flex flex-wrap gap-x-5 gap-y-2">
           <span className="flex items-center gap-2">
             <Clock className="size-4 text-royal/80" />
-            {formatDuration(test.durationMinutes)}
+            {formatDuration(test.durationMinutes, lang)}
           </span>
           <span className="flex items-center gap-2">
             <FileQuestion className="size-4 text-royal/80" />
-            {test._count.questions} ta savol
+            {t("{n} ta savol", { n: test._count.questions })}
           </span>
         </div>
       </dl>

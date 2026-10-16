@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Library, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import type { Prisma, QuestionType } from "@prisma/client";
@@ -14,11 +13,15 @@ import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getT } from "@/i18n/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { QUESTION_TYPE_LABEL } from "@/lib/exam-rules";
 
-export const metadata: Metadata = { title: "Savollar banki" };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t("Savollar banki") };
+}
 export const maxDuration = 60;
 const PER_PAGE = 25;
 const TYPES = ["SINGLE", "MULTIPLE", "TRUE_FALSE"] as const;
@@ -29,6 +32,7 @@ export default async function QuestionsPage({
   searchParams: Promise<{ q?: string; subject?: string; type?: string; page?: string; saved?: string }>;
 }) {
   await requireAdmin();
+  const { t } = await getT();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().slice(0, 100);
   const type = TYPES.includes(sp.type as QuestionType) ? (sp.type as QuestionType) : undefined;
@@ -53,47 +57,47 @@ export default async function QuestionsPage({
   return (
     <>
       <PageHeader
-        title="Savollar banki"
-        description="Testlarga qo'shiladigan barcha savollar"
+        title={t("Savollar banki")}
+        description={t("Testlarga qo'shiladigan barcha savollar")}
         actions={
           <>
             <ImportDialog kind="questions" />
-            <Button asChild><Link href="/admin/questions/new"><Plus /> Yangi savol</Link></Button>
+            <Button asChild><Link href="/admin/questions/new"><Plus /> {t("Yangi savol")}</Link></Button>
           </>
         }
       />
-      {sp.saved && <Alert variant="success" className="mb-4"><span>Savol saqlandi.</span></Alert>}
+      {sp.saved && <Alert variant="success" className="mb-4"><span>{t("Savol saqlandi.")}</span></Alert>}
       <form className="mb-4 grid gap-3 md:grid-cols-[1fr_200px_200px_auto]" role="search">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input name="q" defaultValue={q} placeholder="Savol matni bo'yicha qidirish" className="pl-9" aria-label="Qidirish" />
+          <Input name="q" defaultValue={q} placeholder={t("Savol matni bo'yicha qidirish")} className="pl-9" aria-label={t("Qidirish")} />
         </div>
-        <NativeSelect name="subject" defaultValue={sp.subject ?? ""} aria-label="Fan">
-          <option value="">Barcha fanlar</option>
+        <NativeSelect name="subject" defaultValue={sp.subject ?? ""} aria-label={t("Fan")}>
+          <option value="">{t("Barcha fanlar")}</option>
           {subjects.map((s) => (
             <option key={s.subject} value={s.subject!}>{s.subject}</option>
           ))}
         </NativeSelect>
-        <NativeSelect name="type" defaultValue={type ?? ""} aria-label="Turi">
-          <option value="">Barcha turlar</option>
-          {TYPES.map((t) => (
-            <option key={t} value={t}>{QUESTION_TYPE_LABEL[t]}</option>
+        <NativeSelect name="type" defaultValue={type ?? ""} aria-label={t("Turi")}>
+          <option value="">{t("Barcha turlar")}</option>
+          {TYPES.map((ty) => (
+            <option key={ty} value={ty}>{t(QUESTION_TYPE_LABEL[ty])}</option>
           ))}
         </NativeSelect>
-        <Button type="submit" variant="midnight">Filtrlash</Button>
+        <Button type="submit" variant="midnight">{t("Filtrlash")}</Button>
       </form>
       {questions.length === 0 ? (
-        <EmptyState icon={<Library />} title="Savollar topilmadi" description="Yangi savol qo'shing yoki filtrni o'zgartiring." />
+        <EmptyState icon={<Library />} title={t("Savollar topilmadi")} description={t("Yangi savol qo'shing yoki filtrni o'zgartiring.")} />
       ) : (
         <Card className="overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Savol</TableHead>
-                <TableHead>Turi</TableHead>
-                <TableHead>Fan</TableHead>
-                <TableHead>Testlarda</TableHead>
-                <TableHead className="text-right">Amallar</TableHead>
+                <TableHead>{t("Savol")}</TableHead>
+                <TableHead>{t("Turi")}</TableHead>
+                <TableHead>{t("Fan")}</TableHead>
+                <TableHead>{t("Testlarda")}</TableHead>
+                <TableHead className="text-right">{t("Amallar")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -101,21 +105,21 @@ export default async function QuestionsPage({
                 <TableRow key={x.id}>
                   <TableCell className="max-w-md">
                     <p className="line-clamp-2 font-medium text-midnight">{x.text}</p>
-                    <p className="text-xs text-muted-foreground">{x._count.options} ta variant</p>
+                    <p className="text-xs text-muted-foreground">{t("{n} ta variant", { n: x._count.options })}</p>
                   </TableCell>
-                  <TableCell><Badge variant="muted">{QUESTION_TYPE_LABEL[x.type]}</Badge></TableCell>
+                  <TableCell><Badge variant="muted">{t(QUESTION_TYPE_LABEL[x.type])}</Badge></TableCell>
                   <TableCell>{x.subject ?? "—"}</TableCell>
                   <TableCell>{x._count.tests}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
-                      <Button asChild size="icon-sm" variant="ghost" aria-label="Tahrirlash">
+                      <Button asChild size="icon-sm" variant="ghost" aria-label={t("Tahrirlash")}>
                         <Link href={`/admin/questions/${x.id}`}><Pencil /></Link>
                       </Button>
                       <ConfirmAction
-                        trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label="O'chirish"><Trash2 /></Button>}
-                        title="Savolni o'chirish"
-                        description="Savol savollar bankidan butunlay o'chiriladi."
-                        confirmLabel="O'chirish"
+                        trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label={t("O'chirish")}><Trash2 /></Button>}
+                        title={t("Savolni o'chirish")}
+                        description={t("Savol savollar bankidan butunlay o'chiriladi.")}
+                        confirmLabel={t("O'chirish")}
                         action={deleteQuestionAction.bind(null, x.id)}
                       />
                     </div>

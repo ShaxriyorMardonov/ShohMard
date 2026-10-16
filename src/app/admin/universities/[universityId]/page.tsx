@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, GraduationCap, Pencil, Plus, Trash2 } from "lucide-react";
@@ -9,15 +8,20 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAction } from "@/components/ui/confirm-action";
+import { getT } from "@/i18n/server";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
-export const metadata: Metadata = { title: "Fakultet va guruhlar" };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t("Fakultet va guruhlar") };
+}
 
 type GroupItem = { id: string; name: string; facultyId: string | null; _count: { students: number } };
 
 export default async function UniversityDetailPage({ params }: { params: Promise<{ universityId: string }> }) {
   await requireAdmin();
+  const { t } = await getT();
   const { universityId } = await params;
   const uni = await prisma.university.findUnique({
     where: { id: universityId },
@@ -33,7 +37,7 @@ export default async function UniversityDetailPage({ params }: { params: Promise
 
   const groupChips = (groups: GroupItem[]) =>
     groups.length === 0 ? (
-      <p className="text-sm text-muted-foreground">Guruhlar yo&apos;q</p>
+      <p className="text-sm text-muted-foreground">{t("Guruhlar yo'q")}</p>
     ) : (
       <div className="flex flex-wrap gap-2">
         {groups.map((g) => (
@@ -45,13 +49,13 @@ export default async function UniversityDetailPage({ params }: { params: Promise
               universityId={uni.id}
               item={g}
               faculties={faculties}
-              trigger={<Button size="icon-sm" variant="ghost" aria-label={`${g.name} guruhini tahrirlash`}><Pencil /></Button>}
+              trigger={<Button size="icon-sm" variant="ghost" aria-label={t("{name} guruhini tahrirlash", { name: g.name })}><Pencil /></Button>}
             />
             <ConfirmAction
-              trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label={`${g.name} guruhini o'chirish`}><Trash2 /></Button>}
-              title="Guruhni o'chirish"
-              description={`"${g.name}" guruhi o'chiriladi. Undagi ${g._count.students} ta talaba saqlanadi, faqat guruhsiz qoladi.`}
-              confirmLabel="O'chirish"
+              trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label={t("{name} guruhini o'chirish", { name: g.name })}><Trash2 /></Button>}
+              title={t("Guruhni o'chirish")}
+              description={t("\"{name}\" guruhi o'chiriladi. Undagi {n} ta talaba saqlanadi, faqat guruhsiz qoladi.", { name: g.name, n: g._count.students })}
+              confirmLabel={t("O'chirish")}
               action={deleteGroupAction.bind(null, g.id)}
             />
           </div>
@@ -62,23 +66,23 @@ export default async function UniversityDetailPage({ params }: { params: Promise
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
-        <Link href="/admin/universities"><ArrowLeft /> Universitetlar</Link>
+        <Link href="/admin/universities"><ArrowLeft /> {t("Universitetlar")}</Link>
       </Button>
       <PageHeader
         title={uni.name}
-        description={`${uni.faculties.length} ta fakultet · ${uni.groups.length} ta guruh · ${uni._count.students} ta talaba`}
+        description={t("{f} ta fakultet · {g} ta guruh · {s} ta talaba", { f: uni.faculties.length, g: uni.groups.length, s: uni._count.students })}
         actions={
           <>
-            <OrgDialog kind="group" universityId={uni.id} faculties={faculties} trigger={<Button variant="outline"><Plus /> Guruh qo&apos;shish</Button>} />
-            <OrgDialog kind="faculty" universityId={uni.id} trigger={<Button><Plus /> Fakultet qo&apos;shish</Button>} />
+            <OrgDialog kind="group" universityId={uni.id} faculties={faculties} trigger={<Button variant="outline"><Plus /> {t("Guruh qo'shish")}</Button>} />
+            <OrgDialog kind="faculty" universityId={uni.id} trigger={<Button><Plus /> {t("Fakultet qo'shish")}</Button>} />
           </>
         }
       />
       {uni.faculties.length === 0 && uni.groups.length === 0 ? (
         <EmptyState
           icon={<GraduationCap />}
-          title="Fakultetlar yo'q"
-          description="Fakultet va guruhlarni shu yerda qo'shing yoki talabalarni Excel'dan yuklang: fakultet va guruhlar avtomatik yaratiladi."
+          title={t("Fakultetlar yo'q")}
+          description={t("Fakultet va guruhlarni shu yerda qo'shing yoki talabalarni Excel'dan yuklang: fakultet va guruhlar avtomatik yaratiladi.")}
         />
       ) : (
         <div className="grid gap-4">
@@ -87,7 +91,7 @@ export default async function UniversityDetailPage({ params }: { params: Promise
               <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <CardTitle className="text-base">
                   {f.name}
-                  <span className="ml-2 text-xs font-medium text-muted-foreground">{f._count.students} ta talaba</span>
+                  <span className="ml-2 text-xs font-medium text-muted-foreground">{t("{n} ta talaba", { n: f._count.students })}</span>
                 </CardTitle>
                 <div className="flex gap-1">
                   <OrgDialog
@@ -95,14 +99,14 @@ export default async function UniversityDetailPage({ params }: { params: Promise
                     universityId={uni.id}
                     faculties={faculties}
                     defaultFacultyId={f.id}
-                    trigger={<Button size="sm" variant="outline"><Plus /> Guruh</Button>}
+                    trigger={<Button size="sm" variant="outline"><Plus /> {t("Guruh")}</Button>}
                   />
-                  <OrgDialog kind="faculty" universityId={uni.id} item={f} trigger={<Button size="icon-sm" variant="ghost" aria-label="Fakultetni tahrirlash"><Pencil /></Button>} />
+                  <OrgDialog kind="faculty" universityId={uni.id} item={f} trigger={<Button size="icon-sm" variant="ghost" aria-label={t("Fakultetni tahrirlash")}><Pencil /></Button>} />
                   <ConfirmAction
-                    trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label="Fakultetni o'chirish"><Trash2 /></Button>}
-                    title="Fakultetni o'chirish"
-                    description={`"${f.name}" o'chiriladi. Uning guruhlari va talabalari saqlanadi, faqat fakultetsiz qoladi.`}
-                    confirmLabel="O'chirish"
+                    trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label={t("Fakultetni o'chirish")}><Trash2 /></Button>}
+                    title={t("Fakultetni o'chirish")}
+                    description={t("\"{name}\" o'chiriladi. Uning guruhlari va talabalari saqlanadi, faqat fakultetsiz qoladi.", { name: f.name })}
+                    confirmLabel={t("O'chirish")}
                     action={deleteFacultyAction.bind(null, f.id)}
                   />
                 </div>
@@ -112,7 +116,7 @@ export default async function UniversityDetailPage({ params }: { params: Promise
           ))}
           {loose.length > 0 && (
             <Card>
-              <CardHeader><CardTitle className="text-base">Fakultetga biriktirilmagan guruhlar</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-base">{t("Fakultetga biriktirilmagan guruhlar")}</CardTitle></CardHeader>
               <CardContent>{groupChips(loose)}</CardContent>
             </Card>
           )}

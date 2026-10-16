@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { TestState } from "@/lib/exam-rules";
+import { useT } from "@/i18n/client";
 
 export type TestListRow = {
   id: string;
@@ -29,6 +30,7 @@ export type TestListRow = {
 
 /** Faol/nofaol almashtirgich. */
 export function ActiveSwitch({ id, active, disabled }: { id: string; active: boolean; disabled?: boolean }) {
+  const { t } = useT();
   const router = useRouter();
   const [pending, start] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
@@ -38,7 +40,7 @@ export function ActiveSwitch({ id, active, disabled }: { id: string; active: boo
         type="button"
         role="switch"
         aria-checked={active}
-        aria-label={active ? "Nofaol qilish" : "Faollashtirish"}
+        aria-label={active ? t("Nofaol qilish") : t("Faollashtirish")}
         disabled={pending || disabled}
         onClick={() =>
           start(async () => {
@@ -51,12 +53,13 @@ export function ActiveSwitch({ id, active, disabled }: { id: string; active: boo
       >
         <span className={`inline-block size-5 rounded-full bg-white shadow transition-transform ${active ? "translate-x-5.5" : "translate-x-0.5"}`} />
       </button>
-      {error && <p className="mt-1 max-w-[180px] text-[11px] leading-tight text-error">{error}</p>}
+      {error && <p className="mt-1 max-w-[180px] text-[11px] leading-tight text-error">{t(error)}</p>}
     </div>
   );
 }
 
 export function TestsTable({ groups, canDelete }: { groups: { subject: string; rows: TestListRow[] }[]; canDelete: boolean }) {
+  const { t } = useT();
   const router = useRouter();
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [confirm, setConfirm] = React.useState(false);
@@ -78,9 +81,9 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
     <>
       {canDelete && selected.size > 0 && (
         <div className="sticky top-16 z-20 mb-3 flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-2 text-sm shadow-[var(--shadow-card)]">
-          <span className="font-semibold text-midnight">{selected.size} ta test tanlandi</span>
-          <Button size="sm" variant="destructive" onClick={() => setConfirm(true)}><Trash2 /> O&apos;chirish</Button>
-          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Bekor qilish</Button>
+          <span className="font-semibold text-midnight">{t("{n} ta test tanlandi", { n: selected.size })}</span>
+          <Button size="sm" variant="destructive" onClick={() => setConfirm(true)}><Trash2 /> {t("O'chirish")}</Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>{t("Bekor qilish")}</Button>
         </div>
       )}
       <div className="grid gap-6">
@@ -99,38 +102,38 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
                     <TableRow>
                       {canDelete && (
                         <TableHead className="w-10">
-                          <input type="checkbox" aria-label={`${g.subject}: hammasini tanlash`} checked={allOn} onChange={() => toggle(ids, !allOn)} className="size-4 accent-[#315ECA]" />
+                          <input type="checkbox" aria-label={t("{subject}: hammasini tanlash", { subject: g.subject })} checked={allOn} onChange={() => toggle(ids, !allOn)} className="size-4 accent-[#315ECA]" />
                         </TableHead>
                       )}
-                      <TableHead className="w-[28%]">Test</TableHead>
-                      <TableHead className="w-20">Faol</TableHead>
-                      <TableHead className="w-36">Holat</TableHead>
-                      <TableHead className="w-48">Vaqt oralig&apos;i</TableHead>
-                      <TableHead className="w-24">Savollar</TableHead>
-                      <TableHead className="w-28">Topshirgan</TableHead>
-                      <TableHead>Universitetlar</TableHead>
+                      <TableHead className="w-[28%]">{t("Test")}</TableHead>
+                      <TableHead className="w-20">{t("Faol")}</TableHead>
+                      <TableHead className="w-36">{t("Holat")}</TableHead>
+                      <TableHead className="w-48">{t("Vaqt oralig'i")}</TableHead>
+                      <TableHead className="w-24">{t("Savollar")}</TableHead>
+                      <TableHead className="w-28">{t("Topshirgan")}</TableHead>
+                      <TableHead>{t("Universitetlar")}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {g.rows.map((t) => {
-                      const st = TEST_STATE_BADGE[t.state];
+                    {g.rows.map((row) => {
+                      const st = TEST_STATE_BADGE[row.state];
                       return (
-                        <TableRow key={t.id} data-state={selected.has(t.id) ? "selected" : undefined}>
+                        <TableRow key={row.id} data-state={selected.has(row.id) ? "selected" : undefined}>
                           {canDelete && (
                             <TableCell>
-                              <input type="checkbox" aria-label={`${t.title} ni tanlash`} checked={selected.has(t.id)} onChange={() => toggle([t.id], !selected.has(t.id))} className="size-4 accent-[#315ECA]" />
+                              <input type="checkbox" aria-label={t("{title} ni tanlash", { title: row.title })} checked={selected.has(row.id)} onChange={() => toggle([row.id], !selected.has(row.id))} className="size-4 accent-[#315ECA]" />
                             </TableCell>
                           )}
                           <TableCell>
-                            <Link href={`/admin/tests/${t.id}`} className="font-semibold text-midnight hover:text-royal">{t.title}</Link>
-                            <span className="block text-xs text-muted-foreground">{t.duration}</span>
+                            <Link href={`/admin/tests/${row.id}`} className="font-semibold text-midnight hover:text-royal">{row.title}</Link>
+                            <span className="block text-xs text-muted-foreground">{row.duration}</span>
                           </TableCell>
-                          <TableCell><ActiveSwitch id={t.id} active={t.isPublished} /></TableCell>
-                          <TableCell><Badge variant={st.variant}>{st.label}</Badge></TableCell>
-                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{t.startsAt}<br />{t.endsAt}</TableCell>
-                          <TableCell>{t.questions}</TableCell>
-                          <TableCell>{t.attempts}</TableCell>
-                          <TableCell className="text-xs">{t.universities || "—"}</TableCell>
+                          <TableCell><ActiveSwitch id={row.id} active={row.isPublished} /></TableCell>
+                          <TableCell><Badge variant={st.variant}>{t(st.label)}</Badge></TableCell>
+                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{row.startsAt}<br />{row.endsAt}</TableCell>
+                          <TableCell>{row.questions}</TableCell>
+                          <TableCell>{row.attempts}</TableCell>
+                          <TableCell className="text-xs">{row.universities || "—"}</TableCell>
                         </TableRow>
                       );
                     })}
@@ -144,14 +147,14 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Testlarni o&apos;chirish</DialogTitle>
+            <DialogTitle>{t("Testlarni o'chirish")}</DialogTitle>
             <DialogDescription>
-              {chosen.length} ta test butunlay o&apos;chiriladi.
-              {attempts > 0 && ` Ular bilan birga ${attempts} ta talaba natijasi ham o'chadi va qayta tiklanmaydi.`}
+              {t("{n} ta test butunlay o'chiriladi.", { n: chosen.length })}
+              {attempts > 0 && ` ${t("Ular bilan birga {n} ta talaba natijasi ham o'chadi va qayta tiklanmaydi.", { n: attempts })}`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirm(false)}>Bekor qilish</Button>
+            <Button variant="outline" onClick={() => setConfirm(false)}>{t("Bekor qilish")}</Button>
             <Button
               variant="destructive"
               disabled={pending}
@@ -164,7 +167,7 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
                 })
               }
             >
-              {pending ? "O'chirilmoqda..." : "O'chirish"}
+              {pending ? t("O'chirilmoqda...") : t("O'chirish")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,11 +1,14 @@
-import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
+import { getT } from "@/i18n/server";
 import { requireStudent } from "@/lib/auth";
 import { SAVE_GRACE_MS, isExpired } from "@/lib/exam-rules";
 import { finalizeAttempt, getExamView } from "@/server/exam";
 import { ExamClient } from "./exam-client";
 
-export const metadata: Metadata = { title: "Imtihon" };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t("Imtihon") };
+}
 export const dynamic = "force-dynamic";
 
 export default async function ExamPage({ params }: { params: Promise<{ attemptId: string }> }) {

@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { Plus, Users } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 import { FilterBar } from "@/components/admin/filter-bar";
@@ -9,12 +8,16 @@ import { StudentsTable } from "@/components/admin/students-table";
 import { EmptyState, PageHeader } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { getT } from "@/i18n/server";
 import { requireStaff } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { STUDY_FORMS } from "@/lib/labels";
 import { orgOptions, studentOrgWhere } from "@/server/filters";
 
-export const metadata: Metadata = { title: "Talabalar" };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t("Talabalar") };
+}
 export const maxDuration = 60;
 const PER_PAGE = 30;
 
@@ -22,6 +25,7 @@ type SP = { q?: string; form?: string; university?: string; faculty?: string; gr
 
 export default async function StudentsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const staff = await requireStaff();
+  const { t } = await getT();
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().slice(0, 100);
   const page = parsePage(sp.page);
@@ -66,8 +70,8 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader
-        title="Talabalar"
-        description={staff.scope ? `${staff.university?.name} talabalari` : "Talaba hisoblari administrator yoki universitet menejeri tomonidan yaratiladi"}
+        title={t("Talabalar")}
+        description={staff.scope ? t("{name} talabalari", { name: staff.university?.name }) : t("Talaba hisoblari administrator yoki universitet menejeri tomonidan yaratiladi")}
         actions={
           <>
             <ImportDialog kind="students" />
@@ -75,23 +79,23 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
               universities={universities}
               orgNames={orgNames}
               fixedUniversity={fixedUniversity}
-              trigger={<Button disabled={!universities.length}><Plus /> Talaba qo&apos;shish</Button>}
+              trigger={<Button disabled={!universities.length}><Plus /> {t("Talaba qo'shish")}</Button>}
             />
           </>
         }
       />
       <FilterBar
-        search={{ placeholder: "Ism yoki login bo'yicha qidirish" }}
+        search={{ placeholder: t("Ism yoki login bo'yicha qidirish") }}
         values={sp}
         fields={[
-          { name: "form", label: "Ta'lim shakli", all: "Barcha ta'lim shakllari", options: STUDY_FORMS },
-          ...(staff.scope ? [] : [{ name: "university", label: "Universitet", all: "Barcha universitetlar", options: options.universities, resets: ["faculty", "group"] }]),
-          { name: "faculty", label: "Fakultet", all: "Barcha fakultetlar", options: options.faculties, resets: ["group"] },
-          { name: "group", label: "Guruh", all: "Barcha guruhlar", options: options.groups },
+          { name: "form", label: t("Ta'lim shakli"), all: t("Barcha ta'lim shakllari"), options: STUDY_FORMS.map((f) => ({ value: f.value, label: t(f.label) })) },
+          ...(staff.scope ? [] : [{ name: "university", label: t("Universitet"), all: t("Barcha universitetlar"), options: options.universities, resets: ["faculty", "group"] }]),
+          { name: "faculty", label: t("Fakultet"), all: t("Barcha fakultetlar"), options: options.faculties, resets: ["group"] },
+          { name: "group", label: t("Guruh"), all: t("Barcha guruhlar"), options: options.groups },
         ]}
       />
       {students.length === 0 ? (
-        <EmptyState icon={<Users />} title="Talabalar topilmadi" description={universities.length ? "Filtrni o'zgartiring yoki yangi talaba qo'shing." : "Avval universitet qo'shing."} />
+        <EmptyState icon={<Users />} title={t("Talabalar topilmadi")} description={universities.length ? t("Filtrni o'zgartiring yoki yangi talaba qo'shing.") : t("Avval universitet qo'shing.")} />
       ) : (
         <Card className="overflow-hidden">
           <StudentsTable

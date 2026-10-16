@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import ExcelJS from "exceljs";
+import { getT } from "@/i18n/server";
 import { getCurrentUser } from "@/lib/auth";
 import { toCsv } from "@/lib/csv";
 import { prisma } from "@/lib/db";
@@ -11,7 +12,7 @@ import { RESULT_FILTER_KEYS, resultSelect, resultsWhere, type ResultFilters } fr
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const HEADER = [
+const HEADER_KEYS = [
   "№", "F.I.Sh.", "Login", "Universitet", "Fakultet", "Guruh", "Ta'lim shakli", "Test", "Fan",
   "Boshlangan", "Topshirilgan", "Avtomatik", "Ball", "Maksimal ball", "To'g'ri javoblar", "Savollar", "Foiz", "Holat",
 ];
@@ -19,10 +20,13 @@ const WIDTHS = [6, 32, 18, 28, 26, 10, 13, 34, 18, 20, 20, 10, 8, 10, 10, 9, 8, 
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
+  const { t, lang } = await getT();
   if (!user || user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Ruxsat yo'q" }, { status: user ? 403 : 401 });
+    return NextResponse.json({ error: t("Ruxsat yo'q") }, { status: user ? 403 : 401 });
   }
   await finalizeExpiredAttempts();
+  const HEADER = HEADER_KEYS.map((h) => t(h));
+  const PASSED = t("O'tdi");
   const sp = req.nextUrl.searchParams;
   const filters: ResultFilters = {};
   for (const k of RESULT_FILTER_KEYS) filters[k] = sp.get(k) ?? undefined;
@@ -41,18 +45,18 @@ export async function GET(req: NextRequest) {
       r.user.university?.name ?? "",
       r.user.faculty?.name ?? "",
       r.user.group?.name ?? "",
-      r.user.studyForm ? studyFormLabel(r.user.studyForm) : "",
+      r.user.studyForm ? t(studyFormLabel(r.user.studyForm)) : "",
       r.test.title,
       r.test.subject ?? "",
-      formatDateTime(r.startedAt),
-      formatDateTime(r.submittedAt),
-      r.autoSubmitted ? "Ha" : "Yo'q",
+      formatDateTime(r.startedAt, lang),
+      formatDateTime(r.submittedAt, lang),
+      r.autoSubmitted ? t("Ha") : t("Yo'q"),
       r.score,
       r.maxScore,
       r.correctCount,
       r.totalQuestions,
       r.percent,
-      passed ? "O'tdi" : "O'tmadi",
+      passed ? PASSED : t("O'tmadi"),
     ] as (string | number | null)[];
   });
   const stamp = new Date().toISOString().slice(0, 10);
@@ -69,7 +73,7 @@ export async function GET(req: NextRequest) {
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "SAMU";
-  const ws = wb.addWorksheet("Natijalar", { views: [{ state: "frozen", ySplit: 1 }] });
+  const ws = wb.addWorksheet(t("Natijalar"), { views: [{ state: "frozen", ySplit: 1 }] });
   ws.columns = HEADER.map((h, i) => ({ header: h, width: WIDTHS[i] }));
   ws.addRows(data);
   const head = ws.getRow(1);
@@ -85,7 +89,7 @@ export async function GET(req: NextRequest) {
       c.border = { bottom: { style: "thin", color: { argb: "FFE2E8F0" } } };
     });
     const st = row.getCell(statusCol);
-    st.font = { bold: true, color: { argb: st.value === "O'tdi" ? "FF21A67A" : "FFDC4545" } };
+    st.font = { bold: true, color: { argb: st.value === PASSED ? "FF21A67A" : "FFDC4545" } };
   });
   ws.getColumn(HEADER.length - 1).numFmt = "0.0";
   const buf = await wb.xlsx.writeBuffer();

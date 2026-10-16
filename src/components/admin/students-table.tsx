@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useT } from "@/i18n/client";
 import { STUDY_FORMS, studyFormLabel } from "@/lib/labels";
 
 export type StudentListRow = StudentRow & {
@@ -34,6 +35,7 @@ export function StudentsTable({
   fixedUniversity?: string;
   canDelete: boolean;
 }) {
+  const { t } = useT();
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [assignOpen, setAssignOpen] = React.useState(false);
   const allChecked = rows.length > 0 && rows.every((r) => selected.has(r.id));
@@ -52,15 +54,15 @@ export function StudentsTable({
       <div className="flex min-h-12 flex-wrap items-center gap-3 border-b px-4 py-2 text-sm">
         {selected.size ? (
           <>
-            <span className="font-semibold text-midnight">{selected.size} ta tanlandi</span>
+            <span className="font-semibold text-midnight">{t("{n} ta tanlandi", { n: selected.size })}</span>
             <Button size="sm" onClick={() => setAssignOpen(true)} disabled={uniOfSelection.size !== 1}>
-              <UsersRound /> Guruhga biriktirish
+              <UsersRound /> {t("Guruhga biriktirish")}
             </Button>
-            {uniOfSelection.size > 1 && <span className="text-xs text-muted-foreground">Bitta universitet talabalarini tanlang</span>}
-            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Bekor qilish</Button>
+            {uniOfSelection.size > 1 && <span className="text-xs text-muted-foreground">{t("Bitta universitet talabalarini tanlang")}</span>}
+            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>{t("Bekor qilish")}</Button>
           </>
         ) : (
-          <span className="text-xs text-muted-foreground">Bir nechta talabani guruhga biriktirish uchun belgilang</span>
+          <span className="text-xs text-muted-foreground">{t("Bir nechta talabani guruhga biriktirish uchun belgilang")}</span>
         )}
       </div>
       <Table>
@@ -69,35 +71,35 @@ export function StudentsTable({
             <TableHead className="w-10">
               <input
                 type="checkbox"
-                aria-label="Hammasini tanlash"
+                aria-label={t("Hammasini tanlash")}
                 checked={allChecked}
                 onChange={() => setSelected(allChecked ? new Set() : new Set(rows.map((r) => r.id)))}
                 className="size-4 accent-[#315ECA]"
               />
             </TableHead>
-            <TableHead>F.I.Sh.</TableHead>
-            <TableHead>Login</TableHead>
-            {!fixedUniversity && <TableHead>Universitet</TableHead>}
-            <TableHead>Fakultet</TableHead>
-            <TableHead>Guruh</TableHead>
-            <TableHead>Ta&apos;lim shakli</TableHead>
-            <TableHead>Holat</TableHead>
-            <TableHead className="text-right">Amallar</TableHead>
+            <TableHead>{t("F.I.Sh.")}</TableHead>
+            <TableHead>{t("Login")}</TableHead>
+            {!fixedUniversity && <TableHead>{t("Universitet")}</TableHead>}
+            <TableHead>{t("Fakultet")}</TableHead>
+            <TableHead>{t("Guruh")}</TableHead>
+            <TableHead>{t("Ta'lim shakli")}</TableHead>
+            <TableHead>{t("Holat")}</TableHead>
+            <TableHead className="text-right">{t("Amallar")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map((s) => (
             <TableRow key={s.id} data-state={selected.has(s.id) ? "selected" : undefined}>
               <TableCell>
-                <input type="checkbox" aria-label={`${s.fullName} ni tanlash`} checked={selected.has(s.id)} onChange={() => toggle(s.id)} className="size-4 accent-[#315ECA]" />
+                <input type="checkbox" aria-label={t("{name} ni tanlash", { name: s.fullName })} checked={selected.has(s.id)} onChange={() => toggle(s.id)} className="size-4 accent-[#315ECA]" />
               </TableCell>
               <TableCell className="font-semibold text-midnight">{s.fullName}</TableCell>
               <TableCell className="font-mono text-xs">{s.login}</TableCell>
               {!fixedUniversity && <TableCell>{s.university?.shortName ?? "—"}</TableCell>}
               <TableCell className="max-w-[180px] text-xs">{s.faculty?.name ?? "—"}</TableCell>
               <TableCell>{s.group?.name ?? "—"}</TableCell>
-              <TableCell className="text-xs">{studyFormLabel(s.studyForm)}</TableCell>
-              <TableCell>{s.isActive ? <Badge variant="success">Faol</Badge> : <Badge variant="muted">Nofaol</Badge>}</TableCell>
+              <TableCell className="text-xs">{t(studyFormLabel(s.studyForm))}</TableCell>
+              <TableCell>{s.isActive ? <Badge variant="success">{t("Faol")}</Badge> : <Badge variant="muted">{t("Nofaol")}</Badge>}</TableCell>
               <TableCell>
                 <div className="flex justify-end gap-1">
                   <StudentDialog
@@ -105,18 +107,18 @@ export function StudentsTable({
                     universities={universities}
                     orgNames={orgNames}
                     fixedUniversity={fixedUniversity}
-                    trigger={<Button size="icon-sm" variant="ghost" aria-label="Tahrirlash"><Pencil /></Button>}
+                    trigger={<Button size="icon-sm" variant="ghost" aria-label={t("Tahrirlash")}><Pencil /></Button>}
                   />
                   {canDelete && (
                     <ConfirmAction
-                      trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label="O'chirish"><Trash2 /></Button>}
-                      title="Talabani o'chirish"
+                      trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label={t("O'chirish")}><Trash2 /></Button>}
+                      title={t("Talabani o'chirish")}
                       description={
                         s.attempts
-                          ? `${s.fullName} imtihon topshirgan. Natijalarni saqlash uchun hisobni nofaol qilish tavsiya etiladi.`
-                          : `${s.fullName} hisobi butunlay o'chiriladi.`
+                          ? t("{name} imtihon topshirgan. Natijalarni saqlash uchun hisobni nofaol qilish tavsiya etiladi.", { name: s.fullName })
+                          : t("{name} hisobi butunlay o'chiriladi.", { name: s.fullName })
                       }
-                      confirmLabel="O'chirish"
+                      confirmLabel={t("O'chirish")}
                       action={deleteStudentAction.bind(null, s.id)}
                     />
                   )}
@@ -150,6 +152,7 @@ function AssignDialog({
   names: { faculties: string[]; groups: string[] };
   onDone: () => void;
 }) {
+  const { t } = useT();
   const router = useRouter();
   const [error, setError] = React.useState<string | null>(null);
   const [pending, start] = React.useTransition();
@@ -158,8 +161,8 @@ function AssignDialog({
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); setError(null); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Guruhga biriktirish</DialogTitle>
-          <DialogDescription>{ids.length} ta talaba uchun. Bo&apos;sh qoldirilgan maydon o&apos;zgarmaydi.</DialogDescription>
+          <DialogTitle>{t("Guruhga biriktirish")}</DialogTitle>
+          <DialogDescription>{t("{n} ta talaba uchun. Bo'sh qoldirilgan maydon o'zgarmaydi.", { n: ids.length })}</DialogDescription>
         </DialogHeader>
         <form
           className="grid gap-4"
@@ -181,24 +184,24 @@ function AssignDialog({
             });
           }}
         >
-          {error && <p className="text-sm font-medium text-error">{error}</p>}
-          <Field label="Guruh" htmlFor="a-group">
+          {error && <p className="text-sm font-medium text-error">{t(error)}</p>}
+          <Field label={t("Guruh")} htmlFor="a-group">
             <Input id="a-group" name="groupName" list={`${listId}-g`} placeholder="KI-21" autoComplete="off" />
             <datalist id={`${listId}-g`}>{names.groups.map((n) => <option key={n} value={n} />)}</datalist>
           </Field>
-          <Field label="Fakultet" htmlFor="a-fac">
-            <Input id="a-fac" name="facultyName" list={`${listId}-f`} placeholder="Kompyuter injiniringi" autoComplete="off" />
+          <Field label={t("Fakultet")} htmlFor="a-fac">
+            <Input id="a-fac" name="facultyName" list={`${listId}-f`} placeholder={t("Kompyuter injiniringi")} autoComplete="off" />
             <datalist id={`${listId}-f`}>{names.faculties.map((n) => <option key={n} value={n} />)}</datalist>
           </Field>
-          <Field label="Ta'lim shakli" htmlFor="a-form">
+          <Field label={t("Ta'lim shakli")} htmlFor="a-form">
             <NativeSelect id="a-form" name="studyForm" defaultValue="">
-              <option value="">O&apos;zgarmasin</option>
-              {STUDY_FORMS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+              <option value="">{t("O'zgarmasin")}</option>
+              {STUDY_FORMS.map((f) => <option key={f.value} value={f.value}>{t(f.label)}</option>)}
             </NativeSelect>
           </Field>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Bekor qilish</Button>
-            <Button type="submit" disabled={pending}>{pending ? "Saqlanmoqda..." : "Biriktirish"}</Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("Bekor qilish")}</Button>
+            <Button type="submit" disabled={pending}>{pending ? t("Saqlanmoqda...") : t("Biriktirish")}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

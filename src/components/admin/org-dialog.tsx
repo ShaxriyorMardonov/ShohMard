@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { useT } from "@/i18n/client";
 import type { FormState } from "@/lib/validation";
 
 type Props = {
@@ -21,6 +22,7 @@ type Props = {
 };
 
 function OrgForm({ kind, universityId, item, faculties = [], defaultFacultyId, onDone }: Omit<Props, "trigger"> & { onDone: () => void }) {
+  const { t } = useT();
   const { state, onSubmit, pending } = useFormAction(async (prev: FormState, fd: FormData) => {
     const res = await (kind === "faculty" ? saveFacultyAction : saveGroupAction)(prev, fd);
     if (res.ok) onDone();
@@ -31,28 +33,32 @@ function OrgForm({ kind, universityId, item, faculties = [], defaultFacultyId, o
     <form onSubmit={onSubmit} className="grid gap-4">
       <input type="hidden" name="universityId" value={universityId} />
       {item && <input type="hidden" name="id" value={item.id} />}
-      <Field label={kind === "faculty" ? "Fakultet nomi" : "Guruh nomi"} htmlFor="o-name" error={e.name}>
-        <Input id="o-name" name="name" defaultValue={item?.name} placeholder={kind === "faculty" ? "Kompyuter injiniringi" : "KI-21"} autoFocus aria-invalid={!!e.name} />
+      <Field label={kind === "faculty" ? t("Fakultet nomi") : t("Guruh nomi")} htmlFor="o-name" error={e.name}>
+        <Input id="o-name" name="name" defaultValue={item?.name} placeholder={kind === "faculty" ? t("Kompyuter injiniringi") : "KI-21"} autoFocus aria-invalid={!!e.name} />
       </Field>
       {kind === "group" && (
-        <Field label="Fakultet" htmlFor="o-fac" error={e.facultyId}>
+        <Field label={t("Fakultet")} htmlFor="o-fac" error={e.facultyId}>
           <NativeSelect id="o-fac" name="facultyId" defaultValue={item?.facultyId ?? defaultFacultyId ?? ""}>
-            <option value="">Fakultetsiz</option>
+            <option value="">{t("Fakultetsiz")}</option>
             {faculties.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </NativeSelect>
         </Field>
       )}
       <DialogFooter>
-        <Button type="button" variant="outline" onClick={onDone}>Bekor qilish</Button>
-        <SubmitButton pending={pending} pendingText="Saqlanmoqda...">Saqlash</SubmitButton>
+        <Button type="button" variant="outline" onClick={onDone}>{t("Bekor qilish")}</Button>
+        <SubmitButton pending={pending} pendingText={t("Saqlanmoqda...")}>{t("Saqlash")}</SubmitButton>
       </DialogFooter>
     </form>
   );
 }
 
 export function OrgDialog({ trigger, ...props }: Props) {
+  const { t } = useT();
   const [open, setOpen] = React.useState(false);
-  const title = `${props.kind === "faculty" ? "Fakultet" : "Guruh"}${props.item ? "ni tahrirlash" : " qo'shish"}`;
+  const title =
+    props.kind === "faculty"
+      ? props.item ? t("Fakultetni tahrirlash") : t("Fakultet qo'shish")
+      : props.item ? t("Guruhni tahrirlash") : t("Guruh qo'shish");
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>

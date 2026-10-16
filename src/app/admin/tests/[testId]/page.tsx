@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAction } from "@/components/ui/confirm-action";
+import { getT } from "@/i18n/server";
 import { requireStaff } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { QUESTION_TYPE_LABEL, RESULT_RELEASE_LABEL, isResultReleased, testState } from "@/lib/exam-rules";
@@ -25,6 +26,7 @@ export const maxDuration = 60;
 
 export default async function TestDetailPage({ params, searchParams }: { params: Promise<{ testId: string }>; searchParams: Promise<{ saved?: string }> }) {
   const staff = await requireStaff();
+  const { t, lang } = await getT();
   const isAdmin = !staff.scope;
   const { testId } = await params;
   const { saved } = await searchParams;
@@ -61,41 +63,41 @@ export default async function TestDetailPage({ params, searchParams }: { params:
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
-        <Link href="/admin/tests"><ArrowLeft /> Testlar</Link>
+        <Link href="/admin/tests"><ArrowLeft /> {t("Testlar")}</Link>
       </Button>
       <PageHeader
         title={test.title}
         description={test.subject ?? undefined}
         actions={
           <>
-            {isAdmin && <Button asChild variant="outline"><Link href={`/admin/results?test=${test.id}`}><BarChart3 /> Natijalar</Link></Button>}
-            <Button asChild><Link href={`/admin/tests/${test.id}/edit`}><Pencil /> Tahrirlash</Link></Button>
+            {isAdmin && <Button asChild variant="outline"><Link href={`/admin/results?test=${test.id}`}><BarChart3 /> {t("Natijalar")}</Link></Button>}
+            <Button asChild><Link href={`/admin/tests/${test.id}/edit`}><Pencil /> {t("Tahrirlash")}</Link></Button>
             {isAdmin && (
               <ConfirmAction
-                trigger={<Button variant="outline" className="text-error"><Trash2 /> O&apos;chirish</Button>}
-                title="Testni o'chirish"
+                trigger={<Button variant="outline" className="text-error"><Trash2 /> {t("O'chirish")}</Button>}
+                title={t("Testni o'chirish")}
                 description={
                   totalAttempts
-                    ? `Test va uni topshirgan ${totalAttempts} ta talabaning natijalari butunlay o'chiriladi. Bu amalni qaytarib bo'lmaydi.`
-                    : "Test butunlay o'chiriladi. Savollar bankdagi savollar saqlanib qoladi."
+                    ? t("Test va uni topshirgan {n} ta talabaning natijalari butunlay o'chiriladi. Bu amalni qaytarib bo'lmaydi.", { n: totalAttempts })
+                    : t("Test butunlay o'chiriladi. Savollar bankdagi savollar saqlanib qoladi.")
                 }
-                confirmLabel="O'chirish"
+                confirmLabel={t("O'chirish")}
                 action={deleteTestAction.bind(null, test.id)}
               />
             )}
           </>
         }
       />
-      {saved && <Alert variant="success" className="mb-4"><span>Test saqlandi.</span></Alert>}
+      {saved && <Alert variant="success" className="mb-4"><span>{t("Test saqlandi.")}</span></Alert>}
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <Card>
           <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
-            <CardTitle>Savollar</CardTitle>
+            <CardTitle>{t("Savollar")}</CardTitle>
             {!locked && (
               <ImportDialog
                 kind="questions"
                 testId={test.id}
-                trigger={<Button size="sm" variant="outline"><Upload /> Word/Excel&apos;dan yuklash</Button>}
+                trigger={<Button size="sm" variant="outline"><Upload /> {t("Word/Excel'dan yuklash")}</Button>}
               />
             )}
           </CardHeader>
@@ -103,7 +105,7 @@ export default async function TestDetailPage({ params, searchParams }: { params:
             {locked && (
               <Alert variant="info" className="mb-3">
                 <Lock />
-                <span>Talabalar testni boshlagan. Natijalar adolatli bo&apos;lishi uchun savollar tarkibi qulflangan.</span>
+                <span>{t("Talabalar testni boshlagan. Natijalar adolatli bo'lishi uchun savollar tarkibi qulflangan.")}</span>
               </Alert>
             )}
             <TestQuestions
@@ -113,34 +115,39 @@ export default async function TestDetailPage({ params, searchParams }: { params:
                 id: tq.question.id,
                 text: tq.question.text,
                 subject: tq.question.subject,
-                typeLabel: QUESTION_TYPE_LABEL[tq.question.type],
+                typeLabel: t(QUESTION_TYPE_LABEL[tq.question.type]),
                 points: tq.points,
               }))}
-              bank={bank.map((q) => ({ id: q.id, text: q.text, subject: q.subject, typeLabel: QUESTION_TYPE_LABEL[q.type] }))}
+              bank={bank.map((q) => ({ id: q.id, text: q.text, subject: q.subject, typeLabel: t(QUESTION_TYPE_LABEL[q.type]) }))}
             />
           </CardContent>
         </Card>
         <div className="grid h-fit gap-6">
           <Card>
             <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Ma&apos;lumotlar</CardTitle>
-              <Badge variant={st.variant}>{st.label}</Badge>
+              <CardTitle>{t("Ma'lumotlar")}</CardTitle>
+              <Badge variant={st.variant}>{t(st.label)}</Badge>
             </CardHeader>
             <CardContent>
               <div className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-muted/60 px-3 py-2.5">
-                <span className="text-sm font-semibold text-midnight">{test.isPublished ? "Faol: talabalarga ko'rinadi" : "Nofaol: talabalarga ko'rinmaydi"}</span>
+                <span className="text-sm font-semibold text-midnight">{test.isPublished ? t("Faol: talabalarga ko'rinadi") : t("Nofaol: talabalarga ko'rinmaydi")}</span>
                 <ActiveSwitch id={test.id} active={test.isPublished} />
               </div>
               <dl className="grid gap-2.5 text-sm">
                 {[
-                  ["Boshlanish", formatDateTime(test.startsAt)],
-                  ["Tugash", formatDateTime(test.endsAt)],
-                  ["Davomiylik", formatDuration(test.durationMinutes)],
-                  ["O'tish chegarasi", `${test.passingPercent}%`],
-                  ["Savollar (har bir talabaga)", test.questionsPerAttempt && test.questionsPerAttempt < test.questions.length ? `${test.questionsPerAttempt} ta / ${test.questions.length} tadan` : `Hammasi (${test.questions.length} ta)`],
-                  ["Jami baho", `${test.maxScore ?? rawMax} ball`],
-                  ["Natija", RESULT_RELEASE_LABEL[test.resultRelease]],
-                  ["Universitetlar", test.universities.map((u) => u.name).join(", ") || "—"],
+                  [t("Boshlanish"), formatDateTime(test.startsAt, lang)],
+                  [t("Tugash"), formatDateTime(test.endsAt, lang)],
+                  [t("Davomiylik"), formatDuration(test.durationMinutes, lang)],
+                  [t("O'tish chegarasi"), `${test.passingPercent}%`],
+                  [
+                    t("Savollar (har bir talabaga)"),
+                    test.questionsPerAttempt && test.questionsPerAttempt < test.questions.length
+                      ? t("{n} ta / {total} tadan", { n: test.questionsPerAttempt, total: test.questions.length })
+                      : t("Hammasi ({total} ta)", { total: test.questions.length }),
+                  ],
+                  [t("Jami baho"), t("{n} ball", { n: test.maxScore ?? rawMax })],
+                  [t("Natija"), t(RESULT_RELEASE_LABEL[test.resultRelease])],
+                  [t("Universitetlar"), test.universities.map((u) => u.name).join(", ") || "—"],
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-4">
                     <dt className="text-muted-foreground">{k}</dt>
@@ -171,32 +178,32 @@ export default async function TestDetailPage({ params, searchParams }: { params:
             groups={groups}
           />
           <Card>
-            <CardHeader><CardTitle>Statistika</CardTitle></CardHeader>
+            <CardHeader><CardTitle>{t("Statistika")}</CardTitle></CardHeader>
             <CardContent className="grid gap-3 text-sm">
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-muted p-3"><p className="text-xl font-extrabold text-midnight">{stats._count}</p><p className="text-xs text-muted-foreground">Topshirilgan</p></div>
-                <div className="rounded-lg bg-muted p-3"><p className="text-xl font-extrabold text-midnight">{inProgress}</p><p className="text-xs text-muted-foreground">Jarayonda</p></div>
-                <div className="rounded-lg bg-muted p-3"><p className="text-xl font-extrabold text-midnight">{stats._avg.percent === null ? "—" : `${stats._avg.percent.toFixed(1)}%`}</p><p className="text-xs text-muted-foreground">O&apos;rtacha</p></div>
-                <div className="rounded-lg bg-muted p-3"><p className="text-xl font-extrabold text-midnight">{stats._max.percent === null ? "—" : `${stats._min.percent}–${stats._max.percent}%`}</p><p className="text-xs text-muted-foreground">Oraliq</p></div>
+                <div className="rounded-lg bg-muted p-3"><p className="text-xl font-extrabold text-midnight">{stats._count}</p><p className="text-xs text-muted-foreground">{t("Topshirilgan")}</p></div>
+                <div className="rounded-lg bg-muted p-3"><p className="text-xl font-extrabold text-midnight">{inProgress}</p><p className="text-xs text-muted-foreground">{t("Jarayonda")}</p></div>
+                <div className="rounded-lg bg-muted p-3"><p className="text-xl font-extrabold text-midnight">{stats._avg.percent === null ? "—" : `${stats._avg.percent.toFixed(1)}%`}</p><p className="text-xs text-muted-foreground">{t("O'rtacha")}</p></div>
+                <div className="rounded-lg bg-muted p-3"><p className="text-xl font-extrabold text-midnight">{stats._max.percent === null ? "—" : `${stats._min.percent}–${stats._max.percent}%`}</p><p className="text-xs text-muted-foreground">{t("Oraliq")}</p></div>
               </div>
               <p className="text-muted-foreground">
-                Talabalar uchun natija holati: <b className="text-midnight">{released ? "e'lon qilingan" : "e'lon qilinmagan"}</b>
+                {t("Talabalar uchun natija holati:")} <b className="text-midnight">{released ? t("e'lon qilingan") : t("e'lon qilinmagan")}</b>
               </p>
               {isAdmin && test.resultRelease === "MANUAL" &&
                 (test.resultsReleasedAt ? (
                   <ConfirmAction
-                    trigger={<Button variant="outline"><Undo2 /> E&apos;lonni bekor qilish</Button>}
-                    title="Natijalarni yashirish"
-                    description="Talabalar natija va to'g'ri javoblarni ko'ra olmaydi."
-                    confirmLabel="Yashirish"
+                    trigger={<Button variant="outline"><Undo2 /> {t("E'lonni bekor qilish")}</Button>}
+                    title={t("Natijalarni yashirish")}
+                    description={t("Talabalar natija va to'g'ri javoblarni ko'ra olmaydi.")}
+                    confirmLabel={t("Yashirish")}
                     action={setResultsReleasedAction.bind(null, test.id, false)}
                   />
                 ) : (
                   <ConfirmAction
-                    trigger={<Button variant="success"><Megaphone /> Natijalarni e&apos;lon qilish</Button>}
-                    title="Natijalarni e'lon qilish"
-                    description="Talabalar o'z ballari va to'g'ri javoblarni ko'ra oladi. Agar test hali davom etayotgan bo'lsa, javoblar boshqalarga tarqalishi mumkin."
-                    confirmLabel="E'lon qilish"
+                    trigger={<Button variant="success"><Megaphone /> {t("Natijalarni e'lon qilish")}</Button>}
+                    title={t("Natijalarni e'lon qilish")}
+                    description={t("Talabalar o'z ballari va to'g'ri javoblarni ko'ra oladi. Agar test hali davom etayotgan bo'lsa, javoblar boshqalarga tarqalishi mumkin.")}
+                    confirmLabel={t("E'lon qilish")}
                     variant="default"
                     action={setResultsReleasedAction.bind(null, test.id, true)}
                   />

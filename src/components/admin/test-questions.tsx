@@ -8,11 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/i18n/client";
 
 type Q = { id: string; text: string; subject: string | null; typeLabel: string };
 type Item = Q & { points: number };
 
 export function TestQuestions({ testId, items, bank, locked }: { testId: string; items: Item[]; bank: Q[]; locked: boolean }) {
+  const { t } = useT();
   const [pending, start] = useTransition();
   const [error, setError] = React.useState<string | null>(null);
   const run = (fn: () => Promise<{ error?: string } | void>) =>
@@ -27,13 +29,13 @@ export function TestQuestions({ testId, items, bank, locked }: { testId: string;
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          {items.length} ta savol · jami {total} ball {pending && <Loader2 className="ml-1 inline size-3.5 animate-spin" />}
+          {t("{count} ta savol · jami {total} ball", { count: items.length, total })} {pending && <Loader2 className="ml-1 inline size-3.5 animate-spin" />}
         </p>
         {!locked && <AddQuestionsDialog testId={testId} bank={bank.filter((b) => !items.some((i) => i.id === b.id))} />}
       </div>
-      {error && <p className="text-sm font-medium text-error">{error}</p>}
+      {error && <p className="text-sm font-medium text-error">{t(error)}</p>}
       {items.length === 0 ? (
-        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">Testga hali savol qo&apos;shilmagan.</p>
+        <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">{t("Testga hali savol qo'shilmagan.")}</p>
       ) : (
         <ol className="divide-y divide-border rounded-lg border">
           {items.map((q, i) => (
@@ -48,7 +50,7 @@ export function TestQuestions({ testId, items, bank, locked }: { testId: string;
               </div>
               <div className="flex items-center gap-1">
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  Ball
+                  {t("Ball")}
                   <Input
                     type="number"
                     min={1}
@@ -62,13 +64,13 @@ export function TestQuestions({ testId, items, bank, locked }: { testId: string;
                     }}
                   />
                 </label>
-                <Button size="icon-sm" variant="ghost" aria-label="Yuqoriga" disabled={locked || i === 0 || pending} onClick={() => run(() => updateTestQuestionAction(testId, q.id, { move: "up" }))}>
+                <Button size="icon-sm" variant="ghost" aria-label={t("Yuqoriga")} disabled={locked || i === 0 || pending} onClick={() => run(() => updateTestQuestionAction(testId, q.id, { move: "up" }))}>
                   <ArrowUp />
                 </Button>
-                <Button size="icon-sm" variant="ghost" aria-label="Pastga" disabled={locked || i === items.length - 1 || pending} onClick={() => run(() => updateTestQuestionAction(testId, q.id, { move: "down" }))}>
+                <Button size="icon-sm" variant="ghost" aria-label={t("Pastga")} disabled={locked || i === items.length - 1 || pending} onClick={() => run(() => updateTestQuestionAction(testId, q.id, { move: "down" }))}>
                   <ArrowDown />
                 </Button>
-                <Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label="Testdan olib tashlash" disabled={locked || pending} onClick={() => run(() => removeQuestionFromTestAction(testId, q.id))}>
+                <Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label={t("Testdan olib tashlash")} disabled={locked || pending} onClick={() => run(() => removeQuestionFromTestAction(testId, q.id))}>
                   <Trash2 />
                 </Button>
               </div>
@@ -81,6 +83,7 @@ export function TestQuestions({ testId, items, bank, locked }: { testId: string;
 }
 
 function AddQuestionsDialog({ testId, bank }: { testId: string; bank: Q[] }) {
+  const { t } = useT();
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
@@ -102,20 +105,20 @@ function AddQuestionsDialog({ testId, bank }: { testId: string; bank: Q[] }) {
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm"><Plus /> Savollar qo&apos;shish</Button>
+        <Button size="sm"><Plus /> {t("Savollar qo'shish")}</Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Savollar bankidan qo&apos;shish</DialogTitle>
-          <DialogDescription>Testga qo&apos;shiladigan savollarni belgilang.</DialogDescription>
+          <DialogTitle>{t("Savollar bankidan qo'shish")}</DialogTitle>
+          <DialogDescription>{t("Testga qo'shiladigan savollarni belgilang.")}</DialogDescription>
         </DialogHeader>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Matn yoki fan bo'yicha qidirish" className="pl-9" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("Matn yoki fan bo'yicha qidirish")} className="pl-9" />
         </div>
         <div className="max-h-[50vh] overflow-y-auto rounded-lg border">
           {filtered.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">Mos savollar topilmadi.</p>
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">{t("Mos savollar topilmadi.")}</p>
           ) : (
             filtered.map((q) => (
               <label key={q.id} className="flex cursor-pointer items-start gap-3 border-b px-3 py-2.5 last:border-0 hover:bg-muted/40">
@@ -140,7 +143,7 @@ function AddQuestionsDialog({ testId, bank }: { testId: string; bank: Q[] }) {
             ))
           )}
         </div>
-        {error && <p className="text-sm font-medium text-error">{error}</p>}
+        {error && <p className="text-sm font-medium text-error">{t(error)}</p>}
         <DialogFooter>
           <Button
             type="button"
@@ -148,7 +151,7 @@ function AddQuestionsDialog({ testId, bank }: { testId: string; bank: Q[] }) {
             onClick={() => setSelected(new Set(filtered.map((q) => q.id)))}
             disabled={!filtered.length}
           >
-            Hammasini belgilash
+            {t("Hammasini belgilash")}
           </Button>
           <Button
             disabled={!selected.size || pending}
@@ -161,7 +164,7 @@ function AddQuestionsDialog({ testId, bank }: { testId: string; bank: Q[] }) {
             }
           >
             {pending && <Loader2 className="animate-spin" />}
-            {selected.size} ta savolni qo&apos;shish
+            {t("{n} ta savolni qo'shish", { n: selected.size })}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,19 +1,23 @@
-import type { Metadata } from "next";
 import { TestForm } from "@/components/admin/test-form";
 import { PageHeader } from "@/components/layout/app-shell";
+import { getT } from "@/i18n/server";
 import { requireStaff } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { testSubjects } from "@/server/org";
 
-export const metadata: Metadata = { title: "Yangi test" };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t("Yangi test") };
+}
 
 export default async function NewTestPage() {
   const staff = await requireStaff();
+  const { t } = await getT();
   const subjects = await testSubjects(staff.scope);
   const universities = await prisma.university.findMany({ where: staff.scope ? { id: staff.scope } : {}, orderBy: { name: "asc" }, select: { id: true, name: true } });
   return (
     <div className="max-w-3xl">
-      <PageHeader title="Yangi test" description="Test yaratilgach, unga savollar bankidan savollar qo'shasiz" />
+      <PageHeader title={t("Yangi test")} description={t("Test yaratilgach, unga savollar bankidan savollar qo'shasiz")} />
       <TestForm universities={universities} subjects={subjects} fixedUniversity={staff.scope ? staff.university?.name : undefined} />
     </div>
   );

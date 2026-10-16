@@ -9,6 +9,7 @@ import { canManageTest, resolveFacultyGroup } from "@/server/org";
 import { recomputeDeadlines, rescoreTest } from "@/server/exam";
 import { hashPassword } from "@/lib/password";
 import { fromLocalInput } from "@/lib/time";
+import { getT } from "@/i18n/server";
 import {
   fieldErrors,
   passwordSchema,
@@ -283,7 +284,10 @@ export async function saveQuestionAction(_prev: FormState, fd: FormData): Promis
 export async function deleteQuestionAction(id: string): Promise<Result> {
   await requireAdmin();
   const used = await prisma.testQuestion.count({ where: { questionId: id } });
-  if (used > 0) return { error: `Savol ${used} ta testga biriktirilgan. Avval uni testlardan olib tashlang.` };
+  if (used > 0) {
+    const { t } = await getT();
+    return { error: t("Savol {count} ta testga biriktirilgan. Avval uni testlardan olib tashlang.", { count: used }) };
+  }
   const answered = await prisma.answer.count({ where: { questionId: id } });
   if (answered > 0) return { error: "Bu savolga talabalar javob bergan, uni o'chirib bo'lmaydi." };
   await prisma.question.delete({ where: { id } });
@@ -420,7 +424,8 @@ export async function updateTestScheduleAction(testId: string, _prev: FormState,
   revalidatePath(`/admin/tests/${testId}`);
   revalidatePath("/admin/tests");
   revalidatePath("/admin/results");
-  return { ok: true, message: rescored ? `Saqlandi. ${rescored} ta natija yangi bahoga moslandi.` : "Saqlandi" };
+  const { t } = await getT();
+  return { ok: true, message: rescored ? t("Saqlandi. {count} ta natija yangi bahoga moslandi.", { count: rescored }) : "Saqlandi" };
 }
 
 /* ----- Talabalarga alohida ruxsat ----- */

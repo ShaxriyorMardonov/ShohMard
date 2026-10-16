@@ -1,27 +1,31 @@
-import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/app-shell";
 import { ChangePasswordForm } from "@/components/forms/change-password-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getT } from "@/i18n/server";
 import { requireStudent } from "@/lib/auth";
 
-export const metadata: Metadata = { title: "Profil" };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t("Profil") };
+}
 
 export default async function ProfilePage() {
   const user = await requireStudent();
+  const { t } = await getT();
   const rows = [
-    ["F.I.Sh.", user.fullName],
-    ["Login", user.login],
-    ["Universitet", user.university.name],
-    ["Guruh", user.groupName ?? "—"],
+    [t("F.I.Sh."), user.fullName],
+    [t("Login"), user.login],
+    [t("Universitet"), user.university.name],
+    [t("Guruh"), user.groupName ?? "—"],
   ];
   return (
     <>
-      <PageHeader title="Profil" description="Shaxsiy ma'lumotlaringiz va xavfsizlik sozlamalari" />
+      <PageHeader title={t("Profil")} description={t("Shaxsiy ma'lumotlaringiz va xavfsizlik sozlamalari")} />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Shaxsiy ma&apos;lumotlar</CardTitle>
-            <CardDescription>Ma&apos;lumotlarni o&apos;zgartirish uchun administratorga murojaat qiling.</CardDescription>
+            <CardTitle>{t("Shaxsiy ma'lumotlar")}</CardTitle>
+            <CardDescription>{t("Ma'lumotlarni o'zgartirish uchun administratorga murojaat qiling.")}</CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="divide-y divide-border">
@@ -36,7 +40,7 @@ export default async function ProfilePage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Parolni o&apos;zgartirish</CardTitle>
+            <CardTitle>{t("Parolni o'zgartirish")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ChangePasswordForm />

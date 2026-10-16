@@ -7,6 +7,7 @@ import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { useT } from "@/i18n/client";
 
 export type FilterOption = { value: string; label: string };
 export type FilterField =
@@ -26,6 +27,7 @@ export function FilterBar({
   fields: FilterField[];
   values: Record<string, string | undefined>;
 }) {
+  const { t } = useT();
   const pathname = usePathname();
   const router = useRouter();
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -48,7 +50,7 @@ export function FilterBar({
         {search && (
           <div className="relative sm:col-span-2">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input name="q" defaultValue={values.q ?? ""} placeholder={search.placeholder} className="pl-9" aria-label="Qidirish" />
+            <Input name="q" defaultValue={values.q ?? ""} placeholder={search.placeholder} className="pl-9" aria-label={t("Qidirish")} />
           </div>
         )}
         {fields.map((f) =>
@@ -83,10 +85,10 @@ export function FilterBar({
       <div className="mt-2 flex flex-wrap items-center justify-end gap-2">
         {active && (
           <Button asChild variant="ghost" size="sm">
-            <Link href={pathname}><X /> Filtrni tozalash</Link>
+            <Link href={pathname}><X /> {t("Filtrni tozalash")}</Link>
           </Button>
         )}
-        <Button type="submit" variant="midnight" size="sm">Qidirish</Button>
+        <Button type="submit" variant="midnight" size="sm">{t("Qidirish")}</Button>
       </div>
     </form>
   );

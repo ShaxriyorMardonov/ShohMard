@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { useT } from "@/i18n/client";
 
 type Row = { id: string; fullName: string; login: string; group: string | null; allowed: boolean };
 
@@ -33,6 +34,7 @@ export function TestAccessCard({
   faculties: { id: string; name: string; universityId: string }[];
   groups: { id: string; name: string; universityId: string; facultyId: string | null }[];
 }) {
+  const { t } = useT();
   const router = useRouter();
   const [mode, setMode] = React.useState(restricted);
   React.useEffect(() => setMode(restricted), [restricted]);
@@ -63,8 +65,8 @@ export function TestAccessCard({
 
   // Qidiruv kiritilgandan biroz keyin qo'llanadi
   React.useEffect(() => {
-    const t = setTimeout(() => setQuery(q.trim()), 350);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setQuery(q.trim()), 350);
+    return () => clearTimeout(timer);
   }, [q]);
 
   const facOptions = faculties.filter((f) => !uni || f.universityId === uni);
@@ -93,14 +95,14 @@ export function TestAccessCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Kimlar topshira oladi</CardTitle>
-        <CardDescription>Testni barcha talabalarga yoki faqat belgilanganlarga ochish</CardDescription>
+        <CardTitle>{t("Kimlar topshira oladi")}</CardTitle>
+        <CardDescription>{t("Testni barcha talabalarga yoki faqat belgilanganlarga ochish")}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 text-sm">
         <div className="grid gap-2">
           {[
-            { v: false, t: "Tanlangan universitetlarning barcha talabalari" },
-            { v: true, t: "Faqat belgilangan talabalar" },
+            { v: false, label: t("Tanlangan universitetlarning barcha talabalari") },
+            { v: true, label: t("Faqat belgilangan talabalar") },
           ].map((o) => (
             <label key={String(o.v)} className="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 has-[:checked]:border-royal has-[:checked]:bg-royal/5">
               <input
@@ -114,7 +116,7 @@ export function TestAccessCard({
                 }}
                 className="size-4 accent-[#315ECA]"
               />
-              {o.t}
+              {o.label}
             </label>
           ))}
         </div>
@@ -122,38 +124,36 @@ export function TestAccessCard({
         {mode && (
           <>
             <p className="font-semibold text-midnight">
-              Ruxsat berilgan: <Badge variant={allowedCount ? "success" : "muted"}>{allowedCount}</Badge>
+              {t("Ruxsat berilgan:")} <Badge variant={allowedCount ? "success" : "muted"}>{allowedCount}</Badge>
             </p>
             {allowedCount === 0 && (
-              <Alert variant="warning"><span>Hozircha hech kim belgilanmagan, test hech kimga ko&apos;rinmaydi.</span></Alert>
+              <Alert variant="warning"><span>{t("Hozircha hech kim belgilanmagan, test hech kimga ko'rinmaydi.")}</span></Alert>
             )}
             <div className="grid gap-2">
-              {multiUni && (
-                <NativeSelect value={uni} onChange={(e) => { setUni(e.target.value); setFac(""); setGrp(""); }} aria-label="Universitet">
-                  <option value="">Barcha universitetlar</option>
-                  {universities.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </NativeSelect>
-              )}
-              <NativeSelect value={fac} onChange={(e) => { setFac(e.target.value); setGrp(""); }} aria-label="Fakultet">
-                <option value="">Barcha fakultetlar</option>
+              <NativeSelect value={uni} onChange={(e) => { setUni(e.target.value); setFac(""); setGrp(""); }} aria-label={t("Universitet")} disabled={!multiUni}>
+                {multiUni && <option value="">{t("Barcha universitetlar")}</option>}
+                {universities.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </NativeSelect>
+              <NativeSelect value={fac} onChange={(e) => { setFac(e.target.value); setGrp(""); }} aria-label={t("Fakultet")}>
+                <option value="">{t("Barcha fakultetlar")}</option>
                 {facOptions.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
               </NativeSelect>
-              <NativeSelect value={grp} onChange={(e) => setGrp(e.target.value)} aria-label="Guruh">
-                <option value="">Barcha guruhlar</option>
+              <NativeSelect value={grp} onChange={(e) => setGrp(e.target.value)} aria-label={t("Guruh")}>
+                <option value="">{t("Barcha guruhlar")}</option>
                 {grpOptions.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </NativeSelect>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ism yoki login" className="pl-9" aria-label="Talabani qidirish" />
+                <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Ism yoki login")} className="pl-9" aria-label={t("Talabani qidirish")} />
               </div>
             </div>
-            {error && <p className="text-xs font-medium text-error">{error}</p>}
+            {error && <p className="text-xs font-medium text-error">{t(error)}</p>}
             <div className="overflow-hidden rounded-lg border">
               <label className="flex cursor-pointer items-center gap-2.5 border-b bg-muted/60 px-3 py-2 font-semibold text-midnight">
                 <input type="checkbox" checked={allChecked} disabled={busy || loading || rows.length === 0} onChange={toggleAll} className="size-4 accent-[#315ECA]" />
-                Hammasini belgilash
+                {t("Hammasini belgilash")}
                 <span className="ml-auto text-xs font-normal text-muted-foreground">
-                  {loading || busy ? <Loader2 className="size-3.5 animate-spin" /> : `${total} ta talaba`}
+                  {loading || busy ? <Loader2 className="size-3.5 animate-spin" /> : t("{n} ta talaba", { n: total })}
                 </span>
               </label>
               <ul className="max-h-80 divide-y overflow-y-auto">
@@ -168,11 +168,11 @@ export function TestAccessCard({
                     </label>
                   </li>
                 ))}
-                {!loading && rows.length === 0 && <li className="px-3 py-3 text-xs text-muted-foreground">Talabalar topilmadi</li>}
+                {!loading && rows.length === 0 && <li className="px-3 py-3 text-xs text-muted-foreground">{t("Talabalar topilmadi")}</li>}
               </ul>
               {total > rows.length && (
                 <p className="border-t px-3 py-2 text-xs text-muted-foreground">
-                  Birinchi {rows.length} tasi ko&apos;rsatildi. &quot;Hammasini belgilash&quot; filtrga mos barcha {total} ta talabaga ta&apos;sir qiladi.
+                  {t("Birinchi {shown} tasi ko'rsatildi. \"Hammasini belgilash\" filtrga mos barcha {total} ta talabaga ta'sir qiladi.", { shown: rows.length, total })}
                 </p>
               )}
             </div>

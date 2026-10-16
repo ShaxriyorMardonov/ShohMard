@@ -7,11 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getT } from "@/i18n/server";
 import { formatDateTime } from "@/lib/time";
 import { finalizeExpiredAttempts } from "@/server/exam";
 
 export default async function AdminDashboard() {
   const admin = await requireAdmin();
+  const { t, lang } = await getT();
   await finalizeExpiredAttempts();
   const now = new Date();
 
@@ -54,49 +56,49 @@ export default async function AdminDashboard() {
   return (
     <>
       <PageHeader
-        title={`Xush kelibsiz, ${admin.fullName}`}
-        description="SAMU platformasining umumiy holati"
+        title={t("Xush kelibsiz, {name}", { name: admin.fullName })}
+        description={t("SAMU platformasining umumiy holati")}
         actions={
           <>
             <Button asChild variant="outline">
-              <Link href="/admin/questions/new"><Plus /> Savol</Link>
+              <Link href="/admin/questions/new"><Plus /> {t("Savol")}</Link>
             </Button>
             <Button asChild>
-              <Link href="/admin/tests/new"><Plus /> Yangi test</Link>
+              <Link href="/admin/tests/new"><Plus /> {t("Yangi test")}</Link>
             </Button>
           </>
         }
       />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Universitetlar" value={universities} icon={<Building2 />} tone="midnight" />
-        <StatCard label="Faol talabalar" value={students} icon={<Users />} />
-        <StatCard label="Faol testlar" value={publishedTests} hint={`Hozir ochiq: ${openTests}`} icon={<ClipboardList />} tone="warning" />
-        <StatCard label="Savollar banki" value={questions} icon={<Library />} tone="success" />
+        <StatCard label={t("Universitetlar")} value={universities} icon={<Building2 />} tone="midnight" />
+        <StatCard label={t("Faol talabalar")} value={students} icon={<Users />} />
+        <StatCard label={t("Faol testlar")} value={publishedTests} hint={t("Hozir ochiq: {n}", { n: openTests })} icon={<ClipboardList />} tone="warning" />
+        <StatCard label={t("Savollar banki")} value={questions} icon={<Library />} tone="success" />
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <StatCard label="Topshirilgan urinishlar" value={submitted} icon={<BarChart3 />} tone="success" />
-        <StatCard label="Hozir imtihonda" value={inProgress} icon={<Activity />} tone="warning" />
-        <StatCard label="O'rtacha natija" value={avg._avg.percent === null ? "—" : `${avg._avg.percent.toFixed(1)}%`} icon={<BarChart3 />} />
+        <StatCard label={t("Topshirilgan urinishlar")} value={submitted} icon={<BarChart3 />} tone="success" />
+        <StatCard label={t("Hozir imtihonda")} value={inProgress} icon={<Activity />} tone="warning" />
+        <StatCard label={t("O'rtacha natija")} value={avg._avg.percent === null ? "—" : `${avg._avg.percent.toFixed(1)}%`} icon={<BarChart3 />} />
       </div>
 
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[1.6fr_1fr]">
         <Card className="overflow-hidden">
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>So&apos;nggi natijalar</CardTitle>
-            <Link href="/admin/results" className="text-sm font-semibold text-royal hover:underline">Barchasi</Link>
+            <CardTitle>{t("So'nggi natijalar")}</CardTitle>
+            <Link href="/admin/results" className="text-sm font-semibold text-royal hover:underline">{t("Barchasi")}</Link>
           </CardHeader>
           {recent.length === 0 ? (
             <CardContent>
-              <EmptyState icon={<BarChart3 />} title="Hali natijalar yo'q" />
+              <EmptyState icon={<BarChart3 />} title={t("Hali natijalar yo'q")} />
             </CardContent>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Talaba</TableHead>
-                  <TableHead>Test</TableHead>
-                  <TableHead>Vaqt</TableHead>
-                  <TableHead className="text-right">Natija</TableHead>
+                  <TableHead>{t("Talaba")}</TableHead>
+                  <TableHead>{t("Test")}</TableHead>
+                  <TableHead>{t("Vaqt")}</TableHead>
+                  <TableHead className="text-right">{t("Natija")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -107,7 +109,7 @@ export default async function AdminDashboard() {
                       <span className="block text-xs text-muted-foreground">{r.user.university?.shortName}</span>
                     </TableCell>
                     <TableCell className="max-w-[220px] truncate">{r.test.title}</TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(r.submittedAt)}</TableCell>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(r.submittedAt, lang)}</TableCell>
                     <TableCell className="text-right">
                       <Badge variant={(r.percent ?? 0) >= r.test.passingPercent ? "success" : "error"}>{r.percent}%</Badge>
                     </TableCell>
@@ -121,10 +123,10 @@ export default async function AdminDashboard() {
         <div className="grid gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Universitetlar kesimida</CardTitle>
+              <CardTitle>{t("Universitetlar kesimida")}</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
-              {uniStats.length === 0 && <p className="text-sm text-muted-foreground">Universitetlar hali qo&apos;shilmagan.</p>}
+              {uniStats.length === 0 && <p className="text-sm text-muted-foreground">{t("Universitetlar hali qo'shilmagan.")}</p>}
               {uniStats.map((u) => {
                 const pct = u.avg === null ? 0 : Number(u.avg);
                 return (
@@ -132,7 +134,7 @@ export default async function AdminDashboard() {
                     <div className="mb-1.5 flex items-center justify-between text-sm">
                       <span className="font-semibold text-midnight">{u.shortName}</span>
                       <span className="text-muted-foreground">
-                        {Number(u.students)} talaba · {u.avg === null ? "natija yo'q" : `${pct.toFixed(1)}%`}
+                        {t("{n} talaba", { n: Number(u.students) })} · {u.avg === null ? t("natija yo'q") : `${pct.toFixed(1)}%`}
                       </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -145,22 +147,22 @@ export default async function AdminDashboard() {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Faol va yaqin testlar</CardTitle>
+              <CardTitle>{t("Faol va yaqin testlar")}</CardTitle>
             </CardHeader>
             <CardContent>
               {upcoming.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Faol yoki rejalashtirilgan testlar yo&apos;q.</p>
+                <p className="text-sm text-muted-foreground">{t("Faol yoki rejalashtirilgan testlar yo'q.")}</p>
               ) : (
                 <ul className="divide-y divide-border">
-                  {upcoming.map((t) => {
-                    const open = t.startsAt <= now;
+                  {upcoming.map((test) => {
+                    const open = test.startsAt <= now;
                     return (
-                      <li key={t.id} className="flex items-center justify-between gap-3 py-2.5">
+                      <li key={test.id} className="flex items-center justify-between gap-3 py-2.5">
                         <div className="min-w-0">
-                          <Link href={`/admin/tests/${t.id}`} className="block truncate text-sm font-semibold text-midnight hover:text-royal">{t.title}</Link>
-                          <p className="text-xs text-muted-foreground">{open ? `Tugashi: ${formatDateTime(t.endsAt)}` : `Boshlanishi: ${formatDateTime(t.startsAt)}`}</p>
+                          <Link href={`/admin/tests/${test.id}`} className="block truncate text-sm font-semibold text-midnight hover:text-royal">{test.title}</Link>
+                          <p className="text-xs text-muted-foreground">{open ? t("Tugashi: {date}", { date: formatDateTime(test.endsAt, lang) }) : t("Boshlanishi: {date}", { date: formatDateTime(test.startsAt, lang) })}</p>
                         </div>
-                        <Badge variant={open ? "success" : "muted"}>{open ? `Ochiq · ${t._count.attempts}` : "Kutilmoqda"}</Badge>
+                        <Badge variant={open ? "success" : "muted"}>{open ? t("Ochiq · {n}", { n: test._count.attempts }) : t("Kutilmoqda")}</Badge>
                       </li>
                     );
                   })}

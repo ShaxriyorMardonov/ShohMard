@@ -28,6 +28,10 @@ const ANSWER = /^\s*(javob|to['ʻʼ’`]?g['ʻʼ’`]?ri javob|answer)\s*[:\-–
 const SUBJECT = /^\s*fan\s*[:\-–]\s*(.+)$/i;
 const NOTE = /^\s*izoh\s*[:\-–]\s*(.+)$/i;
 
+/** Xato matnlarini tarjima qilish uchun (sof funksiya; standart holatda o'zbekcha qoladi). */
+export type ParserT = (key: string, vars?: Record<string, string | number>) => string;
+const uzT: ParserT = (key, vars) => (vars ? key.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m)) : key);
+
 const normTF = (s: string) => s.toLowerCase().replace(/[ʻʼ'`’‘\s]/g, "");
 
 type Draft = { line: number; text: string[]; options: { letter: string; text: string; marked: boolean }[]; answer: string | null; explanation: string | null; subject: string | null };
@@ -45,7 +49,7 @@ const SEP_OPT = /^\s*={4,}\s*$/m;
  *   variant
  *   ++++                       (keyingi savol)
  */
-function parseSeparatedText(raw: string): { questions: ParsedQuestion[]; errors: string[] } {
+function parseSeparatedText(raw: string, tr: ParserT): { questions: ParsedQuestion[]; errors: string[] } {
   const questions: ParsedQuestion[] = [];
   const errors: string[] = [];
   let subject: string | null = null;
@@ -59,9 +63,9 @@ function parseSeparatedText(raw: string): { questions: ParsedQuestion[]; errors:
       qLines.shift();
     }
     const text = qLines.join("\n");
-    const label = `${idx + 1}-savol ("${(text || "?").slice(0, 40)}")`;
+    const label = tr('{n}-savol ("{preview}")', { n: idx + 1, preview: (text || "?").slice(0, 40) });
     if (!text) {
-      errors.push(`${label}: savol matni bo'sh`);
+      errors.push(tr("{label}: savol matni bo'sh", { label }));
       return;
     }
     const opts = parts
@@ -71,16 +75,16 @@ function parseSeparatedText(raw: string): { questions: ParsedQuestion[]; errors:
       .map((p) => ({ marked: p.startsWith("#"), text: p.replace(/^#\s*/, "").trim() }))
       .filter((o) => o.text);
     if (opts.length < 2) {
-      errors.push(`${label}: kamida 2 ta variant kerak (variantlar ==== bilan ajratiladi)`);
+      errors.push(tr("{label}: kamida 2 ta variant kerak (variantlar ==== bilan ajratiladi)", { label }));
       return;
     }
     if (opts.length > 6) {
-      errors.push(`${label}: ko'pi bilan 6 ta variant bo'lishi mumkin`);
+      errors.push(tr("{label}: ko'pi bilan 6 ta variant bo'lishi mumkin", { label }));
       return;
     }
     const nCorrect = opts.filter((o) => o.marked).length;
     if (nCorrect === 0) {
-      errors.push(`${label}: to'g'ri javob belgilanmagan (to'g'ri variant oldiga # qo'ying)`);
+      errors.push(tr("{label}: to'g'ri javob belgilanmagan (to'g'ri variant oldiga # qo'ying)", { label }));
       return;
     }
     const options = opts.map((o) => ({ text: o.text.slice(0, 1000), isCorrect: o.marked }));
@@ -96,13 +100,13 @@ function parseSeparatedText(raw: string): { questions: ParsedQuestion[]; errors:
       options,
     });
   });
-  if (blocks.length === 0) errors.push("Faylda savol topilmadi");
+  if (blocks.length === 0) errors.push(tr("Faylda savol topilmadi"));
   return { questions, errors };
 }
 
-export function parseQuestionText(raw: string): { questions: ParsedQuestion[]; errors: string[] } {
+export function parseQuestionText(raw: string, tr: ParserT = uzT): { questions: ParsedQuestion[]; errors: string[] } {
   raw = raw.replace(/\r\n?/g, "\n");
-  if (SEP_OPT.test(raw)) return parseSeparatedText(raw);
+  if (SEP_OPT.test(raw)) return parseSeparatedText(raw, tr);
   const lines = raw.replace(/\r/g, "").split("\n");
   const drafts: Draft[] = [];
   let subject: string | null = null;
@@ -142,13 +146,13 @@ export function parseQuestionText(raw: string): { questions: ParsedQuestion[]; e
   const errors: string[] = [];
   drafts.forEach((d, idx) => {
     const n = idx + 1;
-    const label = `${n}-savol ("${d.text[0]!.slice(0, 40)}")`;
+    const label = tr('{n}-savol ("{preview}")', { n, preview: d.text[0]!.slice(0, 40) });
     if (d.options.length < 2) {
-      errors.push(`${label}: kamida 2 ta variant (A), B) ...) kerak`);
+      errors.push(tr("{label}: kamida 2 ta variant (A), B) ...) kerak", { label }));
       return;
     }
     if (d.options.length > 6) {
-      errors.push(`${label}: ko'pi bilan 6 ta variant bo'lishi mumkin`);
+      errors.push(tr("{label}: ko'pi bilan 6 ta variant bo'lishi mumkin", { label }));
       return;
     }
     let correct: Set<string>;
@@ -156,14 +160,14 @@ export function parseQuestionText(raw: string): { questions: ParsedQuestion[]; e
       correct = new Set(d.answer.toUpperCase().split(/[\s,;]+/).filter(Boolean));
       const bad = [...correct].filter((c) => !d.options.some((o) => o.letter === c));
       if (bad.length) {
-        errors.push(`${label}: "Javob" qatoridagi harf variantlarda yo'q: ${bad.join(", ")}`);
+        errors.push(tr('{label}: "Javob" qatoridagi harf variantlarda yo\'q: {letters}', { label, letters: bad.join(", ") }));
         return;
       }
     } else {
       correct = new Set(d.options.filter((o) => o.marked).map((o) => o.letter));
     }
     if (correct.size === 0) {
-      errors.push(`${label}: to'g'ri javob belgilanmagan (variant oldiga * qo'ying yoki "Javob: B" yozing)`);
+      errors.push(tr("{label}: to'g'ri javob belgilanmagan (variant oldiga * qo'ying yoki \"Javob: B\" yozing)", { label }));
       return;
     }
     const options = d.options.map((o) => ({ text: o.text.replace(/\s*[*+]\s*$/, "").trim().slice(0, 1000), isCorrect: correct.has(o.letter) }));
@@ -180,6 +184,6 @@ export function parseQuestionText(raw: string): { questions: ParsedQuestion[]; e
       options,
     });
   });
-  if (drafts.length === 0) errors.push("Faylda savol topilmadi. Har bir savol raqam bilan boshlanishi kerak: \"1. Savol matni\"");
+  if (drafts.length === 0) errors.push(tr("Faylda savol topilmadi. Har bir savol raqam bilan boshlanishi kerak: \"1. Savol matni\""));
   return { questions, errors };
 }

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getT } from "@/i18n/server";
 import { requireStudent } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { QUESTION_TYPE_LABEL, isResultReleased, releaseTime } from "@/lib/exam-rules";
@@ -15,6 +16,7 @@ import { finalizeExpiredAttempts } from "@/server/exam";
 export default async function ResultDetailPage({ params }: { params: Promise<{ attemptId: string }> }) {
   const { attemptId } = await params;
   const user = await requireStudent();
+  const { t, lang } = await getT();
   await finalizeExpiredAttempts({ userId: user.id });
 
   // Avval faqat egalik va e'lon holatini tekshiramiz; kalitlar faqat ruxsat bo'lsa yuklanadi.
@@ -31,12 +33,12 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ a
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
             <Clock className="size-10 text-royal" />
-            <p className="font-bold text-midnight">Natija hali e&apos;lon qilinmagan</p>
+            <p className="font-bold text-midnight">{t("Natija hali e'lon qilinmagan")}</p>
             <p className="text-sm text-muted-foreground">
-              {at ? `Natijalar ${formatDateTime(at)} dan keyin ko'rinadi.` : "Natijalar administrator tomonidan e'lon qilinadi."}
+              {at ? t("Natijalar {date} dan keyin ko'rinadi.", { date: formatDateTime(at, lang) }) : t("Natijalar administrator tomonidan e'lon qilinadi.")}
             </p>
             <Button asChild variant="outline">
-              <Link href="/student/history">Tarixga qaytish</Link>
+              <Link href="/student/history">{t("Tarixga qaytish")}</Link>
             </Button>
           </CardContent>
         </Card>
@@ -86,28 +88,28 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ a
     <>
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
         <Link href="/student/results">
-          <ArrowLeft /> Natijalarga qaytish
+          <ArrowLeft /> {t("Natijalarga qaytish")}
         </Link>
       </Button>
       <PageHeader
         title={attempt.test.title}
-        description={`Topshirilgan: ${formatDateTime(attempt.submittedAt)}${attempt.autoSubmitted ? " (vaqt tugagach avtomatik)" : ""}`}
+        description={`${t("Topshirilgan: {date}", { date: formatDateTime(attempt.submittedAt, lang) })}${attempt.autoSubmitted ? ` ${t("(vaqt tugagach avtomatik)")}` : ""}`}
       />
       <Card className="mb-6">
         <CardContent className="flex flex-wrap items-center gap-6 pt-5">
           <div>
             <p className="text-4xl font-extrabold text-midnight">{attempt.percent}%</p>
             <p className="text-sm text-muted-foreground">
-              {attempt.score}/{attempt.maxScore} ball
+              {t("{score}/{max} ball", { score: attempt.score, max: attempt.maxScore })}
             </p>
           </div>
           <div className="text-sm text-muted-foreground">
-            To&apos;g&apos;ri javoblar: <b className="text-foreground">{attempt.correctCount}</b> / {attempt.totalQuestions}
+            {t("To'g'ri javoblar:")} <b className="text-foreground">{attempt.correctCount}</b> / {attempt.totalQuestions}
             <br />
-            O&apos;tish chegarasi: {attempt.test.passingPercent}%
+            {t("O'tish chegarasi: {p}%", { p: attempt.test.passingPercent })}
           </div>
           <Badge variant={pass ? "success" : "error"} className="ml-auto text-sm">
-            {pass ? "Muvaffaqiyatli" : "O'tmadi"}
+            {pass ? t("Muvaffaqiyatli") : t("O'tmadi")}
           </Badge>
         </CardContent>
       </Card>
@@ -122,10 +124,10 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ a
               <Card>
                 <CardContent className="pt-5">
                   <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-bold text-royal">{i + 1}-savol</span>
-                    <Badge variant="muted">{QUESTION_TYPE_LABEL[q.type]}</Badge>
+                    <span className="text-sm font-bold text-royal">{t("{n}-savol", { n: i + 1 })}</span>
+                    <Badge variant="muted">{t(QUESTION_TYPE_LABEL[q.type])}</Badge>
                     <Badge variant={correct ? "success" : selected.size ? "error" : "muted"} className="ml-auto">
-                      {correct ? `+${points} ball` : selected.size ? "Noto'g'ri" : "Javob berilmagan"}
+                      {correct ? t("+{points} ball", { points }) : selected.size ? t("Noto'g'ri") : t("Javob berilmagan")}
                     </Badge>
                   </div>
                   <p className="whitespace-pre-line font-semibold text-midnight">{q.text}</p>
@@ -144,14 +146,14 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ a
                             {o.isCorrect ? <Check className="size-4 text-success" /> : isSel ? <X className="size-4 text-error" /> : null}
                           </span>
                           <span className="flex-1">{o.text}</span>
-                          {isSel && <span className="text-xs font-semibold text-muted-foreground">Sizning javobingiz</span>}
+                          {isSel && <span className="text-xs font-semibold text-muted-foreground">{t("Sizning javobingiz")}</span>}
                         </li>
                       );
                     })}
                   </ul>
                   {q.explanation && (
                     <p className="mt-3 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-                      <b className="text-foreground">Izoh:</b> {q.explanation}
+                      <b className="text-foreground">{t("Izoh:")}</b> {q.explanation}
                     </p>
                   )}
                 </CardContent>

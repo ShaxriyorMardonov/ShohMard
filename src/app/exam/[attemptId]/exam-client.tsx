@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
 type QType = "SINGLE" | "MULTIPLE" | "TRUE_FALSE";
@@ -59,6 +60,7 @@ export function ExamClient(props: {
   initialAnswers: { questionId: string; selectedOptionIds: string[]; flagged: boolean }[];
 }) {
   const { attemptId, questions } = props;
+  const { t } = useT();
   const router = useRouter();
   const deadline = React.useMemo(() => new Date(props.deadlineAt).getTime(), [props.deadlineAt]);
   // Server va brauzer soatlari orasidagi farq: taymer faqat server muddatiga tayanadi.
@@ -252,9 +254,9 @@ export function ExamClient(props: {
   const navigator = (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-sm font-bold text-midnight">Savollar</p>
+        <p className="text-sm font-bold text-midnight">{t("Savollar")}</p>
         <p className="text-xs text-muted-foreground">
-          {answeredCount}/{questions.length} javob berildi
+          {t("{answered}/{total} javob berildi", { answered: answeredCount, total: questions.length })}
         </p>
       </div>
       <div className="grid grid-cols-6 gap-2 sm:grid-cols-8 lg:grid-cols-5">
@@ -269,7 +271,7 @@ export function ExamClient(props: {
                 setIndex(i);
                 setNavOpen(false);
               }}
-              aria-label={`${i + 1}-savol${answered ? ", javob berilgan" : ", javob berilmagan"}${st?.flagged ? ", belgilangan" : ""}`}
+              aria-label={`${t("{n}-savol", { n: i + 1 })}, ${answered ? t("javob berilgan") : t("javob berilmagan")}${st?.flagged ? `, ${t("belgilangan")}` : ""}`}
               aria-current={i === index ? "step" : undefined}
               className={cn(
                 "relative flex h-10 items-center justify-center rounded-lg border text-sm font-semibold transition-colors cursor-pointer",
@@ -284,9 +286,9 @@ export function ExamClient(props: {
         })}
       </div>
       <ul className="mt-4 grid gap-1.5 text-xs text-muted-foreground">
-        <li className="flex items-center gap-2"><span className="size-3 rounded bg-royal" /> Javob berilgan ({answeredCount})</li>
-        <li className="flex items-center gap-2"><span className="size-3 rounded border border-border bg-card" /> Javob berilmagan ({unanswered})</li>
-        <li className="flex items-center gap-2"><span className="size-3 rounded-full bg-warning" /> Ko&apos;rib chiqish uchun belgilangan ({flaggedCount})</li>
+        <li className="flex items-center gap-2"><span className="size-3 rounded bg-royal" /> {t("Javob berilgan")} ({answeredCount})</li>
+        <li className="flex items-center gap-2"><span className="size-3 rounded border border-border bg-card" /> {t("Javob berilmagan")} ({unanswered})</li>
+        <li className="flex items-center gap-2"><span className="size-3 rounded-full bg-warning" /> {t("Ko'rib chiqish uchun belgilangan")} ({flaggedCount})</li>
       </ul>
     </div>
   );
@@ -311,7 +313,7 @@ export function ExamClient(props: {
             )}
             role="timer"
             aria-live="off"
-            aria-label={`Qolgan vaqt ${fmt(remaining)}`}
+            aria-label={t("Qolgan vaqt {time}", { time: fmt(remaining) })}
           >
             <Timer className="size-4" />
             {fmt(remaining)}
@@ -323,7 +325,7 @@ export function ExamClient(props: {
             onClick={() => setConfirmOpen(true)}
             disabled={!!finishing || !!fatal}
           >
-            <Send /> Yakunlash
+            <Send /> {t("Yakunlash")}
           </Button>
         </div>
         <div className="h-1 bg-white/10">
@@ -338,8 +340,8 @@ export function ExamClient(props: {
               <span className="rounded-full bg-midnight px-3 py-1 text-xs font-bold text-white">
                 {index + 1} / {questions.length}
               </span>
-              <span className="text-xs font-medium text-muted-foreground">{TYPE_HINT[q.type]}</span>
-              <span className="ml-auto text-xs font-semibold text-royal">{q.points} ball</span>
+              <span className="text-xs font-medium text-muted-foreground">{t(TYPE_HINT[q.type])}</span>
+              <span className="ml-auto text-xs font-semibold text-royal">{t("{points} ball", { points: q.points })}</span>
             </div>
             <h1 id="question-title" className="mt-5 whitespace-pre-line text-lg font-bold leading-relaxed text-midnight sm:text-xl">
               {q.text}
@@ -383,11 +385,11 @@ export function ExamClient(props: {
                 disabled={!!finishing || !!fatal}
                 className={cn(a.flagged && "border border-warning/50 bg-warning/15 text-[#8a5a12] hover:bg-warning/25")}
               >
-                <Flag /> {a.flagged ? "Belgi qo'yilgan" : "Keyinroq ko'rib chiqish"}
+                <Flag /> {a.flagged ? t("Belgi qo'yilgan") : t("Keyinroq ko'rib chiqish")}
               </Button>
               {a.selected.length > 0 && (
                 <Button variant="ghost" size="sm" onClick={() => update(q.id, { selected: [] })} disabled={!!finishing || !!fatal}>
-                  Javobni tozalash
+                  {t("Javobni tozalash")}
                 </Button>
               )}
             </div>
@@ -395,18 +397,18 @@ export function ExamClient(props: {
 
           <div className="mt-4 flex items-center justify-between gap-3">
             <Button variant="outline" onClick={() => setIndex((i) => Math.max(0, i - 1))} disabled={index === 0}>
-              <ChevronLeft /> Oldingi
+              <ChevronLeft /> {t("Oldingi")}
             </Button>
             <Button variant="outline" className="lg:hidden" onClick={() => setNavOpen(true)}>
               <LayoutGrid /> {answeredCount}/{questions.length}
             </Button>
             {index < questions.length - 1 ? (
               <Button variant="midnight" onClick={() => setIndex((i) => Math.min(questions.length - 1, i + 1))}>
-                Keyingi <ChevronRight />
+                {t("Keyingi")} <ChevronRight />
               </Button>
             ) : (
               <Button onClick={() => setConfirmOpen(true)} disabled={!!finishing || !!fatal}>
-                <Send /> Yakunlash
+                <Send /> {t("Yakunlash")}
               </Button>
             )}
           </div>
@@ -416,7 +418,7 @@ export function ExamClient(props: {
           <div className="sticky top-24 grid gap-4">
             <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-[var(--shadow-card)]">{navigator}</div>
             <Button className="w-full" onClick={() => setConfirmOpen(true)} disabled={!!finishing || !!fatal}>
-              <Send /> Testni yakunlash
+              <Send /> {t("Testni yakunlash")}
             </Button>
           </div>
         </aside>
@@ -426,12 +428,12 @@ export function ExamClient(props: {
       <Dialog open={navOpen} onOpenChange={setNavOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Savollar bo&apos;yicha o&apos;tish</DialogTitle>
-            <DialogDescription>Savol raqamini bosib, unga o&apos;ting.</DialogDescription>
+            <DialogTitle>{t("Savollar bo'yicha o'tish")}</DialogTitle>
+            <DialogDescription>{t("Savol raqamini bosib, unga o'ting.")}</DialogDescription>
           </DialogHeader>
           {navigator}
           <Button onClick={() => { setNavOpen(false); setConfirmOpen(true); }} disabled={!!finishing || !!fatal}>
-            <Send /> Testni yakunlash
+            <Send /> {t("Testni yakunlash")}
           </Button>
         </DialogContent>
       </Dialog>
@@ -440,36 +442,36 @@ export function ExamClient(props: {
       <Dialog open={confirmOpen} onOpenChange={(o) => !finishing && setConfirmOpen(o)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Testni yakunlaysizmi?</DialogTitle>
-            <DialogDescription>Topshirilgandan so&apos;ng javoblarni o&apos;zgartirib bo&apos;lmaydi.</DialogDescription>
+            <DialogTitle>{t("Testni yakunlaysizmi?")}</DialogTitle>
+            <DialogDescription>{t("Topshirilgandan so'ng javoblarni o'zgartirib bo'lmaydi.")}</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded-lg bg-royal/8 p-3">
               <p className="text-xl font-extrabold text-royal">{answeredCount}</p>
-              <p className="text-xs text-muted-foreground">Javob berilgan</p>
+              <p className="text-xs text-muted-foreground">{t("Javob berilgan")}</p>
             </div>
             <div className={cn("rounded-lg p-3", unanswered ? "bg-error/8" : "bg-muted")}>
               <p className={cn("text-xl font-extrabold", unanswered ? "text-error" : "text-midnight")}>{unanswered}</p>
-              <p className="text-xs text-muted-foreground">Javobsiz</p>
+              <p className="text-xs text-muted-foreground">{t("Javobsiz")}</p>
             </div>
             <div className="rounded-lg bg-warning/12 p-3">
               <p className="text-xl font-extrabold text-[#9a6413]">{flaggedCount}</p>
-              <p className="text-xs text-muted-foreground">Belgilangan</p>
+              <p className="text-xs text-muted-foreground">{t("Belgilangan")}</p>
             </div>
           </div>
           {unanswered > 0 && (
             <p className="flex items-start gap-2 text-sm text-[#a52f2f]">
               <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              {unanswered} ta savolga javob bermagansiz. Ular noto&apos;g&apos;ri deb hisoblanadi.
+              {t("{n} ta savolga javob bermagansiz. Ular noto'g'ri deb hisoblanadi.", { n: unanswered })}
             </p>
           )}
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline" disabled={!!finishing}>Testga qaytish</Button>
+              <Button variant="outline" disabled={!!finishing}>{t("Testga qaytish")}</Button>
             </DialogClose>
             <Button onClick={() => void finish("manual")} disabled={!!finishing}>
               {finishing ? <Loader2 className="animate-spin" /> : <Send />}
-              Ha, topshirish
+              {t("Ha, topshirish")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -481,14 +483,14 @@ export function ExamClient(props: {
             {fatal ? (
               <>
                 <AlertTriangle className="mx-auto size-10 text-warning" />
-                <p className="mt-3 font-bold text-midnight">{fatal}</p>
-                <Button className="mt-5 w-full" onClick={goToHistory}>Testlar tarixiga o&apos;tish</Button>
+                <p className="mt-3 font-bold text-midnight">{t(fatal)}</p>
+                <Button className="mt-5 w-full" onClick={goToHistory}>{t("Testlar tarixiga o'tish")}</Button>
               </>
             ) : (
               <>
                 <Loader2 className="mx-auto size-10 animate-spin text-royal" />
-                <p className="mt-3 font-bold text-midnight">Vaqt tugadi</p>
-                <p className="mt-1 text-sm text-muted-foreground">Javoblaringiz avtomatik topshirilmoqda...</p>
+                <p className="mt-3 font-bold text-midnight">{t("Vaqt tugadi")}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t("Javoblaringiz avtomatik topshirilmoqda...")}</p>
               </>
             )}
           </div>
@@ -499,12 +501,13 @@ export function ExamClient(props: {
 }
 
 function SaveIndicator({ status }: { status: SaveStatus }) {
+  const { t } = useT();
   if (status === "idle") return null;
   return (
     <span className="flex items-center gap-1.5 text-xs text-white/70" aria-live="polite">
-      {status === "saving" && (<><Loader2 className="size-3.5 animate-spin" /> <span className="hidden md:inline">Saqlanmoqda...</span></>)}
-      {status === "saved" && (<><Check className="size-3.5 text-success" /> <span className="hidden md:inline">Saqlandi</span></>)}
-      {status === "error" && (<><CloudOff className="size-3.5 text-warning" /> <span className="hidden md:inline">Saqlanmadi, qayta urinilmoqda</span></>)}
+      {status === "saving" && (<><Loader2 className="size-3.5 animate-spin" /> <span className="hidden md:inline">{t("Saqlanmoqda...")}</span></>)}
+      {status === "saved" && (<><Check className="size-3.5 text-success" /> <span className="hidden md:inline">{t("Saqlandi")}</span></>)}
+      {status === "error" && (<><CloudOff className="size-3.5 text-warning" /> <span className="hidden md:inline">{t("Saqlanmadi, qayta urinilmoqda")}</span></>)}
     </span>
   );
 }

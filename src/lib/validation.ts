@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-const trimmed = (max: number) => z.string().trim().max(max, `Ko'pi bilan ${max} ta belgi`);
+// Xabar statik bo'lishi kerak (UI'da tarjima kaliti sifatida ishlatiladi)
+const trimmed = (max: number) => z.string().trim().max(max, "Matn juda uzun");
 
 export const loginSchema = z.object({
   login: z.string().trim().min(1, "Login kiriting").max(64, "Login juda uzun"),
@@ -35,7 +36,7 @@ export const loginField = z
   .string()
   .trim()
   .min(3, "Login kamida 3 ta belgidan iborat bo'lsin")
-  .max(64)
+  .max(64, "Login juda uzun")
   .regex(/^[a-zA-Z0-9._-]+$/, "Loginda faqat lotin harflari, raqamlar va . _ - belgilari bo'lishi mumkin")
   .transform((v) => v.toLowerCase());
 
@@ -46,7 +47,7 @@ export const studentSchema = z.object({
   facultyName: trimmed(120).optional().transform((v) => v || null),
   groupName: trimmed(40).optional().transform((v) => v || null),
   studyForm: z
-    .enum(["", "KUNDUZGI", "SIRTQI", "KECHKI", "MASOFAVIY"])
+    .enum(["", "KUNDUZGI", "SIRTQI", "KECHKI", "MASOFAVIY"], { error: "Ta'lim shakli noto'g'ri" })
     .optional()
     .transform((v) => v || null),
   isActive: z.boolean(),
@@ -70,7 +71,7 @@ export const nameSchema = (label: string, max = 120) => trimmed(max).min(1, `${l
 export const questionSchema = z
   .object({
     text: trimmed(4000).min(3, "Savol matnini kiriting"),
-    type: z.enum(["SINGLE", "MULTIPLE", "TRUE_FALSE"]),
+    type: z.enum(["SINGLE", "MULTIPLE", "TRUE_FALSE"], { error: "Savol turini tanlang" }),
     subject: trimmed(80).optional().transform((v) => v || null),
     explanation: trimmed(2000).optional().transform((v) => v || null),
     options: z
@@ -92,17 +93,21 @@ export const testSchema = z
     title: trimmed(160).min(3, "Test nomini kiriting"),
     description: trimmed(2000).optional().transform((v) => v || null),
     subject: trimmed(80).optional().transform((v) => v || null),
-    durationMinutes: z.coerce.number().int("Butun son kiriting").min(1, "Kamida 1 daqiqa").max(600, "Ko'pi bilan 600 daqiqa"),
+    durationMinutes: z.coerce.number({ error: "Son kiriting" }).int("Butun son kiriting").min(1, "Kamida 1 daqiqa").max(600, "Ko'pi bilan 600 daqiqa"),
     startsAt: z.date({ message: "Boshlanish vaqtini kiriting" }),
     endsAt: z.date({ message: "Tugash vaqtini kiriting" }),
-    passingPercent: z.coerce.number().int().min(0).max(100),
+    passingPercent: z.coerce
+      .number({ error: "Son kiriting" })
+      .int("Butun son kiriting")
+      .min(0, "0 dan 100 gacha kiriting")
+      .max(100, "0 dan 100 gacha kiriting"),
     questionsPerAttempt: z
-      .union([z.literal(""), z.coerce.number().int("Butun son kiriting").min(1, "Kamida 1 ta savol").max(1000, "Ko'pi bilan 1000 ta")])
+      .union([z.literal(""), z.coerce.number({ error: "Son kiriting" }).int("Butun son kiriting").min(1, "Kamida 1 ta savol").max(1000, "Ko'pi bilan 1000 ta")], { error: "Butun son kiriting" })
       .transform((v) => (v === "" ? null : v)),
     maxScore: z
-      .union([z.literal(""), z.coerce.number().int("Butun son kiriting").min(1, "Kamida 1 ball").max(1000, "Ko'pi bilan 1000 ball")])
+      .union([z.literal(""), z.coerce.number({ error: "Son kiriting" }).int("Butun son kiriting").min(1, "Kamida 1 ball").max(1000, "Ko'pi bilan 1000 ball")], { error: "Butun son kiriting" })
       .transform((v) => (v === "" ? null : v)),
-    resultRelease: z.enum(["IMMEDIATE", "AFTER_END", "MANUAL"]),
+    resultRelease: z.enum(["IMMEDIATE", "AFTER_END", "MANUAL"], { error: "Qiymatni tanlang" }),
     isPublished: z.boolean(),
     universityIds: z.array(z.string().min(1)).min(1, "Kamida bitta universitetni tanlang"),
   })

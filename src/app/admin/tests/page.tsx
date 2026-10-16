@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { ClipboardList, Plus } from "lucide-react";
 import type { Prisma } from "@prisma/client";
@@ -6,13 +5,17 @@ import { FilterBar } from "@/components/admin/filter-bar";
 import { TestsTable, type TestListRow } from "@/components/admin/tests-table";
 import { EmptyState, PageHeader } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
+import { getT } from "@/i18n/server";
 import { requireStaff } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { testState } from "@/lib/exam-rules";
 import { formatDateTime, formatDuration } from "@/lib/time";
 import { testScopeWhere } from "@/server/org";
 
-export const metadata: Metadata = { title: "Testlar" };
+export async function generateMetadata() {
+  const { t } = await getT();
+  return { title: t("Testlar") };
+}
 
 type SP = { q?: string; subject?: string; university?: string; state?: string };
 const NO_SUBJECT = "Fan ko'rsatilmagan";
@@ -36,6 +39,7 @@ function stateWhere(state: string | undefined, now: Date): Prisma.TestWhereInput
 
 export default async function TestsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const staff = await requireStaff();
+  const { t, lang } = await getT();
   const sp = await searchParams;
   const now = new Date();
   const q = (sp.q ?? "").trim().slice(0, 100);
@@ -63,61 +67,61 @@ export default async function TestsPage({ searchParams }: { searchParams: Promis
   ]);
 
   const bySubject = new Map<string, TestListRow[]>();
-  for (const t of tests) {
-    const key = t.subject ?? NO_SUBJECT;
+  for (const x of tests) {
+    const key = x.subject ?? NO_SUBJECT;
     if (!bySubject.has(key)) bySubject.set(key, []);
     bySubject.get(key)!.push({
-      id: t.id,
-      title: t.title,
-      subject: t.subject,
-      state: testState(t, now),
-      isPublished: t.isPublished,
-      startsAt: formatDateTime(t.startsAt),
-      endsAt: formatDateTime(t.endsAt),
-      duration: formatDuration(t.durationMinutes),
-      questions: t._count.questions,
-      attempts: t._count.attempts,
-      universities: t.universities.map((u) => u.shortName).join(", "),
+      id: x.id,
+      title: x.title,
+      subject: x.subject,
+      state: testState(x, now),
+      isPublished: x.isPublished,
+      startsAt: formatDateTime(x.startsAt, lang),
+      endsAt: formatDateTime(x.endsAt, lang),
+      duration: formatDuration(x.durationMinutes, lang),
+      questions: x._count.questions,
+      attempts: x._count.attempts,
+      universities: x.universities.map((u) => u.shortName).join(", "),
     });
   }
   const groups = [...bySubject.entries()]
     .sort(([a], [b]) => (a === NO_SUBJECT ? 1 : b === NO_SUBJECT ? -1 : a.localeCompare(b)))
-    .map(([subject, rows]) => ({ subject, rows }));
+    .map(([subject, rows]) => ({ subject: subject === NO_SUBJECT ? t(NO_SUBJECT) : subject, rows }));
 
   return (
     <>
       <PageHeader
-        title="Testlar"
-        description={`Fanlar kesimida · jami ${tests.length} ta test`}
-        actions={<Button asChild><Link href="/admin/tests/new"><Plus /> Yangi test</Link></Button>}
+        title={t("Testlar")}
+        description={t("Fanlar kesimida · jami {n} ta test", { n: tests.length })}
+        actions={<Button asChild><Link href="/admin/tests/new"><Plus /> {t("Yangi test")}</Link></Button>}
       />
       <FilterBar
-        search={{ placeholder: "Test nomi bo'yicha qidirish" }}
+        search={{ placeholder: t("Test nomi bo'yicha qidirish") }}
         values={sp}
         fields={[
           {
             name: "subject",
-            label: "Fan",
-            all: "Barcha fanlar",
-            options: subjects.map((s) => (s.subject ? { value: s.subject, label: s.subject } : { value: "__none", label: NO_SUBJECT })),
+            label: t("Fan"),
+            all: t("Barcha fanlar"),
+            options: subjects.map((s) => (s.subject ? { value: s.subject, label: s.subject } : { value: "__none", label: t(NO_SUBJECT) })),
           },
           {
             name: "state",
-            label: "Holat",
-            all: "Barcha holatlar",
+            label: t("Holat"),
+            all: t("Barcha holatlar"),
             options: [
-              { value: "active", label: "Faol" },
-              { value: "inactive", label: "Nofaol" },
-              { value: "upcoming", label: "Rejalashtirilgan" },
-              { value: "open", label: "Hozir ochiq" },
-              { value: "closed", label: "Yakunlangan" },
+              { value: "active", label: t("Faol") },
+              { value: "inactive", label: t("Nofaol") },
+              { value: "upcoming", label: t("Rejalashtirilgan") },
+              { value: "open", label: t("Hozir ochiq") },
+              { value: "closed", label: t("Yakunlangan") },
             ],
           },
-          ...(staff.scope ? [] : [{ name: "university", label: "Universitet", all: "Barcha universitetlar", options: universities.map((u) => ({ value: u.id, label: u.name })) }]),
+          ...(staff.scope ? [] : [{ name: "university", label: t("Universitet"), all: t("Barcha universitetlar"), options: universities.map((u) => ({ value: u.id, label: u.name })) }]),
         ]}
       />
       {tests.length === 0 ? (
-        <EmptyState icon={<ClipboardList />} title="Testlar topilmadi" description="Filtrni o'zgartiring yoki yangi test yarating." />
+        <EmptyState icon={<ClipboardList />} title={t("Testlar topilmadi")} description={t("Filtrni o'zgartiring yoki yangi test yarating.")} />
       ) : (
         <TestsTable groups={groups} canDelete={!staff.scope} />
       )}
