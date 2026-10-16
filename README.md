@@ -51,6 +51,15 @@ npm start
 
 Productionda: `SEED_DEMO=false` va kuchli `SEED_ADMIN_PASSWORD` bilan seed qiling, so'ng administrator parolini **Sozlamalar** sahifasida o'zgartiring. HTTPS orqali xizmat ko'rsating (cookie `Secure`).
 
+### Vercel + Neon
+
+1. Neon (yoki boshqa PostgreSQL) bazasini yarating.
+2. Vercel'da repo'ni import qiling va Environment Variables'ga qo'shing:
+   - `DATABASE_URL` — baza ulanish satri;
+   - `SEED_ADMIN_LOGIN` (ixtiyoriy, standart `admin`), `SEED_ADMIN_PASSWORD` — kuchli parol;
+   - `SEED_DEMO=false` — demo ma'lumotlarsiz.
+3. Deploy. `vercel-build` migratsiyalarni qo'llaydi va `SEED_ADMIN_PASSWORD` bo'lsa administratorni yaratadi (mavjud hisob o'zgartirilmaydi). Kirgandan so'ng parolni Sozlamalarda yangilang.
+
 ### Demo hisoblar (`SEED_DEMO=true`)
 
 | Rol | Login | Parol |
