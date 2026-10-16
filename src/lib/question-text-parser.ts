@@ -32,7 +32,77 @@ const normTF = (s: string) => s.toLowerCase().replace(/[ʻʼ'`’‘\s]/g, "");
 
 type Draft = { line: number; text: string[]; options: { letter: string; text: string; marked: boolean }[]; answer: string | null; explanation: string | null; subject: string | null };
 
+const SEP_Q = /^\s*\+{4,}\s*$/m;
+const SEP_OPT = /^\s*={4,}\s*$/m;
+
+/**
+ * HEMIS/Moodle formatini o'qiydi:
+ *
+ *   Savol matni?
+ *   ====
+ *   #to'g'ri variant           (to'g'ri javob oldiga # qo'yiladi)
+ *   ====
+ *   variant
+ *   ++++                       (keyingi savol)
+ */
+function parseSeparatedText(raw: string): { questions: ParsedQuestion[]; errors: string[] } {
+  const questions: ParsedQuestion[] = [];
+  const errors: string[] = [];
+  let subject: string | null = null;
+  const blocks = raw.split(SEP_Q).filter((b) => b.trim());
+  blocks.forEach((block, idx) => {
+    const parts = block.split(SEP_OPT).map((p) => p.trim());
+    const qLines = parts[0]!.split("\n").map((l) => l.trim()).filter(Boolean);
+    let m: RegExpMatchArray | null;
+    while (qLines.length && (m = qLines[0]!.match(SUBJECT))) {
+      subject = m[1]!.trim().slice(0, 80);
+      qLines.shift();
+    }
+    const text = qLines.join("\n");
+    const label = `${idx + 1}-savol ("${(text || "?").slice(0, 40)}")`;
+    if (!text) {
+      errors.push(`${label}: savol matni bo'sh`);
+      return;
+    }
+    const opts = parts
+      .slice(1)
+      .map((p) => p.replace(/\s*\n\s*/g, " ").trim())
+      .filter(Boolean)
+      .map((p) => ({ marked: p.startsWith("#"), text: p.replace(/^#\s*/, "").trim() }))
+      .filter((o) => o.text);
+    if (opts.length < 2) {
+      errors.push(`${label}: kamida 2 ta variant kerak (variantlar ==== bilan ajratiladi)`);
+      return;
+    }
+    if (opts.length > 6) {
+      errors.push(`${label}: ko'pi bilan 6 ta variant bo'lishi mumkin`);
+      return;
+    }
+    const nCorrect = opts.filter((o) => o.marked).length;
+    if (nCorrect === 0) {
+      errors.push(`${label}: to'g'ri javob belgilanmagan (to'g'ri variant oldiga # qo'ying)`);
+      return;
+    }
+    const options = opts.map((o) => ({ text: o.text.slice(0, 1000), isCorrect: o.marked }));
+    const isTF =
+      options.length === 2 &&
+      options.some((o) => normTF(o.text) === "togri") &&
+      options.some((o) => normTF(o.text) === "notogri");
+    questions.push({
+      text: text.slice(0, 4000),
+      type: isTF ? "TRUE_FALSE" : nCorrect > 1 ? "MULTIPLE" : "SINGLE",
+      subject,
+      explanation: null,
+      options,
+    });
+  });
+  if (blocks.length === 0) errors.push("Faylda savol topilmadi");
+  return { questions, errors };
+}
+
 export function parseQuestionText(raw: string): { questions: ParsedQuestion[]; errors: string[] } {
+  raw = raw.replace(/\r\n?/g, "\n");
+  if (SEP_OPT.test(raw)) return parseSeparatedText(raw);
   const lines = raw.replace(/\r/g, "").split("\n");
   const drafts: Draft[] = [];
   let subject: string | null = null;

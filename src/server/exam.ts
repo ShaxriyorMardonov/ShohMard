@@ -1,4 +1,5 @@
 import "server-only";
+import { seededShuffle } from "@/lib/shuffle";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import {
@@ -262,5 +263,9 @@ export async function getExamView(userId: string, attemptId: string) {
     },
   });
   if (!attempt || attempt.userId !== userId) return null;
+  // Variantlar har bir talaba uchun aralashtiriladi (to'g'ri javob doim birinchi turmasligi uchun).
+  for (const tq of attempt.test.questions) {
+    if (tq.question.type !== "TRUE_FALSE") tq.question.options = seededShuffle(tq.question.options, attempt.id + tq.question.id);
+  }
   return attempt;
 }

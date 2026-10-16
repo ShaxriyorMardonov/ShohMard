@@ -113,3 +113,11 @@ tests/               Vitest unit va integratsion testlar
 ## Brend
 
 Palitra `src/app/globals.css` da: Midnight Blue `#101D3A`, Royal Blue `#315ECA`, fon `#F3F6FC`, karta `#FFFFFF`, muvaffaqiyat `#21A67A`, ogohlantirish `#E9A23B`, xato `#DC4545`, matn `#172033`, ikkilamchi matn `#64748B`. Logotip — buklangan burchakli imtihon varag'i va belgi (✓), `SamuLogo` komponenti orqali qayta ishlatiladi.
+
+## Fayldan yuklash
+
+- **Universitetlar** va **Talabalar**: Excel (.xlsx), namunani "Fayldan yuklash" oynasidan yuklab oling.
+- **Savollar**: Word (.doc, .docx) yoki Excel (.xlsx). Word uchun ikki format qabul qilinadi:
+  - HEMIS formati: savollar `++++`, variantlar `====` bilan ajratiladi, to'g'ri javob oldiga `#` qo'yiladi.
+  - Raqamli format: `1. Savol`, `A) variant`, to'g'ri javob oldiga `*` yoki `Javob: B` qatori.
+- Imtihonda variantlar har bir talaba uchun aralashtiriladi.

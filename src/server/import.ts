@@ -1,6 +1,7 @@
 import "server-only";
 import ExcelJS from "exceljs";
 import mammoth from "mammoth";
+import WordExtractor from "word-extractor";
 import type { QuestionType } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
@@ -154,10 +155,19 @@ export async function importQuestions(file: File, testId?: string): Promise<Impo
       return { ok: false, message: "Word faylni o'qib bo'lmadi. U .docx formatida ekanini tekshiring" };
     }
     parsed = parseQuestionText(text);
+  } else if (/\.doc$/i.test(file.name)) {
+    checkSize(file);
+    let text: string;
+    try {
+      text = (await new WordExtractor().extract(Buffer.from(await file.arrayBuffer()))).getBody();
+    } catch {
+      return { ok: false, message: "Word (.doc) faylni o'qib bo'lmadi" };
+    }
+    parsed = parseQuestionText(text);
   } else if (/\.xlsx$/i.test(file.name)) {
     parsed = parseQuestionSheet(await readSheet(file));
   } else {
-    return { ok: false, message: "Savollar uchun Word (.docx) yoki Excel (.xlsx) fayl yuklang. Eski .doc formatini Word'da .docx qilib saqlang" };
+    return { ok: false, message: "Savollar uchun Word (.doc, .docx) yoki Excel (.xlsx) fayl yuklang" };
   }
   if (parsed.errors.length) return { ok: false, errors: parsed.errors.slice(0, 50) };
   if (parsed.questions.length > 1000) return { ok: false, message: "Bir martada ko'pi bilan 1000 ta savol" };

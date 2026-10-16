@@ -48,3 +48,22 @@ Javob: a
     expect(parseQuestionText("hech narsa").errors[0]).toContain("savol topilmadi");
   });
 });
+
+describe("parseQuestionText (++++ / ==== format)", () => {
+  it("reads # marked answers", () => {
+    const raw = `Fan: Iqtisodiyot\nIshlab chiqarish turlari?\n====\n#moddiy va nomoddiy\n====\nbarter\n\n++++\nIkkinchi\nsavol?\n====\nA\n====\n# B\n====\n#C\n++++\n`;
+    const { questions, errors } = parseQuestionText(raw);
+    expect(errors).toEqual([]);
+    expect(questions).toHaveLength(2);
+    expect(questions[0]).toMatchObject({ text: "Ishlab chiqarish turlari?", type: "SINGLE", subject: "Iqtisodiyot" });
+    expect(questions[0]!.options).toEqual([
+      { text: "moddiy va nomoddiy", isCorrect: true },
+      { text: "barter", isCorrect: false },
+    ]);
+    expect(questions[1]).toMatchObject({ text: "Ikkinchi\nsavol?", type: "MULTIPLE", subject: "Iqtisodiyot" });
+  });
+  it("reports missing answer", () => {
+    const { errors } = parseQuestionText("Savol?\n====\na\n====\nb\n++++");
+    expect(errors[0]).toMatch(/belgilanmagan/);
+  });
+});

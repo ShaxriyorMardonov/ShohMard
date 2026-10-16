@@ -29,8 +29,8 @@ const META: Record<Kind, { title: string; description: string; accept: string; t
   },
   questions: {
     title: "Savollarni fayldan yuklash",
-    description: "Word (.docx) faylda: har bir savol raqam bilan boshlanadi, variantlar A), B) ..., to'g'ri javob oldiga * qo'yiladi. Excel ham qabul qilinadi.",
-    accept: ".docx,.xlsx",
+    description: "Word (.doc, .docx): savollar ++++ bilan, variantlar ==== bilan ajratiladi, to'g'ri javob oldiga # qo'yiladi. Yoki: 1. Savol, A) B) variantlar, to'g'ri javob oldiga *. Excel ham qabul qilinadi.",
+    accept: ".doc,.docx,.xlsx",
     templates: [
       { href: "/admin/templates/savollar.docx", label: "Word namuna" },
       { href: "/admin/templates/savollar.xlsx", label: "Excel namuna" },
