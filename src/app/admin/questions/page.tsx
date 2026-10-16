@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TestsTabs } from "@/components/admin/tests-tabs";
 import { Library, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import type { Prisma, QuestionType } from "@prisma/client";
 import { deleteQuestionAction } from "@/actions/admin";
@@ -56,6 +57,7 @@ export default async function QuestionsPage({
 
   return (
     <>
+      <TestsTabs active="bank" showBank />
       <PageHeader
         title={t("Savollar banki")}
         description={t("Testlarga qo'shiladigan barcha savollar")}

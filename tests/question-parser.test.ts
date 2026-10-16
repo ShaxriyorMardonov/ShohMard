@@ -67,3 +67,18 @@ describe("parseQuestionText (++++ / ==== format)", () => {
     expect(errors[0]).toMatch(/belgilanmagan/);
   });
 });
+
+describe("xato qatorlari", () => {
+  it("HEMIS formatida xato savol boshlangan qatorni ko'rsatadi", () => {
+    const raw = "Birinchi?\n====\n#ha\n====\nyo'q\n++++\n\nIkkinchi?\n====\nbir\n====\nikki\n";
+    const r = parseQuestionText(raw);
+    expect(r.questions).toHaveLength(1);
+    expect(r.issues).toHaveLength(1);
+    expect(r.issues[0]!.line).toBe(8);
+  });
+  it("raqamli formatda xato savol qatorini ko'rsatadi", () => {
+    const raw = "1. Bir?\nA) x\n*B) y\n\n2. Ikki?\nA) x\nB) y\n";
+    const r = parseQuestionText(raw);
+    expect(r.issues).toEqual([expect.objectContaining({ line: 5 })]);
+  });
+});

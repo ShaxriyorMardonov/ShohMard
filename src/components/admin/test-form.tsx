@@ -6,7 +6,9 @@ import { saveTestAction } from "@/actions/admin";
 import { Field } from "@/components/forms/field";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import * as React from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { QuestionTextEditor, useQuestionTextStatus } from "@/components/admin/question-text-editor";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -48,6 +50,8 @@ export function TestForm({
   const { state, onSubmit, pending } = useFormAction(saveTestAction);
   const [uniBefore, uniAfter] = t("Test {university} talabalari uchun yaratiladi.").split("{university}");
   const e = state.errors ?? {};
+  const [questionsText, setQuestionsText] = React.useState("");
+  const qStatus = useQuestionTextStatus(questionsText);
   return (
     <form onSubmit={onSubmit} className="grid gap-6">
       {initial && <input type="hidden" name="id" value={initial.id} />}
@@ -116,6 +120,22 @@ export function TestForm({
         </CardContent>
       </Card>
 
+      {!initial && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("Savollarni Word fayldan yuklash")}</CardTitle>
+            <CardDescription>
+              {t("Ixtiyoriy. Fayl standartga mos kelmasa, xatolar shu yerda ko'rsatiladi va ularni platformaning o'zida tuzatishingiz mumkin. Savollarni keyin ham qo'shish mumkin.")}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            <input type="hidden" name="questionsText" value={questionsText} />
+            {e.questionsText && <p className="text-xs font-medium text-error">{t(e.questionsText)}</p>}
+            <QuestionTextEditor value={questionsText} onChange={setQuestionsText} />
+          </CardContent>
+        </Card>
+      )}
+
       {fixedUniversity ? (
         <p className="text-sm text-muted-foreground">{uniBefore}<b className="text-midnight">{fixedUniversity}</b>{uniAfter}</p>
       ) : (
@@ -146,7 +166,7 @@ export function TestForm({
             <p className="text-xs font-medium text-error">{t(e.isPublished)}</p>
           ) : (
             <p className="text-xs text-muted-foreground">
-              {initial ? t("Testda {n} ta savol bor.", { n: initial.questionCount }) : t("Yangi testni saqlagach, savollar qo'shib, so'ng faollashtiring.")}
+              {initial ? t("Testda {n} ta savol bor.", { n: initial.questionCount }) : qStatus.count && !qStatus.issues ? t("Testga {n} ta savol qo'shiladi.", { n: qStatus.count }) : t("Yangi testni saqlagach, savollar qo'shib, so'ng faollashtiring.")}
             </p>
           )}
         </CardContent>

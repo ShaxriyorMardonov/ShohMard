@@ -10,7 +10,6 @@ import {
   ClipboardList,
   History,
   LayoutDashboard,
-  Library,
   Menu,
   Settings,
   ShieldCheck,
@@ -22,7 +21,7 @@ import { SamuLogo } from "@/components/brand/samu-logo";
 import { useT } from "@/i18n/client";
 import { cn } from "@/lib/utils";
 
-type Item = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean };
+type Item = { href: string; label: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; also?: string[] };
 
 type NavRole = "ADMIN" | "MANAGER" | "STUDENT";
 
@@ -38,8 +37,7 @@ const NAV: Record<NavRole, Item[]> = {
     { href: "/admin", label: "Bosh sahifa", icon: LayoutDashboard, exact: true },
     { href: "/admin/universities", label: "Universitetlar", icon: Building2 },
     { href: "/admin/students", label: "Talabalar", icon: Users },
-    { href: "/admin/tests", label: "Testlar", icon: ClipboardList },
-    { href: "/admin/questions", label: "Savollar banki", icon: Library },
+    { href: "/admin/tests", label: "Testlar", icon: ClipboardList, also: ["/admin/questions"] },
     { href: "/admin/results", label: "Natijalar", icon: BarChart3 },
     { href: "/admin/users", label: "Rollar", icon: ShieldCheck },
     { href: "/admin/settings", label: "Sozlamalar", icon: Settings },
@@ -56,8 +54,10 @@ function NavLinks({ role, onNavigate }: { role: NavRole; onNavigate?: () => void
   const { t } = useT();
   return (
     <nav className="grid gap-1" aria-label={t("Asosiy menyu")}>
-      {NAV[role].map(({ href, label, icon: Icon, exact }) => {
-        const active = exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+      {NAV[role].map(({ href, label, icon: Icon, exact, also = [] }) => {
+        const active = exact
+          ? pathname === href
+          : [href, ...also].some((h) => pathname === h || pathname.startsWith(h + "/"));
         return (
           <Link
             key={href}

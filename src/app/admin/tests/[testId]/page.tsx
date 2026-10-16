@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, BarChart3, Lock, Megaphone, Pencil, Trash2, Undo2, Upload } from "lucide-react";
 import { deleteTestAction, setResultsReleasedAction } from "@/actions/admin";
 import { ImportDialog } from "@/components/admin/import-dialog";
+import { WordImportDialog } from "@/components/admin/word-import-dialog";
 import { TEST_STATE_BADGE } from "@/components/admin/test-state";
 import { TestQuestions } from "@/components/admin/test-questions";
 import { TestAccessCard } from "@/components/admin/test-access";
@@ -94,11 +95,14 @@ export default async function TestDetailPage({ params, searchParams }: { params:
           <CardHeader className="flex-row flex-wrap items-center justify-between gap-2">
             <CardTitle>{t("Savollar")}</CardTitle>
             {!locked && (
-              <ImportDialog
-                kind="questions"
-                testId={test.id}
-                trigger={<Button size="sm" variant="outline"><Upload /> {t("Word/Excel'dan yuklash")}</Button>}
-              />
+              <div className="flex flex-wrap gap-2">
+                <WordImportDialog testId={test.id} />
+                <ImportDialog
+                  kind="questions"
+                  testId={test.id}
+                  trigger={<Button size="sm" variant="outline"><Upload /> {t("Excel'dan yuklash")}</Button>}
+                />
+              </div>
             )}
           </CardHeader>
           <CardContent>

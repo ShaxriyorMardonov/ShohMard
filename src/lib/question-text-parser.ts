@@ -29,6 +29,10 @@ const SUBJECT = /^\s*fan\s*[:\-–]\s*(.+)$/i;
 const NOTE = /^\s*izoh\s*[:\-–]\s*(.+)$/i;
 
 /** Xato matnlarini tarjima qilish uchun (sof funksiya; standart holatda o'zbekcha qoladi). */
+/** Xato va u tegishli qator (1 dan; matn muharririda shu qatorga o'tish uchun). */
+export type ParseIssue = { line: number; message: string };
+export type ParseResult = { questions: ParsedQuestion[]; errors: string[]; issues: ParseIssue[] };
+
 export type ParserT = (key: string, vars?: Record<string, string | number>) => string;
 const uzT: ParserT = (key, vars) => (vars ? key.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m)) : key);
 
@@ -36,7 +40,6 @@ const normTF = (s: string) => s.toLowerCase().replace(/[ʻʼ'`’‘\s]/g, "");
 
 type Draft = { line: number; text: string[]; options: { letter: string; text: string; marked: boolean }[]; answer: string | null; explanation: string | null; subject: string | null };
 
-const SEP_Q = /^\s*\+{4,}\s*$/m;
 const SEP_OPT = /^\s*={4,}\s*$/m;
 
 /**
@@ -49,12 +52,34 @@ const SEP_OPT = /^\s*={4,}\s*$/m;
  *   variant
  *   ++++                       (keyingi savol)
  */
-function parseSeparatedText(raw: string, tr: ParserT): { questions: ParsedQuestion[]; errors: string[] } {
+function splitBlocks(raw: string): { start: number; text: string }[] {
+  const blocks: { start: number; text: string }[] = [];
+  let cur: string[] = [];
+  let start = 1;
+  raw.split("\n").forEach((l, i) => {
+    if (/^\s*\+{4,}\s*$/.test(l)) {
+      if (cur.join("").trim()) blocks.push({ start, text: cur.join("\n") });
+      cur = [];
+      start = i + 2;
+      return;
+    }
+    if (!cur.length && !l.trim()) {
+      start = i + 2;
+      return;
+    }
+    cur.push(l);
+  });
+  if (cur.join("").trim()) blocks.push({ start, text: cur.join("\n") });
+  return blocks;
+}
+
+function parseSeparatedText(raw: string, tr: ParserT): ParseResult {
   const questions: ParsedQuestion[] = [];
-  const errors: string[] = [];
+  const issues: ParseIssue[] = [];
   let subject: string | null = null;
-  const blocks = raw.split(SEP_Q).filter((b) => b.trim());
-  blocks.forEach((block, idx) => {
+  const blocks = splitBlocks(raw);
+  blocks.forEach(({ start, text: block }, idx) => {
+    const errors = { push: (message: string) => issues.push({ line: start, message }) };
     const parts = block.split(SEP_OPT).map((p) => p.trim());
     const qLines = parts[0]!.split("\n").map((l) => l.trim()).filter(Boolean);
     let m: RegExpMatchArray | null;
@@ -100,11 +125,11 @@ function parseSeparatedText(raw: string, tr: ParserT): { questions: ParsedQuesti
       options,
     });
   });
-  if (blocks.length === 0) errors.push(tr("Faylda savol topilmadi"));
-  return { questions, errors };
+  if (blocks.length === 0) issues.push({ line: 1, message: tr("Faylda savol topilmadi") });
+  return { questions, errors: issues.map((i) => i.message), issues };
 }
 
-export function parseQuestionText(raw: string, tr: ParserT = uzT): { questions: ParsedQuestion[]; errors: string[] } {
+export function parseQuestionText(raw: string, tr: ParserT = uzT): ParseResult {
   raw = raw.replace(/\r\n?/g, "\n");
   if (SEP_OPT.test(raw)) return parseSeparatedText(raw, tr);
   const lines = raw.replace(/\r/g, "").split("\n");
@@ -143,8 +168,9 @@ export function parseQuestionText(raw: string, tr: ParserT = uzT): { questions: 
   });
 
   const questions: ParsedQuestion[] = [];
-  const errors: string[] = [];
+  const issues: ParseIssue[] = [];
   drafts.forEach((d, idx) => {
+    const errors = { push: (message: string) => issues.push({ line: d.line, message }) };
     const n = idx + 1;
     const label = tr('{n}-savol ("{preview}")', { n, preview: d.text[0]!.slice(0, 40) });
     if (d.options.length < 2) {
@@ -184,6 +210,6 @@ export function parseQuestionText(raw: string, tr: ParserT = uzT): { questions: 
       options,
     });
   });
-  if (drafts.length === 0) errors.push(tr("Faylda savol topilmadi. Har bir savol raqam bilan boshlanishi kerak: \"1. Savol matni\""));
-  return { questions, errors };
+  if (drafts.length === 0) issues.push({ line: 1, message: tr("Faylda savol topilmadi. Har bir savol raqam bilan boshlanishi kerak: \"1. Savol matni\"") });
+  return { questions, errors: issues.map((i) => i.message), issues };
 }

@@ -196,6 +196,19 @@ function parseType(raw: string): QuestionType | null {
   return null;
 }
 
+/** Word (.doc, .docx) fayldan oddiy matnni ajratib oladi. */
+export async function extractWordText(file: File): Promise<{ text: string } | { error: string }> {
+  checkSize(file);
+  const buf = Buffer.from(await file.arrayBuffer());
+  try {
+    if (/\.docx$/i.test(file.name)) return { text: (await mammoth.extractRawText({ buffer: buf })).value.replace(/\r\n?/g, "\n") };
+    if (/\.doc$/i.test(file.name)) return { text: (await new WordExtractor().extract(buf)).getBody().replace(/\r\n?/g, "\n") };
+  } catch {
+    return { error: "Word faylni o'qib bo'lmadi. U .doc yoki .docx formatida ekanini tekshiring" };
+  }
+  return { error: "Word (.doc, .docx) fayl yuklang" };
+}
+
 export async function importQuestions(file: File, testId?: string): Promise<ImportResult> {
   const { t } = await getT();
   if (testId) {
@@ -204,24 +217,10 @@ export async function importQuestions(file: File, testId?: string): Promise<Impo
     if (test._count.attempts > 0) return { ok: false, message: "Test boshlangan, savollar qo'shib bo'lmaydi" };
   }
   let parsed: { questions: ParsedQuestion[]; errors: string[] };
-  if (/\.docx$/i.test(file.name)) {
-    checkSize(file);
-    let text: string;
-    try {
-      text = (await mammoth.extractRawText({ buffer: Buffer.from(await file.arrayBuffer()) })).value;
-    } catch {
-      return { ok: false, message: "Word faylni o'qib bo'lmadi. U .docx formatida ekanini tekshiring" };
-    }
-    parsed = parseQuestionText(text, t);
-  } else if (/\.doc$/i.test(file.name)) {
-    checkSize(file);
-    let text: string;
-    try {
-      text = (await new WordExtractor().extract(Buffer.from(await file.arrayBuffer()))).getBody();
-    } catch {
-      return { ok: false, message: "Word (.doc) faylni o'qib bo'lmadi" };
-    }
-    parsed = parseQuestionText(text, t);
+  if (/\.docx?$/i.test(file.name)) {
+    const res = await extractWordText(file);
+    if ("error" in res) return { ok: false, message: res.error };
+    parsed = parseQuestionText(res.text, t);
   } else if (/\.xlsx$/i.test(file.name)) {
     parsed = parseQuestionSheet(await readSheet(file), t);
   } else {
@@ -286,7 +285,7 @@ function parseQuestionSheet({ rows }: Awaited<ReturnType<typeof readSheet>>, t: 
   return { questions, errors };
 }
 
-async function saveQuestions(data: ParsedQuestion[], testId?: string) {
+export async function saveQuestions(data: ParsedQuestion[], testId?: string) {
   await prisma.$transaction(
     async (tx) => {
       let pos = 0;

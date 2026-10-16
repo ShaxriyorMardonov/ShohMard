@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TestsTabs } from "@/components/admin/tests-tabs";
 import { ClipboardList, Plus } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 import { FilterBar } from "@/components/admin/filter-bar";
@@ -90,6 +91,7 @@ export default async function TestsPage({ searchParams }: { searchParams: Promis
 
   return (
     <>
+      <TestsTabs active="tests" showBank={!staff.scope} />
       <PageHeader
         title={t("Testlar")}
         description={t("Fanlar kesimida · jami {n} ta test", { n: tests.length })}

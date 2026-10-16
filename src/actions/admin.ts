@@ -7,6 +7,8 @@ import { prisma } from "@/lib/db";
 import { requireAdmin, requireStaff, sortRoles } from "@/lib/auth";
 import { canManageTest, resolveFacultyGroup } from "@/server/org";
 import { recomputeDeadlines, rescoreTest } from "@/server/exam";
+import { saveQuestions } from "@/server/import";
+import { parseQuestionText, type ParsedQuestion } from "@/lib/question-text-parser";
 import { hashPassword } from "@/lib/password";
 import { fromLocalInput } from "@/lib/time";
 import { getT } from "@/i18n/server";
@@ -321,8 +323,19 @@ export async function saveTestAction(_prev: FormState, fd: FormData): Promise<Fo
   const unis = await prisma.university.count({ where: { id: { in: universityIds } } });
   if (unis !== universityIds.length) return { errors: { universityIds: "Universitet topilmadi" } };
 
+  // Yangi test yaratishda Word fayldan (platformada tuzatilgan) savollar matni
+  const questionsText = id ? "" : str(fd.get("questionsText")).slice(0, 2_000_000);
+  let imported: ParsedQuestion[] = [];
+  if (questionsText.trim()) {
+    const { t } = await getT();
+    const res = parseQuestionText(questionsText, t);
+    if (res.issues.length) return { errors: { questionsText: "Savollar matnida xatolar bor. Avval ularni tuzating." } };
+    if (res.questions.length > 1000) return { errors: { questionsText: "Bir martada ko'pi bilan 1000 ta savol" } };
+    imported = res.questions;
+  }
+
   if (data.isPublished) {
-    const qCount = id ? await prisma.testQuestion.count({ where: { testId: id } }) : 0;
+    const qCount = id ? await prisma.testQuestion.count({ where: { testId: id } }) : imported.length;
     if (qCount === 0) {
       return { errors: { isPublished: "Savolsiz testni faollashtirib bo'lmaydi. Avval savollar qo'shing." } };
     }
@@ -351,6 +364,7 @@ export async function saveTestAction(_prev: FormState, fd: FormData): Promise<Fo
       data: { ...data, createdById: staff.id, universities: { connect: universityIds.map((u) => ({ id: u })) } },
     });
     testId = t.id;
+    if (imported.length) await saveQuestions(imported, testId);
   }
   revalidatePath("/admin/tests");
   redirect(`/admin/tests/${testId}${id ? "?saved=1" : ""}`);

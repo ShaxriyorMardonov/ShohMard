@@ -6,9 +6,10 @@ import attempts from "./attempts";
 import common from "./common";
 import messages from "./messages";
 import studentExam from "./student-exam";
+import wordImport from "./word-import";
 
 /** Har bir bo'lim o'z lug'atini alohida faylda saqlaydi: { ru: {...}, en: {...} }. */
-const PARTS: { ru: Dict; en: Dict; "uz-Cyrl"?: Dict }[] = [attempts, messages, studentExam, adminTests, adminOrg, common];
+const PARTS: { ru: Dict; en: Dict; "uz-Cyrl"?: Dict }[] = [wordImport, attempts, messages, studentExam, adminTests, adminOrg, common];
 
 export function dictFor(lang: Lang): Dict {
   if (lang === "uz") return {};
