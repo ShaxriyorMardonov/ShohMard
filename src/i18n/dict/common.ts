@@ -53,4 +53,5 @@ const en: Record<string, string> = {
   "Asosiy menyu": "Main menu",
   "Bilim. Natija. Kelajak.": "Knowledge. Results. Future.",
 };
-export default { ru, en };
+const dict = { ru, en };
+export default dict;
