@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+enum QuestionType {
+  SINGLE
+  MULTIPLE
+  TRUE_FALSE
+}
+
+enum ResultRelease {
+  IMMEDIATE
+  AFTER_END
+  MANUAL
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+}
+
+model University {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  shortName String
+  city      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students User[]
+  tests    Test[]  @relation("TestUniversities")
+}
+
+model User {
+  id             String    @id @default(cuid())
+  login          String    @unique
+  passwordHash   String
+  fullName       String
+  role           Role      @default(STUDENT)
+  isActive       Boolean   @default(true)
+  groupName      String?
+  universityId   String?
+  university     University? @relation(fields: [universityId], references: [id], onDelete: Restrict)
+  failedLogins   Int       @default(0)
+  lockedUntil    DateTime?
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  sessions  Session[]
+  attempts  Attempt[]
+  testsMade Test[]     @relation("TestAuthor")
+
+  @@index([universityId])
+  @@index([role])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Test {
+  id              String        @id @default(cuid())
+  title           String
+  description     String?
+  subject         String?
+  durationMinutes Int
+  startsAt        DateTime
+  endsAt          DateTime
+  isPublished     Boolean       @default(false)
+  passingPercent  Int           @default(60)
+  resultRelease   ResultRelease @default(AFTER_END)
+  resultsReleasedAt DateTime?
+  createdById     String?
+  createdBy       User?         @relation("TestAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  universities University[]   @relation("TestUniversities")
+  questions    TestQuestion[]
+  attempts     Attempt[]
+
+  @@index([startsAt, endsAt])
+}
+
+model Question {
+  id          String       @id @default(cuid())
+  text        String
+  type        QuestionType
+  subject     String?
+  explanation String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  options QuestionOption[]
+  tests   TestQuestion[]
+  answers Answer[]
+
+  @@index([subject])
+}
+
+model QuestionOption {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean  @default(false)
+  position   Int
+
+  @@index([questionId])
+}
+
+model TestQuestion {
+  testId     String
+  questionId String
+  position   Int
+  points     Int      @default(1)
+  test       Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Restrict)
+
+  @@id([testId, questionId])
+  @@index([testId, position])
+}
+
+model Attempt {
+  id            String        @id @default(cuid())
+  testId        String
+  test          Test          @relation(fields: [testId], references: [id], onDelete: Restrict)
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status        AttemptStatus @default(IN_PROGRESS)
+  startedAt     DateTime      @default(now())
+  deadlineAt    DateTime
+  submittedAt   DateTime?
+  autoSubmitted Boolean       @default(false)
+  score         Int?
+  maxScore      Int?
+  percent       Float?
+  correctCount  Int?
+  totalQuestions Int?
+
+  answers Answer[]
+
+  @@unique([testId, userId])
+  @@index([userId])
+  @@index([status, deadlineAt])
+}
+
+model Answer {
+  id                String   @id @default(cuid())
+  attemptId         String
+  attempt           Attempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId        String
+  question          Question @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  selectedOptionIds String[]
+  flagged           Boolean  @default(false)
+  isCorrect         Boolean?
+  pointsAwarded     Int?
+  updatedAt         DateTime @updatedAt
+
+  @@unique([attemptId, questionId])
+}

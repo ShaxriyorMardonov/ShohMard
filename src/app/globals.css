@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* SAMU rasmiy palitrasi */
+  --samu-midnight: #101d3a;
+  --samu-royal: #315eca;
+  --samu-bg: #f3f6fc;
+  --samu-card: #ffffff;
+  --samu-success: #21a67a;
+  --samu-warning: #e9a23b;
+  --samu-error: #dc4545;
+  --samu-text: #172033;
+  --samu-muted: #64748b;
+
+  --radius: 0.75rem;
+  --background: var(--samu-bg);
+  --foreground: var(--samu-text);
+  --card: var(--samu-card);
+  --card-foreground: var(--samu-text);
+  --popover: var(--samu-card);
+  --popover-foreground: var(--samu-text);
+  --primary: var(--samu-royal);
+  --primary-foreground: #ffffff;
+  --secondary: #e8eefb;
+  --secondary-foreground: var(--samu-midnight);
+  --muted: #eef2f9;
+  --muted-foreground: var(--samu-muted);
+  --accent: #e8eefb;
+  --accent-foreground: var(--samu-midnight);
+  --destructive: var(--samu-error);
+  --border: #dfe5f0;
+  --input: #d5dceb;
+  --ring: var(--samu-royal);
+}
+
+@theme inline {
+  --color-midnight: var(--samu-midnight);
+  --color-royal: var(--samu-royal);
+  --color-success: var(--samu-success);
+  --color-warning: var(--samu-warning);
+  --color-error: var(--samu-error);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --shadow-card: 0 1px 2px rgb(16 29 58 / 0.04), 0 4px 16px rgb(16 29 58 / 0.05);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  ::selection {
+    background: rgb(49 94 202 / 0.18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
