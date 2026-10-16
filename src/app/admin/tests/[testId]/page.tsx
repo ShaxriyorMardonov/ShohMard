@@ -6,6 +6,7 @@ import { ImportDialog } from "@/components/admin/import-dialog";
 import { TEST_STATE_BADGE } from "@/components/admin/test-state";
 import { TestQuestions } from "@/components/admin/test-questions";
 import { TestAccessCard } from "@/components/admin/test-access";
+import { TestScheduleCard } from "@/components/admin/test-schedule";
 import { ActiveSwitch } from "@/components/admin/tests-table";
 import { PageHeader } from "@/components/layout/app-shell";
 import { Alert } from "@/components/ui/alert";
@@ -16,7 +17,7 @@ import { ConfirmAction } from "@/components/ui/confirm-action";
 import { requireStaff } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { QUESTION_TYPE_LABEL, RESULT_RELEASE_LABEL, isResultReleased, testState } from "@/lib/exam-rules";
-import { formatDateTime, formatDuration } from "@/lib/time";
+import { formatDateTime, formatDuration, toLocalInput } from "@/lib/time";
 import { finalizeExpiredAttempts } from "@/server/exam";
 import { testScopeWhere } from "@/server/org";
 
@@ -53,6 +54,9 @@ export default async function TestDetailPage({ params, searchParams }: { params:
     prisma.faculty.findMany({ where: { universityId: { in: uniIds } }, orderBy: { name: "asc" }, select: { id: true, name: true, university: { select: { shortName: true } } } }),
   ]);
   const totalAttempts = stats._count + inProgress;
+  // Bitta talabaga tushadigan savollar ballari (taxminiy: birinchi N ta savol bo'yicha)
+  const perAttempt = test.questionsPerAttempt && test.questionsPerAttempt < test.questions.length ? test.questionsPerAttempt : test.questions.length;
+  const rawMax = test.questions.slice(0, perAttempt).reduce((n, q) => n + q.points, 0);
   const locked = totalAttempts > 0;
   const now = new Date();
   const st = TEST_STATE_BADGE[testState(test, now)];
@@ -137,6 +141,8 @@ export default async function TestDetailPage({ params, searchParams }: { params:
                   ["Tugash", formatDateTime(test.endsAt)],
                   ["Davomiylik", formatDuration(test.durationMinutes)],
                   ["O'tish chegarasi", `${test.passingPercent}%`],
+                  ["Savollar (har bir talabaga)", test.questionsPerAttempt && test.questionsPerAttempt < test.questions.length ? `${test.questionsPerAttempt} ta / ${test.questions.length} tadan` : `Hammasi (${test.questions.length} ta)`],
+                  ["Jami baho", `${test.maxScore ?? rawMax} ball`],
                   ["Natija", RESULT_RELEASE_LABEL[test.resultRelease]],
                   ["Universitetlar", test.universities.map((u) => u.name).join(", ") || "—"],
                 ].map(([k, v]) => (
@@ -149,6 +155,14 @@ export default async function TestDetailPage({ params, searchParams }: { params:
               {test.description && <p className="mt-4 whitespace-pre-line border-t pt-3 text-sm text-muted-foreground">{test.description}</p>}
             </CardContent>
           </Card>
+          <TestScheduleCard
+            testId={test.id}
+            startsAt={toLocalInput(test.startsAt)}
+            endsAt={toLocalInput(test.endsAt)}
+            durationMinutes={test.durationMinutes}
+            maxScore={test.maxScore}
+            rawMax={rawMax}
+          />
           <TestAccessCard
             testId={test.id}
             restricted={test.restrictedAccess}

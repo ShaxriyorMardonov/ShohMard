@@ -21,6 +21,9 @@ export type TestInitial = {
   startsAt: string; // datetime-local qiymati
   endsAt: string;
   passingPercent: number;
+  questionsPerAttempt: number | null;
+  maxScore: number | null;
+  locked?: boolean;
   resultRelease: "IMMEDIATE" | "AFTER_END" | "MANUAL";
   isPublished: boolean;
   universityIds: string[];
@@ -82,11 +85,22 @@ export function TestForm({
       <Card>
         <CardHeader><CardTitle>Baholash va natijalar</CardTitle></CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Har bir talabaga savollar soni"
+            htmlFor="t-qcount"
+            error={e.questionsPerAttempt}
+            hint={initial?.locked ? "Test boshlangan, o'zgartirib bo'lmaydi" : "Bo'sh qolsa, testdagi barcha savollar beriladi. Aks holda har bir talabaga tasodifiy tanlanadi"}
+          >
+            <Input id="t-qcount" name="questionsPerAttempt" type="number" min={1} max={1000} placeholder="Hammasi" defaultValue={initial?.questionsPerAttempt ?? ""} readOnly={initial?.locked} aria-invalid={!!e.questionsPerAttempt} />
+          </Field>
+          <Field label="Maksimal ball (jami baho)" htmlFor="t-max" error={e.maxScore} hint="Bo'sh qolsa, savollar ballari yig'indisi. Masalan, 100 yoki 5">
+            <Input id="t-max" name="maxScore" type="number" min={1} max={1000} placeholder="Savollar ballari yig'indisi" defaultValue={initial?.maxScore ?? ""} aria-invalid={!!e.maxScore} />
+          </Field>
           <Field label="O'tish chegarasi (%)" htmlFor="t-pass" error={e.passingPercent}>
             <Input id="t-pass" name="passingPercent" type="number" min={0} max={100} defaultValue={initial?.passingPercent ?? 60} />
           </Field>
           <Field label="Natijalarni e'lon qilish" htmlFor="t-rel" error={e.resultRelease} hint="To'g'ri javoblar faqat natija e'lon qilingach ko'rsatiladi">
-            <NativeSelect id="t-rel" name="resultRelease" defaultValue={initial?.resultRelease ?? "AFTER_END"}>
+            <NativeSelect id="t-rel" name="resultRelease" defaultValue={initial?.resultRelease ?? "IMMEDIATE"}>
               <option value="IMMEDIATE">Topshirilgandan so&apos;ng darhol</option>
               <option value="AFTER_END">Test yakunlangach</option>
               <option value="MANUAL">Administrator e&apos;lon qilganda</option>

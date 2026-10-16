@@ -56,11 +56,14 @@ export const staffSchema = z
   .object({
     fullName: trimmed(120).min(3, "F.I.Sh. ni kiriting"),
     login: loginField,
-    role: z.enum(["ADMIN", "MANAGER"], { message: "Rolni tanlang" }),
+    roles: z.array(z.enum(["ADMIN", "MANAGER", "STUDENT"])).min(1, "Kamida bitta rolni belgilang"),
     universityId: z.string().optional().transform((v) => v || null),
     isActive: z.boolean(),
   })
-  .refine((u) => u.role !== "MANAGER" || u.universityId, { path: ["universityId"], message: "Menejer uchun universitetni tanlang" });
+  .refine((u) => !(u.roles.includes("MANAGER") || u.roles.includes("STUDENT")) || u.universityId, {
+    path: ["universityId"],
+    message: "Menejer va talaba roli uchun universitetni tanlang",
+  });
 
 export const nameSchema = (label: string, max = 120) => trimmed(max).min(1, `${label} nomini kiriting`);
 
@@ -93,6 +96,12 @@ export const testSchema = z
     startsAt: z.date({ message: "Boshlanish vaqtini kiriting" }),
     endsAt: z.date({ message: "Tugash vaqtini kiriting" }),
     passingPercent: z.coerce.number().int().min(0).max(100),
+    questionsPerAttempt: z
+      .union([z.literal(""), z.coerce.number().int("Butun son kiriting").min(1, "Kamida 1 ta savol").max(1000, "Ko'pi bilan 1000 ta")])
+      .transform((v) => (v === "" ? null : v)),
+    maxScore: z
+      .union([z.literal(""), z.coerce.number().int("Butun son kiriting").min(1, "Kamida 1 ball").max(1000, "Ko'pi bilan 1000 ball")])
+      .transform((v) => (v === "" ? null : v)),
     resultRelease: z.enum(["IMMEDIATE", "AFTER_END", "MANUAL"]),
     isPublished: z.boolean(),
     universityIds: z.array(z.string().min(1)).min(1, "Kamida bitta universitetni tanlang"),

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { requireAdmin } from "@/lib/auth";
+import { requireAdmin, sortRoles } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ROLE_LABEL } from "@/lib/labels";
 import { formatDateTime } from "@/lib/time";
@@ -19,9 +19,9 @@ export default async function UsersPage() {
   const me = await requireAdmin();
   const [users, universities] = await Promise.all([
     prisma.user.findMany({
-      where: { role: { in: ["ADMIN", "MANAGER"] } },
+      where: { roles: { hasSome: ["ADMIN", "MANAGER"] } },
       orderBy: [{ role: "asc" }, { fullName: "asc" }],
-      select: { id: true, fullName: true, login: true, role: true, universityId: true, isActive: true, lastLoginAt: true, university: { select: { shortName: true } } },
+      select: { id: true, fullName: true, login: true, role: true, roles: true, universityId: true, isActive: true, lastLoginAt: true, university: { select: { shortName: true } } },
     }),
     prisma.university.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
@@ -41,7 +41,7 @@ export default async function UsersPage() {
           </div>
           <div className="flex gap-3">
             <ShieldCheck className="mt-0.5 size-5 shrink-0 text-success" />
-            <p><b className="text-midnight">Universitet menejeri</b>: faqat o&apos;z universiteti uchun talaba yuklash, test yaratish va test vaqtini ochish.</p>
+            <p><b className="text-midnight">Universitet menejeri</b>: faqat o&apos;z universiteti uchun talaba yuklash, test yaratish va test vaqtini ochish. Bitta foydalanuvchiga bir nechta rol berish mumkin.</p>
           </div>
         </CardContent>
       </Card>
@@ -51,7 +51,7 @@ export default async function UsersPage() {
             <TableRow>
               <TableHead>F.I.Sh.</TableHead>
               <TableHead>Login</TableHead>
-              <TableHead>Rol</TableHead>
+              <TableHead>Rollar</TableHead>
               <TableHead>Universitet</TableHead>
               <TableHead>Holat</TableHead>
               <TableHead>Oxirgi kirish</TableHead>
@@ -65,14 +65,20 @@ export default async function UsersPage() {
                 <TableRow key={u.id}>
                   <TableCell className="font-semibold text-midnight">{u.fullName}{self && <span className="ml-1 text-xs font-normal text-muted-foreground">(siz)</span>}</TableCell>
                   <TableCell className="font-mono text-xs">{u.login}</TableCell>
-                  <TableCell><Badge variant={u.role === "ADMIN" ? "default" : "success"}>{ROLE_LABEL[u.role]}</Badge></TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {sortRoles(u.roles).map((r) => (
+                        <Badge key={r} variant={r === "ADMIN" ? "default" : r === "MANAGER" ? "success" : "muted"}>{ROLE_LABEL[r]}</Badge>
+                      ))}
+                    </div>
+                  </TableCell>
                   <TableCell>{u.university?.shortName ?? "—"}</TableCell>
                   <TableCell>{u.isActive ? <Badge variant="success">Faol</Badge> : <Badge variant="muted">Nofaol</Badge>}</TableCell>
                   <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(u.lastLoginAt)}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <StaffDialog
-                        user={{ ...u, role: u.role as "ADMIN" | "MANAGER" }}
+                        user={{ ...u, roles: sortRoles(u.roles) }}
                         universities={universities}
                         isSelf={self}
                         trigger={<Button size="icon-sm" variant="ghost" aria-label="Tahrirlash"><Pencil /></Button>}
@@ -81,7 +87,7 @@ export default async function UsersPage() {
                         <ConfirmAction
                           trigger={<Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label="O'chirish"><Trash2 /></Button>}
                           title="Foydalanuvchini o'chirish"
-                          description={`${u.fullName} hisobi o'chiriladi. U yaratgan testlar saqlanadi.`}
+                          description={u.roles.includes("STUDENT") ? `${u.fullName}: xodim rollari olib tashlanadi, talaba natijalari bo'lsa hisob talaba sifatida saqlanadi.` : `${u.fullName} hisobi o'chiriladi. U yaratgan testlar saqlanadi.`}
                           confirmLabel="O'chirish"
                           action={deleteStaffUserAction.bind(null, u.id)}
                         />

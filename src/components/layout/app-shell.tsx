@@ -1,19 +1,9 @@
 import { SamuLogo } from "@/components/brand/samu-logo";
 import type { CurrentUser } from "@/lib/auth";
 import { MobileNav, Sidebar } from "./nav";
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]!.toUpperCase())
-    .join("");
-}
+import { UserMenu } from "./user-menu";
 
 export function AppShell({ user, children }: { user: CurrentUser; children: React.ReactNode }) {
-  const subtitle =
-    user.role === "ADMIN" ? "Administrator" : user.role === "MANAGER" ? `Menejer · ${user.university?.shortName ?? ""}` : (user.university?.shortName ?? "Talaba");
   return (
     <div className="flex min-h-dvh">
       <Sidebar role={user.role} />
@@ -23,15 +13,7 @@ export function AppShell({ user, children }: { user: CurrentUser; children: Reac
           <div className="lg:hidden">
             <SamuLogo size="sm" />
           </div>
-          <div className="ml-auto flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold leading-tight text-foreground">{user.fullName}</p>
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
-            </div>
-            <span className="flex size-9 items-center justify-center rounded-full bg-royal text-sm font-bold text-white" aria-hidden>
-              {initials(user.fullName)}
-            </span>
-          </div>
+          <UserMenu fullName={user.fullName} role={user.role} roles={user.roles} university={user.university?.shortName ?? null} />
         </header>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:py-8">{children}</main>
       </div>

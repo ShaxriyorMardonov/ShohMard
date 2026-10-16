@@ -90,14 +90,17 @@ function StudentForm({
           <datalist id={`${listId}-g`}>{names.groups.map((n) => <option key={n} value={n} />)}</datalist>
         </Field>
       </div>
-      <Field
-        label={student ? "Yangi parol (ixtiyoriy)" : "Parol"}
-        htmlFor="s-pass"
-        error={e.password}
-        hint={student ? "Bo'sh qoldirilsa, parol o'zgarmaydi" : "Kamida 8 ta belgi, harf va raqam bilan"}
-      >
-        <PasswordInput id="s-pass" name="password" autoComplete="new-password" aria-invalid={!!e.password} />
-      </Field>
+      {/* Menejer mavjud talabaning parolini o'zgartira olmaydi */}
+      {!(student && fixedUniversity) && (
+        <Field
+          label={student ? "Yangi parol (ixtiyoriy)" : "Parol"}
+          htmlFor="s-pass"
+          error={e.password}
+          hint={student ? "Bo'sh qoldirilsa, parol o'zgarmaydi" : "Kamida 8 ta belgi, harf va raqam bilan"}
+        >
+          <PasswordInput id="s-pass" name="password" autoComplete="new-password" aria-invalid={!!e.password} />
+        </Field>
+      )}
       <label className="flex items-center gap-2 text-sm font-medium">
         <input type="checkbox" name="isActive" defaultChecked={student?.isActive ?? true} className="size-4 accent-[#315ECA]" />
         Hisob faol

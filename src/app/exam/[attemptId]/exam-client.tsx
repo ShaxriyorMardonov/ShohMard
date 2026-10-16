@@ -103,9 +103,10 @@ export function ExamClient(props: {
     try {
       localStorage.removeItem(storageKey);
     } catch {}
-    router.replace("/student/history?submitted=1");
+    // Yakunlangach talaba darhol natijasini ko'radi (test sozlamasi ruxsat bersa)
+    router.replace(`/student/results/${attemptId}`);
     router.refresh();
-  }, [router, storageKey]);
+  }, [router, storageKey, attemptId]);
 
   const flush = React.useCallback(async (): Promise<boolean> => {
     if (inflight.current || stopped.current) return dirty.current.size === 0;

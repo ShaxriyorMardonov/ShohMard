@@ -54,6 +54,7 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ a
       totalQuestions: true,
       submittedAt: true,
       autoSubmitted: true,
+      questionIds: true,
       test: {
         select: {
           title: true,
@@ -112,7 +113,7 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ a
       </Card>
 
       <ol className="grid gap-4">
-        {attempt.test.questions.map(({ question: q, points }, i) => {
+        {attempt.test.questions.filter((tq) => !attempt.questionIds.length || attempt.questionIds.includes(tq.question.id)).map(({ question: q, points }, i) => {
           const ans = answers.get(q.id);
           const selected = new Set(ans?.selectedOptionIds ?? []);
           const correct = ans?.isCorrect ?? false;

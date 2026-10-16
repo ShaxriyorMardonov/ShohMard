@@ -85,6 +85,8 @@ model User {
   passwordHash   String
   fullName       String
   role           Role      @default(STUDENT)
+  /// Foydalanuvchining barcha rollari (role — asosiy rol, kirganda shu ochiladi)
+  roles          Role[]    @default([STUDENT])
   isActive       Boolean   @default(true)
   studyForm      StudyForm?
   universityId   String?
@@ -116,6 +118,8 @@ model Session {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   expiresAt DateTime
+  /// Bir nechta roli bo'lgan foydalanuvchining hozir tanlagan roli
+  activeRole Role?
   createdAt DateTime @default(now())
 
   @@index([userId])
@@ -131,7 +135,11 @@ model Test {
   endsAt          DateTime
   isPublished     Boolean       @default(false)
   passingPercent  Int           @default(60)
-  resultRelease   ResultRelease @default(AFTER_END)
+  resultRelease   ResultRelease @default(IMMEDIATE)
+  /// Har bir talabaga tasodifiy tanlanadigan savollar soni (null — hammasi)
+  questionsPerAttempt Int?
+  /// Testning jami (maksimal) bahosi (null — savollar ballari yig'indisi)
+  maxScore        Int?
   resultsReleasedAt DateTime?
   restrictedAccess  Boolean       @default(false)
   createdById     String?
@@ -210,8 +218,10 @@ model Attempt {
   deadlineAt    DateTime
   submittedAt   DateTime?
   autoSubmitted Boolean       @default(false)
-  score         Int?
-  maxScore      Int?
+  /// Shu talabaga tushgan savollar (bo'sh — testning barcha savollari)
+  questionIds   String[]      @default([])
+  score         Float?
+  maxScore      Float?
   percent       Float?
   correctCount  Int?
   totalQuestions Int?

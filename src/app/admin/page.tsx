@@ -18,7 +18,7 @@ export default async function AdminDashboard() {
   const [universities, students, publishedTests, openTests, questions, submitted, inProgress, avg, recent, uniStats, upcoming] =
     await Promise.all([
       prisma.university.count(),
-      prisma.user.count({ where: { role: "STUDENT", isActive: true } }),
+      prisma.user.count({ where: { roles: { has: "STUDENT" }, isActive: true } }),
       prisma.test.count({ where: { isPublished: true } }),
       prisma.test.count({ where: { isPublished: true, startsAt: { lte: now }, endsAt: { gt: now } } }),
       prisma.question.count(),
@@ -39,7 +39,7 @@ export default async function AdminDashboard() {
       }),
       prisma.$queryRaw<{ id: string; shortName: string; students: bigint; avg: number | null }[]>`
         SELECT u."id", u."shortName",
-          (SELECT COUNT(*) FROM "User" s WHERE s."universityId" = u."id" AND s."role" = 'STUDENT') AS students,
+          (SELECT COUNT(*) FROM "User" s WHERE s."universityId" = u."id" AND 'STUDENT' = ANY(s."roles")) AS students,
           (SELECT AVG(a."percent") FROM "Attempt" a JOIN "User" s ON s."id" = a."userId"
              WHERE s."universityId" = u."id" AND a."status" = 'SUBMITTED') AS avg
         FROM "University" u ORDER BY u."shortName"`,

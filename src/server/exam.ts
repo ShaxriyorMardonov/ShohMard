@@ -7,6 +7,8 @@ import {
   computeDeadline,
   gradeAttempt,
   isExpired,
+  pickQuestionIds,
+  scaleScore,
   testState,
   validateSelection,
 } from "@/lib/exam-rules";
@@ -44,7 +46,7 @@ export async function finalizeAttempt(attemptId: string, opts: { auto: boolean; 
   return prisma.$transaction(async (tx) => {
     const attempt = await tx.attempt.findUnique({
       where: { id: attemptId },
-      select: { id: true, status: true, testId: true, deadlineAt: true },
+      select: { id: true, status: true, testId: true, deadlineAt: true, questionIds: true, test: { select: { maxScore: true } } },
     });
     if (!attempt) throw new ExamError("Urinish topilmadi", "NOT_FOUND");
 
@@ -57,7 +59,7 @@ export async function finalizeAttempt(attemptId: string, opts: { auto: boolean; 
     if (claimed.count === 0) return { alreadyFinalized: true as const };
 
     const questions = await tx.testQuestion.findMany({
-      where: { testId: attempt.testId },
+      where: { testId: attempt.testId, ...(attempt.questionIds.length ? { questionId: { in: attempt.questionIds } } : {}) },
       select: {
         questionId: true,
         points: true,
@@ -86,17 +88,18 @@ export async function finalizeAttempt(attemptId: string, opts: { auto: boolean; 
       });
     }
 
+    const scaled = scaleScore(result.score, result.maxScore, attempt.test.maxScore);
     await tx.attempt.update({
       where: { id: attemptId },
       data: {
-        score: result.score,
-        maxScore: result.maxScore,
+        score: scaled.score,
+        maxScore: scaled.maxScore,
         percent: result.percent,
         correctCount: result.correctCount,
         totalQuestions: questions.length,
       },
     });
-    return { alreadyFinalized: false as const, ...result };
+    return { alreadyFinalized: false as const, ...result, ...scaled };
   });
 }
 
@@ -124,6 +127,8 @@ export async function startAttempt(userId: string, universityId: string, testId:
       startsAt: true,
       endsAt: true,
       durationMinutes: true,
+      questionsPerAttempt: true,
+      questions: { orderBy: { position: "asc" }, select: { questionId: true } },
       _count: { select: { questions: true } },
     },
   });
@@ -152,7 +157,13 @@ export async function startAttempt(userId: string, universityId: string, testId:
 
   try {
     return await prisma.attempt.create({
-      data: { testId, userId, startedAt: now, deadlineAt: computeDeadline(test, now) },
+      data: {
+        testId,
+        userId,
+        startedAt: now,
+        deadlineAt: computeDeadline(test, now),
+        questionIds: pickQuestionIds(test.questions.map((q) => q.questionId), test.questionsPerAttempt),
+      },
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
@@ -167,7 +178,7 @@ export async function startAttempt(userId: string, universityId: string, testId:
 async function loadOwnAttempt(userId: string, attemptId: string) {
   const attempt = await prisma.attempt.findUnique({
     where: { id: attemptId },
-    select: { id: true, userId: true, testId: true, status: true, deadlineAt: true },
+    select: { id: true, userId: true, testId: true, status: true, deadlineAt: true, questionIds: true },
   });
   if (!attempt || attempt.userId !== userId) throw new ExamError("Urinish topilmadi", "NOT_FOUND");
   return attempt;
@@ -191,7 +202,9 @@ export async function saveAnswer(
     where: { testId_questionId: { testId: attempt.testId, questionId: input.questionId } },
     select: { question: { select: { type: true, options: { select: { id: true } } } } },
   });
-  if (!tq) throw new ExamError("Savol bu testga tegishli emas", "INVALID");
+  if (!tq || (attempt.questionIds.length && !attempt.questionIds.includes(input.questionId))) {
+    throw new ExamError("Savol bu testga tegishli emas", "INVALID");
+  }
   if (
     !validateSelection(
       tq.question.type,
@@ -242,6 +255,7 @@ export async function getExamView(userId: string, attemptId: string) {
       status: true,
       startedAt: true,
       deadlineAt: true,
+      questionIds: true,
       test: {
         select: {
           id: true,
@@ -267,9 +281,49 @@ export async function getExamView(userId: string, attemptId: string) {
     },
   });
   if (!attempt || attempt.userId !== userId) return null;
+  // Talabaga faqat unga tushgan savollar ko'rsatiladi
+  if (attempt.questionIds.length) {
+    const own = new Set(attempt.questionIds);
+    attempt.test.questions = attempt.test.questions.filter((tq) => own.has(tq.question.id));
+  }
   // Variantlar har bir talaba uchun aralashtiriladi (to'g'ri javob doim birinchi turmasligi uchun).
   for (const tq of attempt.test.questions) {
     if (tq.question.type !== "TRUE_FALSE") tq.question.options = seededShuffle(tq.question.options, attempt.id + tq.question.id);
   }
   return attempt;
+}
+
+/**
+ * Testning topshirilgan barcha urinishlari ballini qayta hisoblaydi
+ * (jami baho o'zgartirilganda). Javoblarning o'zi qayta baholanmaydi.
+ */
+export async function rescoreTest(testId: string) {
+  const test = await prisma.test.findUnique({
+    where: { id: testId },
+    select: { maxScore: true, questions: { select: { questionId: true, points: true } } },
+  });
+  if (!test) return 0;
+  const points = new Map(test.questions.map((q) => [q.questionId, q.points]));
+  const attempts = await prisma.attempt.findMany({
+    where: { testId, status: "SUBMITTED" },
+    select: { id: true, questionIds: true, answers: { select: { pointsAwarded: true } } },
+  });
+  for (const a of attempts) {
+    const ids = a.questionIds.length ? a.questionIds : [...points.keys()];
+    const rawMax = ids.reduce((n, id) => n + (points.get(id) ?? 0), 0);
+    const raw = a.answers.reduce((n, x) => n + (x.pointsAwarded ?? 0), 0);
+    const scaled = scaleScore(raw, rawMax, test.maxScore);
+    await prisma.attempt.update({ where: { id: a.id }, data: { score: scaled.score, maxScore: scaled.maxScore } });
+  }
+  return attempts.length;
+}
+
+/** Davomiylik yoki tugash vaqti o'zgarganda jarayondagi urinishlar muddatini moslaydi. */
+export async function recomputeDeadlines(testId: string) {
+  const test = await prisma.test.findUnique({ where: { id: testId }, select: { isPublished: true, startsAt: true, endsAt: true, durationMinutes: true } });
+  if (!test) return;
+  const open = await prisma.attempt.findMany({ where: { testId, status: "IN_PROGRESS" }, select: { id: true, startedAt: true } });
+  for (const a of open) {
+    await prisma.attempt.update({ where: { id: a.id }, data: { deadlineAt: computeDeadline(test, a.startedAt) } });
+  }
 }

@@ -214,4 +214,28 @@ describe.skipIf(!enabled)("imtihon jarayoni (PostgreSQL bilan integratsion)", as
     await prisma.test.delete({ where: { id: testId } });
     expect(await prisma.attempt.count({ where: { id: a.id } })).toBe(0);
   });
+
+  it("har bir talabaga berilgan sondagi savol tushadi va baho jami bahoga moslanadi", async () => {
+    await prisma.test.update({ where: { id: testId }, data: { questionsPerAttempt: 2, maxScore: 100 } });
+    const a = await exam.startAttempt(alice, uniA, testId);
+    expect(a.questionIds).toHaveLength(2);
+    const view = await exam.getExamView(alice, a.id);
+    expect(view!.test.questions.map((q) => q.question.id).sort()).toEqual([...a.questionIds].sort());
+    const other = Object.values(q).find((x) => !a.questionIds.includes(x.id))!;
+    await expect(
+      exam.saveAnswer(alice, { attemptId: a.id, questionId: other.id, selectedOptionIds: [], flagged: false }),
+    ).rejects.toMatchObject({ code: "INVALID" });
+    for (const id of a.questionIds) {
+      const qq = Object.values(q).find((x) => x.id === id)!;
+      await exam.saveAnswer(alice, { attemptId: a.id, questionId: id, selectedOptionIds: qq.correct, flagged: false });
+    }
+    await exam.submitAttempt(alice, a.id);
+    const done = await prisma.attempt.findUniqueOrThrow({ where: { id: a.id } });
+    expect(done.maxScore).toBe(100);
+    expect(done.score).toBe(100);
+    expect(done.totalQuestions).toBe(2);
+    await prisma.test.update({ where: { id: testId }, data: { maxScore: 5 } });
+    await exam.rescoreTest(testId);
+    expect((await prisma.attempt.findUniqueOrThrow({ where: { id: a.id } })).score).toBe(5);
+  });
 });

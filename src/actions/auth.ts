@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { createSession, destroySession, homeFor, requireUser } from "@/lib/auth";
+import type { Role } from "@prisma/client";
+import { createSession, destroySession, homeFor, requireUser, setActiveRole } from "@/lib/auth";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { changePasswordSchema, fieldErrors, loginSchema, type FormState } from "@/lib/validation";
 
@@ -44,7 +45,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   if (!user.isActive) {
     return { message: "Hisobingiz faol emas. Administrator bilan bog'laning." };
   }
-  if (user.role !== "ADMIN" && !user.universityId) {
+  if (!user.roles.includes("ADMIN") && user.role !== "ADMIN" && !user.universityId) {
     return { message: "Hisobingiz universitetga biriktirilmagan. Administrator bilan bog'laning." };
   }
 
@@ -54,6 +55,15 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   });
   await createSession(user.id);
   redirect(homeFor(user.role));
+}
+
+/** Bir nechta roli bo'lgan foydalanuvchi faol rolni almashtiradi. */
+export async function switchRoleAction(role: Role) {
+  const me = await requireUser();
+  if (!me.roles.includes(role)) return;
+  if (role !== "ADMIN" && !me.university) return;
+  await setActiveRole(role);
+  redirect(homeFor(role));
 }
 
 export async function logoutAction() {

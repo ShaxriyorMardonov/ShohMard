@@ -42,7 +42,9 @@ export type CurrentUser = {
   id: string;
   login: string;
   fullName: string;
+  /** Hozir faol rol (bir nechta rol bo'lsa, foydalanuvchi tanlagani). */
   role: Role;
+  roles: Role[];
   groupName: string | null;
   university: { id: string; name: string; shortName: string } | null;
 };
@@ -61,6 +63,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
           login: true,
           fullName: true,
           role: true,
+          roles: true,
           isActive: true,
           group: { select: { name: true } },
           university: { select: { id: true, name: true, shortName: true } },
@@ -69,9 +72,11 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     },
   });
   if (!session || session.expiresAt < new Date() || !session.user.isActive) return null;
-  const { isActive: _active, group, ...user } = session.user;
+  const { isActive: _active, group, roles: rawRoles, ...user } = session.user;
   void _active;
-  return { ...user, groupName: group?.name ?? null };
+  const roles = rawRoles.length ? sortRoles(rawRoles) : [user.role];
+  const role = session.activeRole && roles.includes(session.activeRole) ? session.activeRole : roles.includes(user.role) ? user.role : roles[0]!;
+  return { ...user, role, roles, groupName: group?.name ?? null };
 });
 
 export async function requireUser(): Promise<CurrentUser> {
@@ -99,14 +104,28 @@ export async function requireStaff(): Promise<StaffUser> {
     if (!user.university) redirect("/login?error=university");
     return { ...user, scope: user.university.id };
   }
-  redirect("/student");
+  redirect(homeFor(user.role));
 }
 
 export async function requireStudent(): Promise<CurrentUser & { university: NonNullable<CurrentUser["university"]> }> {
   const user = await requireUser();
-  if (user.role !== "STUDENT") redirect("/admin");
+  if (user.role !== "STUDENT") redirect(homeFor(user.role));
   if (!user.university) redirect("/login?error=university");
   return user as CurrentUser & { university: NonNullable<CurrentUser["university"]> };
+}
+
+const ROLE_ORDER: Role[] = ["ADMIN", "MANAGER", "STUDENT"];
+
+export function sortRoles(roles: Role[]): Role[] {
+  return ROLE_ORDER.filter((r) => roles.includes(r));
+}
+
+/** Joriy sessiyada faol rolni almashtiradi. */
+export async function setActiveRole(role: Role) {
+  const store = await cookies();
+  const token = store.get(SESSION_COOKIE)?.value;
+  if (!token) return;
+  await prisma.session.updateMany({ where: { tokenHash: hashToken(token) }, data: { activeRole: role } });
 }
 
 export function homeFor(role: Role) {

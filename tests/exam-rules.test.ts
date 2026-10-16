@@ -97,3 +97,21 @@ describe("isResultReleased", () => {
     expect(isResultReleased({ ...base, resultRelease: "MANUAL", resultsReleasedAt: t0 }, window.endsAt)).toBe(true);
   });
 });
+
+describe("scaleScore va pickQuestionIds", () => {
+  it("ballni jami bahoga moslaydi", async () => {
+    const { scaleScore } = await import("@/lib/exam-rules");
+    expect(scaleScore(3, 4, 100)).toEqual({ score: 75, maxScore: 100 });
+    expect(scaleScore(1, 3, 5)).toEqual({ score: 1.7, maxScore: 5 });
+    expect(scaleScore(2, 6, null)).toEqual({ score: 2, maxScore: 6 });
+  });
+  it("berilgan sonda savol tanlaydi, tartibni saqlaydi", async () => {
+    const { pickQuestionIds } = await import("@/lib/exam-rules");
+    const ids = ["a", "b", "c", "d", "e"];
+    const got = pickQuestionIds(ids, 3);
+    expect(got).toHaveLength(3);
+    expect(got).toEqual(ids.filter((x) => got.includes(x)));
+    expect(pickQuestionIds(ids, null)).toEqual([]);
+    expect(pickQuestionIds(ids, 9)).toEqual([]);
+  });
+});

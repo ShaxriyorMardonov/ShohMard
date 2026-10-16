@@ -26,7 +26,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const q = (sp.q ?? "").trim().slice(0, 100);
   const page = parsePage(sp.page);
   const where: Prisma.UserWhereInput = {
-    role: "STUDENT",
+    roles: { has: "STUDENT" },
     ...studentOrgWhere(staff.scope, sp),
     ...(q ? { OR: [{ fullName: { contains: q, mode: "insensitive" } }, { login: { contains: q, mode: "insensitive" } }] } : {}),
   };

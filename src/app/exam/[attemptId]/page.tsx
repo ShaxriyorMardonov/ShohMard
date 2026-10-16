@@ -16,9 +16,9 @@ export default async function ExamPage({ params }: { params: Promise<{ attemptId
 
   if (view.status === "IN_PROGRESS" && isExpired(view.deadlineAt, new Date(), SAVE_GRACE_MS)) {
     await finalizeAttempt(view.id, { auto: true });
-    redirect("/student/history?submitted=1");
+    redirect(`/student/results/${view.id}`);
   }
-  if (view.status !== "IN_PROGRESS") redirect("/student/history");
+  if (view.status !== "IN_PROGRESS") redirect(`/student/results/${view.id}`);
 
   return (
     <ExamClient

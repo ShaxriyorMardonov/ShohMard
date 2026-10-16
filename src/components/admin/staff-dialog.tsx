@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import type { Role } from "@prisma/client";
 import { saveStaffUserAction } from "@/actions/admin";
 import { useFormAction } from "@/components/forms/use-form-action";
 import { Field } from "@/components/forms/field";
@@ -12,7 +13,13 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { SubmitButton } from "@/components/ui/submit-button";
 import type { FormState } from "@/lib/validation";
 
-export type StaffRow = { id: string; fullName: string; login: string; role: "ADMIN" | "MANAGER"; universityId: string | null; isActive: boolean };
+export type StaffRow = { id: string; fullName: string; login: string; roles: Role[]; universityId: string | null; isActive: boolean };
+
+const ROLE_OPTIONS: { value: Role; label: string; hint: string }[] = [
+  { value: "ADMIN", label: "Administrator", hint: "Hamma narsani boshqaradi" },
+  { value: "MANAGER", label: "Universitet menejeri", hint: "Talaba yuklash, test yaratish va vaqtini ochish" },
+  { value: "STUDENT", label: "Talaba", hint: "Test topshiradi va natijasini ko'radi" },
+];
 
 function StaffForm({ user, universities, isSelf, onDone }: { user?: StaffRow; universities: { id: string; name: string }[]; isSelf: boolean; onDone: () => void }) {
   const { state, onSubmit, pending } = useFormAction(async (prev: FormState, fd: FormData) => {
@@ -20,7 +27,8 @@ function StaffForm({ user, universities, isSelf, onDone }: { user?: StaffRow; un
     if (res.ok) onDone();
     return res;
   });
-  const [role, setRole] = React.useState<string>(user?.role ?? "MANAGER");
+  const [roles, setRoles] = React.useState<Role[]>(user?.roles ?? ["MANAGER"]);
+  const toggle = (r: Role) => setRoles((cur) => (cur.includes(r) ? cur.filter((x) => x !== r) : [...cur, r]));
   const e = state.errors ?? {};
   return (
     <form onSubmit={onSubmit} className="grid gap-4">
@@ -29,26 +37,37 @@ function StaffForm({ user, universities, isSelf, onDone }: { user?: StaffRow; un
       <Field label="F.I.Sh." htmlFor="u-name" error={e.fullName}>
         <Input id="u-name" name="fullName" defaultValue={user?.fullName} aria-invalid={!!e.fullName} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Login" htmlFor="u-login" error={e.login}>
-          <Input id="u-login" name="login" defaultValue={user?.login} autoComplete="off" aria-invalid={!!e.login} />
-        </Field>
-        <Field label="Rol" htmlFor="u-role" error={e.role}>
-          {isSelf ? (
-            <>
-              <input type="hidden" name="role" value="ADMIN" />
-              <Input id="u-role" value="Administrator" disabled />
-            </>
-          ) : (
-            <NativeSelect id="u-role" name="role" value={role} onChange={(ev) => setRole(ev.target.value)}>
-              <option value="MANAGER">Universitet menejeri</option>
-              <option value="ADMIN">Administrator</option>
-            </NativeSelect>
-          )}
-        </Field>
-      </div>
-      {role === "MANAGER" && (
-        <Field label="Universitet" htmlFor="u-uni" error={e.universityId} hint="Menejer faqat shu universitet talabalari va testlari bilan ishlaydi">
+      <Field label="Login" htmlFor="u-login" error={e.login}>
+        <Input id="u-login" name="login" defaultValue={user?.login} autoComplete="off" aria-invalid={!!e.login} />
+      </Field>
+      <fieldset className="grid gap-2">
+        <legend className="mb-1.5 text-sm font-semibold text-midnight">Rollar</legend>
+        {ROLE_OPTIONS.map((o) => {
+          const lockedOn = isSelf && o.value === "ADMIN";
+          return (
+            <label key={o.value} className="flex cursor-pointer items-start gap-2.5 rounded-lg border px-3 py-2 text-sm has-[:checked]:border-royal has-[:checked]:bg-royal/5">
+              <input
+                type="checkbox"
+                name="roles"
+                value={o.value}
+                checked={roles.includes(o.value)}
+                disabled={lockedOn}
+                onChange={() => toggle(o.value)}
+                className="mt-0.5 size-4 accent-[#315ECA]"
+              />
+              {lockedOn && <input type="hidden" name="roles" value="ADMIN" />}
+              <span>
+                <span className="block font-medium">{o.label}</span>
+                <span className="text-xs text-muted-foreground">{o.hint}</span>
+              </span>
+            </label>
+          );
+        })}
+        {e.roles && <p className="text-xs font-medium text-error">{e.roles}</p>}
+        <p className="text-xs text-muted-foreground">Bir nechta rol berilsa, foydalanuvchi ularni ekranning o&apos;ng yuqorisidagi ismini bosib almashtiradi.</p>
+      </fieldset>
+      {(roles.includes("MANAGER") || roles.includes("STUDENT")) && (
+        <Field label="Universitet" htmlFor="u-uni" error={e.universityId} hint="Menejer va talaba roli shu universitetga tegishli bo'ladi">
           <NativeSelect id="u-uni" name="universityId" defaultValue={user?.universityId ?? ""} aria-invalid={!!e.universityId}>
             <option value="" disabled>Universitetni tanlang</option>
             {universities.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}

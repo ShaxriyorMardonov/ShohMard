@@ -122,3 +122,21 @@ export const RESULT_RELEASE_LABEL: Record<ResultRelease, string> = {
   AFTER_END: "Test yakunlangach",
   MANUAL: "Administrator e'lon qilganda",
 };
+
+/** Xom ballni testning jami bahosiga moslaydi (0,1 aniqlikda). */
+export function scaleScore(score: number, rawMax: number, maxScore: number | null | undefined): { score: number; maxScore: number } {
+  if (!maxScore || rawMax <= 0) return { score, maxScore: rawMax };
+  return { score: Math.round((score / rawMax) * maxScore * 10) / 10, maxScore };
+}
+
+/** Talabaga tushadigan savollar: soni berilgan bo'lsa, tasodifiy tanlanadi (test tartibi saqlanadi). */
+export function pickQuestionIds(ordered: readonly string[], count: number | null | undefined, rand: () => number = Math.random): string[] {
+  if (!count || count >= ordered.length) return [];
+  const idx = ordered.map((_, i) => i);
+  for (let i = idx.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [idx[i], idx[j]] = [idx[j]!, idx[i]!];
+  }
+  const chosen = new Set(idx.slice(0, count));
+  return ordered.filter((_, i) => chosen.has(i));
+}

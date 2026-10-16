@@ -55,7 +55,7 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
         </CardContent>
       </Card>
       <ol className="grid gap-4">
-        {a.test.questions.map(({ question: q, points }, i) => {
+        {a.test.questions.filter((tq) => !a.questionIds.length || a.questionIds.includes(tq.question.id)).map(({ question: q, points }, i) => {
           const ans = answers.get(q.id);
           const sel = new Set(ans?.selectedOptionIds ?? []);
           return (

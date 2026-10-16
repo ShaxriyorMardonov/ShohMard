@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { requireAdmin, requireStaff } from "@/lib/auth";
+import { requireAdmin, requireStaff, sortRoles } from "@/lib/auth";
 import { canManageTest, resolveFacultyGroup } from "@/server/org";
+import { recomputeDeadlines, rescoreTest } from "@/server/exam";
 import { hashPassword } from "@/lib/password";
 import { fromLocalInput } from "@/lib/time";
 import {
@@ -136,7 +137,8 @@ export async function saveStudentAction(_prev: FormState, fd: FormData): Promise
     studyForm: str(fd.get("studyForm")),
     isActive: fd.get("isActive") === "on",
   });
-  const password = str(fd.get("password"));
+  // Menejer mavjud talabaning parolini o'zgartira olmaydi (faqat yangi talabaga parol beradi)
+  const password = staff.scope && id ? "" : str(fd.get("password"));
   const errors = parsed.success ? {} : fieldErrors(parsed.error);
   if (!id || password) {
     const pw = passwordSchema.safeParse(password);
@@ -152,7 +154,7 @@ export async function saveStudentAction(_prev: FormState, fd: FormData): Promise
     const org = await resolveFacultyGroup(data.universityId, facultyName, groupName);
     if (id) {
       const existing = await prisma.user.findUnique({ where: { id } });
-      if (!existing || existing.role !== "STUDENT" || (staff.scope && existing.universityId !== staff.scope)) {
+      if (!existing || !existing.roles.includes("STUDENT") || (staff.scope && existing.universityId !== staff.scope)) {
         return { message: "Talaba topilmadi" };
       }
       await prisma.user.update({
@@ -186,7 +188,7 @@ export async function assignStudentsGroupAction(
   const list = Array.from(new Set(ids)).slice(0, 1000);
   if (!list.length) return { error: "Talaba tanlanmadi" };
   const students = await prisma.user.findMany({
-    where: { id: { in: list }, role: "STUDENT", ...(staff.scope ? { universityId: staff.scope } : {}) },
+    where: { id: { in: list }, roles: { has: "STUDENT" }, ...(staff.scope ? { universityId: staff.scope } : {}) },
     select: { id: true, universityId: true },
   });
   const unis = new Set(students.map((s) => s.universityId));
@@ -216,7 +218,14 @@ export async function assignStudentsGroupAction(
 export async function deleteStudentAction(id: string): Promise<Result> {
   await requireAdmin();
   const user = await prisma.user.findUnique({ where: { id }, include: { _count: { select: { attempts: true } } } });
-  if (!user || user.role !== "STUDENT") return { error: "Talaba topilmadi" };
+  if (!user || !user.roles.includes("STUDENT")) return { error: "Talaba topilmadi" };
+  const otherRoles = user.roles.filter((r) => r !== "STUDENT");
+  if (otherRoles.length) {
+    // Boshqa rollari bor: hisob saqlanadi, faqat talaba roli olib tashlanadi
+    await prisma.user.update({ where: { id }, data: { roles: otherRoles, role: otherRoles[0] } });
+    revalidatePath("/admin/students");
+    return;
+  }
   if (user._count.attempts > 0) {
     return { error: "Talabaning imtihon natijalari mavjud. Natijalarni saqlash uchun hisobni o'chirish o'rniga nofaol qiling." };
   }
@@ -295,6 +304,8 @@ export async function saveTestAction(_prev: FormState, fd: FormData): Promise<Fo
     startsAt: fromLocalInput(str(fd.get("startsAt"))) ?? undefined,
     endsAt: fromLocalInput(str(fd.get("endsAt"))) ?? undefined,
     passingPercent: str(fd.get("passingPercent")) || "60",
+    questionsPerAttempt: str(fd.get("questionsPerAttempt")).trim(),
+    maxScore: str(fd.get("maxScore")).trim(),
     resultRelease: str(fd.get("resultRelease")),
     isPublished: fd.get("isPublished") === "on",
     universityIds: staff.scope ? [staff.scope] : fd.getAll("universityIds").map(String),
@@ -314,10 +325,22 @@ export async function saveTestAction(_prev: FormState, fd: FormData): Promise<Fo
 
   let testId = id;
   if (id) {
+    const before = await prisma.test.findUnique({
+      where: { id },
+      select: { maxScore: true, questionsPerAttempt: true, durationMinutes: true, endsAt: true, _count: { select: { attempts: true } } },
+    });
+    if (before && before._count.attempts > 0 && before.questionsPerAttempt !== data.questionsPerAttempt) {
+      return { errors: { questionsPerAttempt: "Talabalar testni boshlagan, savollar sonini o'zgartirib bo'lmaydi" } };
+    }
     await prisma.test.update({
       where: { id },
       data: { ...data, universities: { set: universityIds.map((u) => ({ id: u })) } },
     });
+    if (before && before.maxScore !== data.maxScore) await rescoreTest(id);
+    if (before && (before.durationMinutes !== data.durationMinutes || before.endsAt.getTime() !== data.endsAt.getTime())) {
+      await recomputeDeadlines(id);
+    }
+    revalidatePath("/admin/results");
   } else {
     const t = await prisma.test.create({
       data: { ...data, createdById: staff.id, universities: { connect: universityIds.map((u) => ({ id: u })) } },
@@ -359,6 +382,33 @@ export async function setTestActiveAction(id: string, active: boolean): Promise<
   revalidatePath(`/admin/tests/${id}`);
 }
 
+/** Test vaqti, davomiyligi va jami bahosini o'zgartirish (test boshlangandan keyin ham). */
+export async function updateTestScheduleAction(testId: string, _prev: FormState, fd: FormData): Promise<FormState> {
+  const staff = await requireStaff();
+  if (!(await canManageTest(staff.scope, testId))) return { message: "Test topilmadi" };
+  const startsAt = fromLocalInput(str(fd.get("startsAt")));
+  const endsAt = fromLocalInput(str(fd.get("endsAt")));
+  const duration = Number(str(fd.get("durationMinutes")));
+  const maxRaw = str(fd.get("maxScore")).trim();
+  const maxScore = maxRaw === "" ? null : Number(maxRaw);
+  const errors: Record<string, string> = {};
+  if (!startsAt) errors.startsAt = "Boshlanish vaqtini kiriting";
+  if (!endsAt) errors.endsAt = "Tugash vaqtini kiriting";
+  if (startsAt && endsAt && endsAt <= startsAt) errors.endsAt = "Tugash vaqti boshlanishdan keyin bo'lsin";
+  if (!Number.isInteger(duration) || duration < 1 || duration > 600) errors.durationMinutes = "1–600 daqiqa";
+  if (maxScore !== null && (!Number.isInteger(maxScore) || maxScore < 1 || maxScore > 1000)) errors.maxScore = "1–1000 ball";
+  if (Object.keys(errors).length) return { errors };
+  const before = await prisma.test.findUniqueOrThrow({ where: { id: testId }, select: { maxScore: true } });
+  await prisma.test.update({ where: { id: testId }, data: { startsAt: startsAt!, endsAt: endsAt!, durationMinutes: duration, maxScore } });
+  await recomputeDeadlines(testId);
+  let rescored = 0;
+  if (before.maxScore !== maxScore) rescored = await rescoreTest(testId);
+  revalidatePath(`/admin/tests/${testId}`);
+  revalidatePath("/admin/tests");
+  revalidatePath("/admin/results");
+  return { ok: true, message: rescored ? `Saqlandi. ${rescored} ta natija yangi bahoga moslandi.` : "Saqlandi" };
+}
+
 /* ----- Talabalarga alohida ruxsat ----- */
 
 export async function setTestRestrictedAction(testId: string, restricted: boolean): Promise<Result> {
@@ -377,7 +427,7 @@ export async function addTestAccessAction(
   if (!(await canManageTest(staff.scope, testId))) return { error: "Test topilmadi" };
   const test = await prisma.test.findUnique({ where: { id: testId }, select: { universities: { select: { id: true } } } });
   const uniIds = test!.universities.map((u) => u.id);
-  const base = { role: "STUDENT" as const, universityId: { in: uniIds } };
+  const base = { roles: { has: "STUDENT" as const }, universityId: { in: uniIds } };
   let students: { id: string; login: string }[] = [];
   let notFound: string[] = [];
   if (input.groupId) {
@@ -496,7 +546,7 @@ export async function saveStaffUserAction(_prev: FormState, fd: FormData): Promi
   const parsed = staffSchema.safeParse({
     fullName: str(fd.get("fullName")),
     login: str(fd.get("login")),
-    role: str(fd.get("role")),
+    roles: fd.getAll("roles").map(String),
     universityId: str(fd.get("universityId")),
     isActive: fd.get("isActive") === "on",
   });
@@ -507,8 +557,17 @@ export async function saveStaffUserAction(_prev: FormState, fd: FormData): Promi
     if (!pw.success) errors.password = pw.error.issues[0]?.message;
   }
   if (!parsed.success || Object.keys(errors).length) return { errors };
-  const data = { ...parsed.data, universityId: parsed.data.role === "MANAGER" ? parsed.data.universityId : null };
-  if (id === admin.id && (data.role !== "ADMIN" || !data.isActive)) {
+  const roles = sortRoles(parsed.data.roles);
+  const needsUni = roles.includes("MANAGER") || roles.includes("STUDENT");
+  const data = {
+    fullName: parsed.data.fullName,
+    login: parsed.data.login,
+    isActive: parsed.data.isActive,
+    roles,
+    role: roles[0]!,
+    universityId: needsUni ? parsed.data.universityId : null,
+  };
+  if (id === admin.id && (!roles.includes("ADMIN") || !data.isActive)) {
     return { message: "O'zingizning administrator rolingizni olib tashlay yoki hisobingizni o'chira olmaysiz" };
   }
   if (data.universityId && !(await prisma.university.count({ where: { id: data.universityId } }))) {
@@ -517,7 +576,7 @@ export async function saveStaffUserAction(_prev: FormState, fd: FormData): Promi
   try {
     if (id) {
       const existing = await prisma.user.findUnique({ where: { id } });
-      if (!existing || existing.role === "STUDENT") return { message: "Foydalanuvchi topilmadi" };
+      if (!existing) return { message: "Foydalanuvchi topilmadi" };
       await prisma.user.update({
         where: { id },
         data: {
@@ -534,6 +593,7 @@ export async function saveStaffUserAction(_prev: FormState, fd: FormData): Promi
     throw e;
   }
   revalidatePath("/admin/users");
+  revalidatePath("/admin/students");
   return { ok: true, message: id ? "Foydalanuvchi yangilandi" : "Foydalanuvchi qo'shildi" };
 }
 
@@ -541,7 +601,14 @@ export async function deleteStaffUserAction(id: string): Promise<Result> {
   const admin = await requireAdmin();
   if (id === admin.id) return { error: "O'zingizni o'chira olmaysiz" };
   const u = await prisma.user.findUnique({ where: { id } });
-  if (!u || u.role === "STUDENT") return { error: "Foydalanuvchi topilmadi" };
+  if (!u) return { error: "Foydalanuvchi topilmadi" };
+  if (u.roles.includes("STUDENT") && (await prisma.attempt.count({ where: { userId: id } }))) {
+    // Talaba sifatida natijalari bor: hisob saqlanadi, faqat xodim rollari olinadi
+    await prisma.user.update({ where: { id }, data: { roles: ["STUDENT"], role: "STUDENT" } });
+    await prisma.session.deleteMany({ where: { userId: id } });
+    revalidatePath("/admin/users");
+    return;
+  }
   await prisma.user.delete({ where: { id } });
   revalidatePath("/admin/users");
 }

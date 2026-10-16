@@ -15,7 +15,7 @@ export default async function EditTestPage({ params }: { params: Promise<{ testI
   const [test, universities] = await Promise.all([
     prisma.test.findFirst({
       where: { id: testId, ...testScopeWhere(staff.scope) },
-      include: { universities: { select: { id: true } }, _count: { select: { questions: true } } },
+      include: { universities: { select: { id: true } }, _count: { select: { questions: true, attempts: true } } },
     }),
     prisma.university.findMany({ where: staff.scope ? { id: staff.scope } : {}, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
@@ -37,6 +37,9 @@ export default async function EditTestPage({ params }: { params: Promise<{ testI
           startsAt: toLocalInput(test.startsAt),
           endsAt: toLocalInput(test.endsAt),
           passingPercent: test.passingPercent,
+          questionsPerAttempt: test.questionsPerAttempt,
+          maxScore: test.maxScore,
+          locked: test._count.attempts > 0,
           resultRelease: test.resultRelease,
           isPublished: test.isPublished,
           universityIds: test.universities.map((u) => u.id),
