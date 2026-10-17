@@ -37,3 +37,13 @@ export function hasCertificate(percent: number | null | undefined, kind: TestKin
   if (kind !== "REGULAR") return percent !== null && percent !== undefined;
   return gradeKey(percent, kind) !== "fail";
 }
+
+/**
+ * Xalqaro olimpiadada o'rin: barcha savollarga to'g'ri javob — 1-o'rin,
+ * bitta xato — 2-o'rin, ikkita xato — 3-o'rin (masalan, 25 savoldan 25, 24, 23).
+ */
+export function olympiadPlace(kind: TestKind, correct: number | null | undefined, total: number | null | undefined): 1 | 2 | 3 | null {
+  if (kind !== "OLYMPIAD_INTL" || !total || correct === null || correct === undefined) return null;
+  const wrong = total - correct;
+  return wrong === 0 ? 1 : wrong === 1 ? 2 : wrong === 2 ? 3 : null;
+}

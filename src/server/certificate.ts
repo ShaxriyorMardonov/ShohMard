@@ -29,6 +29,7 @@ export async function getCertificate(attemptId: string) {
       correctCount: true,
       totalQuestions: true,
       attemptNo: true,
+      supervisor: true,
       user: {
         select: {
           fullName: true,

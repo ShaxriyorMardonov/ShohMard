@@ -250,6 +250,8 @@ model Attempt {
   deadlineAt     DateTime
   submittedAt    DateTime?
   autoSubmitted  Boolean       @default(false)
+  /// Olimpiada diplomida ko'rsatiladigan ilmiy rahbar (ishtirokchi o'zi kiritadi)
+  supervisor     String?
   /// Shu talabaga tushgan savollar (bo'sh — testning barcha savollari)
   questionIds    String[]      @default([])
   score          Float?

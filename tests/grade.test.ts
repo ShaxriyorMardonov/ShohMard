@@ -40,3 +40,14 @@ describe("olimpiada baholari", () => {
     expect(hasCertificate(10)).toBe(false);
   });
 });
+
+describe("xalqaro olimpiada o'rinlari", async () => {
+  const { olympiadPlace } = await import("@/lib/grade");
+  it("25 savoldan 25/24/23 — 1/2/3-o'rin", () => {
+    expect(olympiadPlace("OLYMPIAD_INTL", 25, 25)).toBe(1);
+    expect(olympiadPlace("OLYMPIAD_INTL", 24, 25)).toBe(2);
+    expect(olympiadPlace("OLYMPIAD_INTL", 23, 25)).toBe(3);
+    expect(olympiadPlace("OLYMPIAD_INTL", 22, 25)).toBeNull();
+    expect(olympiadPlace("OLYMPIAD_LOCAL", 25, 25)).toBeNull();
+  });
+});

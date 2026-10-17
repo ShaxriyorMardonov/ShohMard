@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { CertificateView } from "@/components/certificate/certificate-view";
+import { DiplomaView } from "@/components/certificate/diploma-view";
+import { SupervisorForm } from "@/components/certificate/supervisor-form";
 import { PrintButton } from "@/components/certificate/print-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,17 +40,21 @@ export default async function CertificatePage({
   const { t, lang: uiLang } = await getT();
   const lang = isLang(certLang) ? certLang : uiLang;
   const qr = await certificateQr(c.id);
+  // Olimpiada natijasi — kitob shaklidagi diplom, oddiy test — albom shaklidagi sertifikat
+  const diploma = isOlympiad(c.test.kind);
   return (
     <main className="min-h-dvh bg-muted/60 px-4 py-6 print:bg-white print:p-0">
       <style>
-        {"@page { size: A4 landscape; margin: 0 } @media print { html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact } .certificate { width: 297mm !important; height: 210mm !important } }"}
+        {diploma
+          ? "@page { size: A4 portrait; margin: 0 } @media print { html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact } .diploma { width: 210mm !important; height: 297mm !important } }"
+          : "@page { size: A4 landscape; margin: 0 } @media print { html, body { -webkit-print-color-adjust: exact; print-color-adjust: exact } .certificate { width: 297mm !important; height: 210mm !important } }"}
       </style>
       <div className="mx-auto mb-4 flex max-w-[1100px] flex-wrap items-center justify-between gap-2 print:hidden">
         <Button asChild variant="ghost" size="sm">
           <Link href={isStaff ? `/admin/results/${c.id}` : `${resultsBase}/${c.id}`}><ArrowLeft /> {t("Natijaga qaytish")}</Link>
         </Button>
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">{t("Sertifikat tili:")}</span>
+          <span className="text-sm text-muted-foreground">{diploma ? t("Diplom tili:") : t("Sertifikat tili:")}</span>
           <div className="flex overflow-hidden rounded-lg border border-border bg-white">
             {LOCALES.map((l) => (
               <Link
@@ -65,7 +71,12 @@ export default async function CertificatePage({
           <PrintButton />
         </div>
       </div>
-      <CertificateView c={c} qrSvg={qr.svg} t={makeT(lang, dictFor(lang))} lang={lang} />
+      {diploma && c.userId === user.id && <SupervisorForm attemptId={c.id} initial={c.supervisor} />}
+      {diploma ? (
+        <DiplomaView c={c} qrSvg={qr.svg} t={makeT(lang, dictFor(lang))} lang={lang} />
+      ) : (
+        <CertificateView c={c} qrSvg={qr.svg} t={makeT(lang, dictFor(lang))} lang={lang} />
+      )}
       <p className="mx-auto mt-3 max-w-[1100px] text-center text-xs text-muted-foreground print:hidden">
         {t("PDF saqlash uchun chop etish oynasida \"PDF sifatida saqlash\" ni tanlang.")}
       </p>

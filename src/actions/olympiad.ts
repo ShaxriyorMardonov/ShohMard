@@ -1,10 +1,12 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createSession, getCurrentUser, homeFor } from "@/lib/auth";
+import { createSession, getCurrentUser, homeFor, requireUser } from "@/lib/auth";
 import { captchaSiteKey, verifyCaptcha } from "@/lib/captcha";
 import { prisma } from "@/lib/db";
+import { isOlympiad } from "@/lib/olympiad";
 import { hashPassword } from "@/lib/password";
 import { getClientIp } from "@/lib/request-info";
 import { fieldErrors, passwordSchema, weakPasswordReason, type FormState } from "@/lib/validation";
@@ -107,4 +109,17 @@ export async function registerParticipantAction(_prev: FormState, fd: FormData):
   await prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
   await createSession(userId);
   redirect(homeFor("PARTICIPANT"));
+}
+
+/** Olimpiada diplomidagi ilmiy rahbarni saqlaydi (faqat urinish egasi). Bo'sh qiymat — o'chiriladi. */
+export async function saveSupervisorAction(attemptId: string, value: string): Promise<{ error?: string; ok?: true }> {
+  const user = await requireUser();
+  const name = String(value ?? "").trim().replace(/\s+/g, " ");
+  if (name.length > 120) return { error: "Juda uzun" };
+  if (name && name.length < 5) return { error: "Ilmiy rahbarning familiyasi, ismi va otasining ismini to'liq kiriting" };
+  const a = await prisma.attempt.findUnique({ where: { id: String(attemptId) }, select: { userId: true, test: { select: { kind: true } } } });
+  if (!a || a.userId !== user.id || !isOlympiad(a.test.kind)) return { error: "Ruxsat yo'q" };
+  await prisma.attempt.update({ where: { id: String(attemptId) }, data: { supervisor: name || null } });
+  revalidatePath(`/certificate/${attemptId}`);
+  return { ok: true };
 }
