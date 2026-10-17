@@ -12,7 +12,7 @@ const FLAG = { blue: "#0099B5", white: "#FFFFFF", red: "#CE1126", green: "#1EB53
 /** O'zbekiston gerbi */
 export function Emblem({ className }: { className?: string }) {
   // eslint-disable-next-line @next/next/no-img-element
-  return <img src="/diploma/emblem-uz.svg" alt="" className={className} />;
+  return <img src="/diploma/emblem-uz.svg" width={1349} height={1372} alt="" className={className} />;
 }
 
 /** Sharqona girih naqshi (8 qirrali yulduzli plitka). */
@@ -312,7 +312,7 @@ export function IntlDecor() {
 export function WorldDots() {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src="/diploma/world-dots.png" alt="" aria-hidden className="pointer-events-none absolute left-[6%] top-[17%] w-[88%] opacity-[0.12]" />
+    <img src="/diploma/world-dots.png" width={2020} height={1200} alt="" aria-hidden className="pointer-events-none absolute left-[6%] top-[17%] w-[88%] opacity-[0.12]" />
   );
 }
 
@@ -323,7 +323,7 @@ export function GlobeCap({ className }: { className?: string }) {
       <Laurel className="absolute bottom-[14%] left-[2%] h-[78%] w-[22%]" />
       <Laurel flip className="absolute bottom-[14%] right-[2%] h-[78%] w-[22%]" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/diploma/globe.png" alt="" className="absolute left-1/2 top-[20%] w-[46%] -translate-x-1/2 drop-shadow-[0_0.6cqw_0.8cqw_rgba(8,28,82,0.3)]" />
+      <img src="/diploma/globe.png" width={600} height={600} alt="" className="absolute left-1/2 top-[20%] w-[46%] -translate-x-1/2 drop-shadow-[0_0.6cqw_0.8cqw_rgba(8,28,82,0.3)]" />
       <svg viewBox="0 0 100 80" className="absolute inset-0 size-full">
         {/* qalpoqcha */}
         <path d="M38 17.5V24Q50 28.5 62 24V17.5Z" fill="#0D2160" />
@@ -362,7 +362,7 @@ export function FlagGlobe() {
           <ellipse cx="50" cy="64" rx="58" ry="15" fill="none" stroke="#E2C25A" strokeWidth="1.4" />
         </svg>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/diploma/globe.png" alt="" className="absolute left-[12%] top-0 w-[76%] drop-shadow-[0_1cqw_1.4cqw_rgba(8,28,82,0.3)]" />
+        <img src="/diploma/globe.png" width={600} height={600} alt="" className="absolute left-[12%] top-0 w-[76%] drop-shadow-[0_1cqw_1.4cqw_rgba(8,28,82,0.3)]" />
         <svg viewBox="0 0 100 86" className="absolute inset-0 size-full overflow-visible">
           <path d="M-8 64A58 15 0 0 0 108 64" fill="none" stroke="url(#fg-gold)" strokeWidth="2.4" />
           <defs>
