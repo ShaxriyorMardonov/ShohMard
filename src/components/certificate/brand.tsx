@@ -5,7 +5,7 @@ const GOLD = "#C9A227";
 /** Sertifikat uchun SAMU medalyoni: oltin hoshiyali doira ichida belgi. */
 function Medallion() {
   return (
-    <svg viewBox="0 0 100 100" aria-hidden className="size-[clamp(34px,4.6vw,54px)] shrink-0 print:size-[54px]">
+    <svg viewBox="0 0 100 100" aria-hidden className="size-[clamp(30px,4vw,46px)] shrink-0">
       <defs>
         <linearGradient id="cert-medal" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#3D6FE6" />
@@ -30,28 +30,36 @@ function Medallion() {
   );
 }
 
-/** Sertifikat sarlavhasidagi SAMU belgisi: medalyon, serif so'z belgisi va oltin bezak chiziqlari. */
+/** Bezak chizig'i: chetga qarab so'nadigan oltin chiziq va ichki uchida romb. */
+function Rule({ side }: { side: "left" | "right" }) {
+  return (
+    <span aria-hidden className={`flex flex-1 items-center gap-[6px] ${side === "left" ? "" : "flex-row-reverse"}`}>
+      <span className="h-px flex-1" style={{ background: `linear-gradient(to ${side === "left" ? "right" : "left"}, transparent, ${GOLD})` }} />
+      <span className="text-[clamp(7px,0.8vw,10px)] leading-none" style={{ color: GOLD }}>◆</span>
+    </span>
+  );
+}
+
+/**
+ * Sertifikat sarlavhasidagi SAMU belgisi — markazga tekislangan:
+ * oltin chiziqlar orasida medalyon, ostida serif "SAMU" va to'liq nomi.
+ * Harf oralig'i (tracking) oxirgi harfdan keyin ham bo'sh joy qo'shadi, shuning uchun
+ * chap tomonga xuddi shuncha padding berilib, yozuv aniq markazda turadi.
+ */
 export function CertificateBrand() {
   return (
-    <div className="flex w-full items-center justify-center gap-[2.2%]" aria-label={`${BRAND.name} — ${BRAND.fullName}`}>
-      <span aria-hidden className="h-px max-w-[20%] flex-1" style={{ background: `linear-gradient(to right, transparent, ${GOLD})` }} />
-      <div className="flex items-center gap-[clamp(8px,1.2vw,16px)]">
+    <div className="flex w-full flex-col items-center" aria-label={`${BRAND.name} — ${BRAND.fullName}`}>
+      <div className="flex w-[46%] items-center gap-[clamp(8px,1.2vw,14px)]">
+        <Rule side="left" />
         <Medallion />
-        <div className="flex flex-col items-start leading-none">
-          <span
-            className="bg-gradient-to-b from-[#1B2E6E] to-[#315ECA] bg-clip-text font-serif text-[clamp(20px,3vw,36px)] font-bold tracking-[0.3em] text-transparent print:text-[36px]"
-            style={{ WebkitPrintColorAdjust: "exact" }}
-          >
-            SAMU
-          </span>
-          <span className="mt-[0.35em] flex items-center gap-[0.6em] text-[clamp(7px,0.85vw,10.5px)] font-semibold uppercase tracking-[0.28em] text-midnight/70 print:text-[10.5px]">
-            <span style={{ color: GOLD }}>◆</span>
-            {BRAND.fullName}
-            <span style={{ color: GOLD }}>◆</span>
-          </span>
-        </div>
+        <Rule side="right" />
       </div>
-      <span aria-hidden className="h-px max-w-[20%] flex-1" style={{ background: `linear-gradient(to left, transparent, ${GOLD})` }} />
+      <span className="mt-[0.25em] bg-gradient-to-b from-[#1B2E6E] to-[#315ECA] bg-clip-text pl-[0.34em] font-serif text-[clamp(20px,2.9vw,34px)] font-bold leading-none tracking-[0.34em] text-transparent">
+        SAMU
+      </span>
+      <span className="mt-[0.5em] pl-[0.3em] text-[clamp(7px,0.82vw,10px)] font-semibold uppercase leading-none tracking-[0.3em] text-midnight/70">
+        {BRAND.fullName}
+      </span>
     </div>
   );
 }
