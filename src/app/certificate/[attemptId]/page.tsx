@@ -5,6 +5,7 @@ import { CertificateView } from "@/components/certificate/certificate-view";
 import { DiplomaView } from "@/components/certificate/diploma-view";
 import { SupervisorForm } from "@/components/certificate/supervisor-form";
 import { PrintButton } from "@/components/certificate/print-button";
+import { AutoPrint } from "@/components/certificate/auto-print";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getT } from "@/i18n/server";
@@ -25,11 +26,11 @@ export default async function CertificatePage({
   searchParams,
 }: {
   params: Promise<{ attemptId: string }>;
-  searchParams: Promise<{ lang?: string }>;
+  searchParams: Promise<{ lang?: string; print?: string }>;
 }) {
   const { attemptId } = await params;
   // ?lang= — sertifikat qaysi tilda chiqishi (interfeys tilidan qat'i nazar)
-  const certLang = (await searchParams).lang;
+  const { lang: certLang, print } = await searchParams;
   const user = await requireUser();
   const c = await getCertificate(attemptId);
   if (!c) notFound();
@@ -71,6 +72,7 @@ export default async function CertificatePage({
           <PrintButton />
         </div>
       </div>
+      {print === "1" && <AutoPrint />}
       {diploma && c.userId === user.id && <SupervisorForm attemptId={c.id} initial={c.supervisor} />}
       {diploma ? (
         <DiplomaView c={c} qrSvg={qr.svg} t={makeT(lang, dictFor(lang))} lang={lang} />

@@ -9,6 +9,7 @@ import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { STUDY_FORMS, studyFormLabel } from "@/lib/labels";
 import { getT } from "@/i18n/server";
+import { hasCertificate } from "@/lib/grade";
 import { formatDateTime } from "@/lib/time";
 import { finalizeExpiredAttempts } from "@/server/exam";
 import { orgOptions } from "@/server/filters";
@@ -120,6 +121,8 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
               percent: r.percent,
               passed: (r.percent ?? 0) >= r.test.passingPercent,
               flags: { tab: r.tabSwitches, copy: r.copyEvents, device: r.deviceChanges },
+              certificate: hasCertificate(r.percent, r.test.kind),
+              kind: r.test.kind,
             }))}
           />
           <Pagination page={page} pages={Math.ceil(total / PER_PAGE)} total={total} params={params} />

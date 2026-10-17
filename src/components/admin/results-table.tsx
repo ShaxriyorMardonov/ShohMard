@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { CertificateDownload } from "@/components/certificate/certificate-download";
 import { useT } from "@/i18n/client";
 import type { TestKind } from "@prisma/client";
 
@@ -31,6 +32,8 @@ export type ResultRow = {
   passed: boolean;
   flags: ExamFlags;
   kind?: TestKind;
+  /** Diplom yoki sertifikat berilganmi */
+  certificate?: boolean;
 };
 
 export function ResultsTable({ rows }: { rows: ResultRow[] }) {
@@ -79,6 +82,7 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <Link href={`/admin/results/${r.id}`} className="font-semibold leading-snug text-midnight hover:text-royal">{r.fullName}</Link>
+                  {r.certificate && <CertificateDownload attemptId={r.id} kind={r.kind} compact className="-mt-1 ml-auto" />}
                   <Button size="icon-sm" variant="ghost" className="-mr-2 -mt-1 shrink-0 text-error hover:bg-error/10" aria-label={t("Natijani o'chirish")} onClick={() => setConfirm([r.id])}>
                     <Trash2 />
                   </Button>
@@ -119,7 +123,7 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
             <TableHead>{t("Topshirilgan")}</TableHead>
             <TableHead>{t("Ball")}</TableHead>
             <TableHead>{t("Natija")}</TableHead>
-            <TableHead className="w-10" />
+            <TableHead className="w-20" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -155,9 +159,12 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
                 </div>
               </TableCell>
               <TableCell>
-                <Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label={t("Natijani o'chirish")} onClick={() => setConfirm([r.id])}>
-                  <Trash2 />
-                </Button>
+                <div className="flex items-center justify-end gap-1">
+                  {r.certificate && <CertificateDownload attemptId={r.id} kind={r.kind} compact />}
+                  <Button size="icon-sm" variant="ghost" className="text-error hover:bg-error/10" aria-label={t("Natijani o'chirish")} onClick={() => setConfirm([r.id])}>
+                    <Trash2 />
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

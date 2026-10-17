@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { SuspicionBadge } from "@/components/suspicion-badge";
-import { Award } from "lucide-react";
 import { GradeBadge } from "@/components/grade-badge";
 import { hasCertificate } from "@/lib/grade";
+import { CertificateDownload } from "@/components/certificate/certificate-download";
 import { isOlympiad, testBasePath } from "@/lib/olympiad";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Check, X } from "lucide-react";
@@ -63,9 +63,7 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
             </div>
           </div>
           {a.status === "SUBMITTED" && hasCertificate(a.percent, a.test.kind) && (
-            <Button asChild variant="success" size="sm" className="ml-auto">
-              <Link href={`/certificate/${a.id}`}><Award /> {t("Sertifikat")}</Link>
-            </Button>
+            <CertificateDownload attemptId={a.id} kind={a.test.kind} className="ml-auto" />
           )}
         </CardContent>
       </Card>

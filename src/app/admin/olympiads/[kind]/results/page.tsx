@@ -8,6 +8,7 @@ import { EmptyState, PageHeader } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getT } from "@/i18n/server";
+import { hasCertificate } from "@/lib/grade";
 import { requireAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { OLYMPIAD, parseOlympiadSlug } from "@/lib/olympiad";
@@ -108,6 +109,7 @@ export default async function OlympiadResultsPage({ params, searchParams }: { pa
               percent: r.percent,
               passed: (r.percent ?? 0) >= r.test.passingPercent,
               flags: { tab: r.tabSwitches, copy: r.copyEvents, device: r.deviceChanges },
+              certificate: hasCertificate(r.percent, r.test.kind),
               kind: r.test.kind,
             }))}
           />

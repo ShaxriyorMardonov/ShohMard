@@ -25,8 +25,8 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
   const intl = c.test.kind === "OLYMPIAD_INTL";
   const olympiadName = intl ? t("«{name}» xalqaro olimpiadasi", { name: c.test.title }) : t("«{name}» mahalliy olimpiadasi", { name: c.test.title });
   // Xalqaro olimpiada sertifikatida universitet, fakultet va guruh ko'rsatilmaydi
+  // Universitet sarlavhada (vazirlik ostida) ko'rsatiladi, bu yerda faqat fakultet va guruh
   const org = intl ? [] : [
-    c.user.university?.name ?? c.user.organization,
     c.user.faculty ? t("{name} fakulteti", { name: c.user.faculty.name }) : null,
     c.user.group ? t("{name} guruhi", { name: c.user.group.name }) : null,
   ].filter(Boolean);

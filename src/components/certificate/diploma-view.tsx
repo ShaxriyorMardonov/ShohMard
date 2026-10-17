@@ -1,5 +1,5 @@
 import { Marck_Script, Noto_Serif } from "next/font/google";
-import { GRADE, gradeKey, olympiadPlace } from "@/lib/grade";
+import { gradeKey, olympiadPlace } from "@/lib/grade";
 import { formatDate } from "@/lib/time";
 import type { Lang } from "@/i18n/config";
 import type { TFunction } from "@/i18n/translate";
@@ -11,7 +11,6 @@ import { SamuSeal } from "./seal";
 const script = Marck_Script({ subsets: ["latin", "cyrillic"], weight: "400", variable: "--font-script", display: "swap" });
 const serif = Noto_Serif({ subsets: ["latin", "cyrillic"], weight: ["700", "800", "900"], style: ["normal", "italic"], variable: "--font-dserif", display: "swap" });
 
-const fmt = (v: number | null) => String(Math.round((v ?? 0) * 100) / 100);
 const ROMAN = { 1: "I", 2: "II", 3: "III" } as const;
 
 /** Olimpiada diplomi — A4 (kitob) varag'i. */
@@ -116,15 +115,6 @@ export function DiplomaView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: stri
         <div className="mt-[1.2cqw] grid gap-[0.3cqw] leading-snug text-[#0B2A6F]">
           <p className="text-[2.8cqw] font-semibold">{olympiadName}</p>
           {c.test.subject && <p className="text-[2.3cqw]">{t("fan: {subject}", { subject: c.test.subject })}</p>}
-          <p className="text-[2cqw] text-[#1E3570]">
-            {t("{max} balldan {score} ball · {correct}/{total} to'g'ri javob · baho: {grade}", {
-              max: fmt(c.maxScore),
-              score: fmt(c.score),
-              correct: c.correctCount ?? 0,
-              total: c.totalQuestions ?? 0,
-              grade: t(GRADE[key].label),
-            })}
-          </p>
         </div>
 
         {c.supervisor && (
