@@ -103,9 +103,6 @@ model User {
   failedLogins   Int       @default(0)
   lockedUntil    DateTime?
   lastLoginAt    DateTime?
-  /// Ikki bosqichli tasdiq kodi yuboriladigan email (Gmail). Super admin uchun.
-  email          String?   @unique
-  emailVerifiedAt DateTime?
   passwordChangedAt DateTime?
   /// Shaxsiy tasodifiy boshlang'ich parol qachon berilgan (null + mustChangePassword — eski umumiy parol)
   initialPasswordAt DateTime?
@@ -116,7 +113,6 @@ model User {
   attempts  Attempt[]
   testsMade Test[]     @relation("TestAuthor")
   testAccess TestAccess[]
-  emailCodes EmailCode[]
 
   @@index([universityId])
   @@index([facultyId])
@@ -304,21 +300,3 @@ model AuditLog {
   @@index([userId, createdAt])
 }
 
-/// Emailga yuborilgan bir martalik kodlar: kirishni tasdiqlash va email manzilini tasdiqlash
-model EmailCode {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  /// "login" yoki "verify_email"
-  purpose   String
-  email     String
-  codeHash  String
-  /// Kirish kodi qaysi (tasdiqlanmagan) sessiyaga tegishli
-  sessionId String?
-  attempts  Int      @default(0)
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime @default(now())
-
-  @@index([userId, purpose, createdAt])
-}

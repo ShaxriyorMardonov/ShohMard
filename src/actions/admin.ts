@@ -674,7 +674,6 @@ export async function saveStaffUserAction(_prev: FormState, fd: FormData): Promi
     isActive: fd.get("isActive") === "on",
   });
   const password = str(fd.get("password"));
-  const resetMfa = !!id && id !== admin.id && fd.get("resetMfa") === "on";
   const errors = parsed.success ? {} : fieldErrors(parsed.error);
   if (!id || password) {
     const pw = passwordSchema.safeParse(password);
@@ -710,7 +709,6 @@ export async function saveStaffUserAction(_prev: FormState, fd: FormData): Promi
         data: {
           ...data,
           ...(password ? { passwordHash: await hashPassword(password), failedLogins: 0, lockedUntil: null, passwordChangedAt: new Date() } : {}),
-          ...(resetMfa ? { email: null, emailVerifiedAt: null } : {}),
         },
       });
       if (id !== admin.id) await prisma.session.deleteMany({ where: { userId: id } });
@@ -718,7 +716,6 @@ export async function saveStaffUserAction(_prev: FormState, fd: FormData): Promi
         existing.roles.join() !== roles.join() ? `rollar: ${existing.roles.join(", ")} → ${roles.join(", ")}` : null,
         existing.isActive !== data.isActive ? (data.isActive ? "faollashtirildi" : "nofaol qilindi") : null,
         password ? "parol almashtirildi" : null,
-        resetMfa ? "tasdiqlash emaili o'chirildi" : null,
       ].filter(Boolean);
       await audit("staff.update", `${data.fullName} (${data.login})`, changes.join("; ") || null);
     } else {

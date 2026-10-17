@@ -1,14 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { weakPasswordReason } from "@/lib/validation";
-import { maskEmail } from "@/server/email-code";
 import { generateInitialPassword } from "@/server/student-account";
-
-describe("email maskasi", () => {
-  it("manzilning o'rtasini yashiradi", () => {
-    expect(maskEmail("mshaxriyor44@gmail.com")).toBe("ms*********4@gmail.com");
-    expect(maskEmail("ali@mail.ru")).toBe("a**i@mail.ru");
-  });
-});
 
 describe("parollar", () => {
   it("boshlang'ich parol tasodifiy, 8 belgi, harf va raqam bilan", () => {

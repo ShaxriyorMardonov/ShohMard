@@ -3,7 +3,7 @@ import { BarChart3, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { BRAND, SamuLogo } from "@/components/brand/samu-logo";
 import { LangSwitcher } from "@/components/layout/lang-switcher";
 import { getT } from "@/i18n/server";
-import { getCurrentUser, getPendingMfa, homeFor } from "@/lib/auth";
+import { getCurrentUser, homeFor } from "@/lib/auth";
 import { captchaSiteKey } from "@/lib/captcha";
 import { LoginForm } from "./login-form";
 
@@ -23,7 +23,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   // Universitetsiz qolgan talaba/menejer qayta yo'naltirish halqasiga tushmasligi uchun
   if (user && (user.role === "ADMIN" || user.university)) redirect(homeFor(user.role));
   // Parol to'g'ri kiritilgan, ikki bosqichli tasdiq kutilmoqda
-  if (!user && (await getPendingMfa())) redirect("/login/2fa");
   const { t } = await getT();
   const { error } = await searchParams;
   const notice = error === "university" ? t("Hisobingiz universitetga biriktirilmagan. Administrator bilan bog'laning.") : undefined;

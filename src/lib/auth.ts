@@ -12,26 +12,23 @@ const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 soat
 /** Super admin 2 soat harakatsiz qolsa, sessiya tugaydi. */
 const ADMIN_IDLE_MS = 2 * 60 * 60 * 1000;
 /** Ikki bosqichli tasdiqni o'tish uchun vaqt. */
-const MFA_PENDING_MS = 10 * 60 * 1000;
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export async function createSession(userId: string, opts: { mfaPending?: boolean } = {}) {
+export async function createSession(userId: string) {
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + (opts.mfaPending ? MFA_PENDING_MS : SESSION_TTL_MS));
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
   const session = await prisma.session.create({
     data: {
       tokenHash: hashToken(token),
       userId,
       expiresAt,
-      mfaPending: !!opts.mfaPending,
       ip: await getClientIp(),
       userAgent: await getUserAgent(),
     },
   });
-  // Cookie har doim to'liq muddatga qo'yiladi; tasdiqlanmagan sessiya muddatini baza belgilaydi
   const store = await cookies();
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -107,30 +104,6 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const role = session.activeRole && roles.includes(session.activeRole) ? session.activeRole : roles.includes(user.role) ? user.role : roles[0]!;
   return { ...user, university, role, roles, groupName: group?.name ?? null, sessionId: session.id };
 });
-
-/** Parol tekshirilgan, lekin ikki bosqichli tasdiq kutilayotgan sessiya. */
-export async function getPendingMfa() {
-  const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!token) return null;
-  const session = await prisma.session.findUnique({
-    where: { tokenHash: hashToken(token) },
-    select: {
-      id: true,
-      expiresAt: true,
-      mfaPending: true,
-      user: { select: { id: true, login: true, fullName: true, role: true, roles: true, isActive: true, email: true, emailVerifiedAt: true, mustChangePassword: true } },
-    },
-  });
-  if (!session || !session.mfaPending || session.expiresAt < new Date() || !session.user.isActive) return null;
-  return session;
-}
-
-/** Ikki bosqichli tasdiq o'tildi: sessiya to'liq sessiyaga aylanadi. */
-export async function completeMfa(sessionId: string) {
-  // Cookie bu yerda o'zgartirilmaydi: sessiya muddatini baza belgilaydi
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  await prisma.session.update({ where: { id: sessionId }, data: { mfaPending: false, expiresAt, lastSeenAt: new Date() } });
-}
 
 /** Foydalanuvchining joriy sessiyadan boshqa barcha sessiyalarini yopadi (parol almashganda). */
 export async function revokeOtherSessions(userId: string, keepSessionId?: string) {
