@@ -38,9 +38,9 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
             <TableHeader>
               <TableRow>
                 <TableHead>{t("Test")}</TableHead>
-                <TableHead>{t("Boshlangan")}</TableHead>
-                <TableHead>{t("Topshirilgan")}</TableHead>
-                <TableHead>{t("Holat")}</TableHead>
+                <TableHead className="hidden lg:table-cell">{t("Boshlangan")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("Topshirilgan")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("Holat")}</TableHead>
                 <TableHead>{t("Natija")}</TableHead>
                 <TableHead className="text-right">{t("Amal")}</TableHead>
               </TableRow>
@@ -51,10 +51,14 @@ export default async function HistoryPage({ searchParams }: { searchParams: Prom
                   <TableCell className="font-semibold text-midnight">
                     {a.test.title}
                     {a.test.subject && <span className="block text-xs font-normal text-muted-foreground">{a.test.subject}</span>}
+                    <span className="block text-xs font-normal text-muted-foreground md:hidden">
+                      {formatDateTime(a.submittedAt ?? a.startedAt, lang)}
+                      {a.status === "IN_PROGRESS" && <> · {t("Davom etmoqda")}</>}
+                    </span>
                   </TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(a.startedAt, lang)}</TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(a.submittedAt, lang)}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">{formatDateTime(a.startedAt, lang)}</TableCell>
+                  <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">{formatDateTime(a.submittedAt, lang)}</TableCell>
+                  <TableCell className="hidden md:table-cell">
                     {a.status === "IN_PROGRESS" ? (
                       <Badge variant="warning">{t("Davom etmoqda")}</Badge>
                     ) : a.autoSubmitted ? (

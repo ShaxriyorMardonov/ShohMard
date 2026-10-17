@@ -55,11 +55,11 @@ export default async function UsersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>{t("F.I.Sh.")}</TableHead>
-              <TableHead>{t("Login")}</TableHead>
-              <TableHead>{t("Rollar")}</TableHead>
-              <TableHead>{t("Universitet")}</TableHead>
+              <TableHead className="hidden md:table-cell">{t("Login")}</TableHead>
+              <TableHead className="hidden sm:table-cell">{t("Rollar")}</TableHead>
+              <TableHead className="hidden md:table-cell">{t("Universitet")}</TableHead>
               <TableHead>{t("Holat")}</TableHead>
-              <TableHead>{t("Oxirgi kirish")}</TableHead>
+              <TableHead className="hidden lg:table-cell">{t("Oxirgi kirish")}</TableHead>
               <TableHead className="text-right">{t("Amallar")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -68,18 +68,25 @@ export default async function UsersPage() {
               const self = u.id === me.id;
               return (
                 <TableRow key={u.id}>
-                  <TableCell className="font-semibold text-midnight">{u.fullName}{self && <span className="ml-1 text-xs font-normal text-muted-foreground">{t("(siz)")}</span>}</TableCell>
-                  <TableCell className="font-mono text-xs">{u.login}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-semibold text-midnight">{u.fullName}{self && <span className="ml-1 text-xs font-normal text-muted-foreground">{t("(siz)")}</span>}
+                    <span className="block font-mono text-xs font-normal text-muted-foreground md:hidden">{u.login}{u.university && ` · ${u.university.shortName}`}</span>
+                    <span className="mt-1 flex flex-wrap gap-1 sm:hidden">
+                      {sortRoles(u.roles).map((r) => (
+                        <Badge key={r} variant={r === "ADMIN" ? "default" : r === "MANAGER" ? "success" : "muted"}>{t(ROLE_LABEL[r])}</Badge>
+                      ))}
+                    </span>
+                  </TableCell>
+                  <TableCell className="hidden font-mono text-xs md:table-cell">{u.login}</TableCell>
+                  <TableCell className="hidden sm:table-cell">
                     <div className="flex flex-wrap gap-1">
                       {sortRoles(u.roles).map((r) => (
                         <Badge key={r} variant={r === "ADMIN" ? "default" : r === "MANAGER" ? "success" : "muted"}>{t(ROLE_LABEL[r])}</Badge>
                       ))}
                     </div>
                   </TableCell>
-                  <TableCell>{u.university?.shortName ?? "—"}</TableCell>
+                  <TableCell className="hidden md:table-cell">{u.university?.shortName ?? "—"}</TableCell>
                   <TableCell><UserActiveSwitch id={u.id} active={u.isActive} disabled={self} /></TableCell>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(u.lastLoginAt, lang)}</TableCell>
+                  <TableCell className="hidden whitespace-nowrap text-muted-foreground lg:table-cell">{formatDateTime(u.lastLoginAt, lang)}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <StaffDialog

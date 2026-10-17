@@ -55,6 +55,45 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
           <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>{t("Bekor qilish")}</Button>
         </div>
       )}
+      {/* Telefon: har bir natija kartochka ko'rinishida */}
+      <div className="md:hidden">
+        <label className="flex items-center gap-3 border-b bg-muted/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={allChecked}
+            onChange={() => setSelected(allChecked ? new Set() : new Set(rows.map((r) => r.id)))}
+            className="size-4 accent-[#315ECA]"
+          />
+          {t("Hammasini tanlash")}
+        </label>
+        <ul className="divide-y">
+          {rows.map((r) => (
+            <li key={r.id} className="flex gap-3 px-4 py-3">
+              <input type="checkbox" aria-label={t("{name} ni tanlash", { name: r.fullName })} checked={selected.has(r.id)} onChange={() => toggle(r.id)} className="mt-1 size-4 shrink-0 accent-[#315ECA]" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <Link href={`/admin/results/${r.id}`} className="font-semibold leading-snug text-midnight hover:text-royal">{r.fullName}</Link>
+                  <Button size="icon-sm" variant="ghost" className="-mr-2 -mt-1 shrink-0 text-error hover:bg-error/10" aria-label={t("Natijani o'chirish")} onClick={() => setConfirm([r.id])}>
+                    <Trash2 />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">{[r.university, r.org].filter(Boolean).join(" · ")}</p>
+                <p className="mt-1 text-sm text-midnight">
+                  {r.testTitle}
+                  {r.attemptNo > 1 && <span className="text-xs text-muted-foreground"> · {t("{n}-urinish", { n: r.attemptNo })}</span>}
+                </p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                  <Badge variant={r.passed ? "success" : "error"}>{r.percent}%</Badge>
+                  <GradeBadge percent={r.percent} />
+                  <span>{r.score}</span>
+                  <span>{r.submitted}{r.auto && ` · ${t("avtomatik")}`}</span>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="hidden md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -116,6 +155,7 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
           ))}
         </TableBody>
       </Table>
+      </div>
       <Dialog open={!!confirm} onOpenChange={(o) => { if (!o) { setConfirm(null); setError(null); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>

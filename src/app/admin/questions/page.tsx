@@ -96,9 +96,9 @@ export default async function QuestionsPage({
             <TableHeader>
               <TableRow>
                 <TableHead>{t("Savol")}</TableHead>
-                <TableHead>{t("Turi")}</TableHead>
-                <TableHead>{t("Fan")}</TableHead>
-                <TableHead>{t("Testlarda")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("Turi")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("Fan")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("Testlarda")}</TableHead>
                 <TableHead className="text-right">{t("Amallar")}</TableHead>
               </TableRow>
             </TableHeader>
@@ -107,11 +107,14 @@ export default async function QuestionsPage({
                 <TableRow key={x.id}>
                   <TableCell className="max-w-md">
                     <p className="line-clamp-2 font-medium text-midnight">{x.text}</p>
-                    <p className="text-xs text-muted-foreground">{t("{n} ta variant", { n: x._count.options })}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t("{n} ta variant", { n: x._count.options })}
+                      <span className="md:hidden"> · {t(QUESTION_TYPE_LABEL[x.type])}{x.subject && ` · ${x.subject}`}</span>
+                    </p>
                   </TableCell>
-                  <TableCell><Badge variant="muted">{t(QUESTION_TYPE_LABEL[x.type])}</Badge></TableCell>
-                  <TableCell>{x.subject ?? "—"}</TableCell>
-                  <TableCell>{x._count.tests}</TableCell>
+                  <TableCell className="hidden md:table-cell"><Badge variant="muted">{t(QUESTION_TYPE_LABEL[x.type])}</Badge></TableCell>
+                  <TableCell className="hidden md:table-cell">{x.subject ?? "—"}</TableCell>
+                  <TableCell className="hidden md:table-cell">{x._count.tests}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <Button asChild size="icon-sm" variant="ghost" aria-label={t("Tahrirlash")}>

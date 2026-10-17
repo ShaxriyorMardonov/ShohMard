@@ -56,7 +56,7 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
   return (
     <>
       {canDelete && selected.size > 0 && (
-        <div className="sticky top-16 z-20 mb-3 flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-2 text-sm shadow-[var(--shadow-card)]">
+        <div className="sticky top-14 z-20 sm:top-16 mb-3 flex flex-wrap items-center gap-3 rounded-xl border bg-card px-4 py-2 text-sm shadow-[var(--shadow-card)]">
           <span className="font-semibold text-midnight">{t("{n} ta test tanlandi", { n: selected.size })}</span>
           <Button size="sm" variant="destructive" onClick={() => setConfirm(true)}><Trash2 /> {t("O'chirish")}</Button>
           <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>{t("Bekor qilish")}</Button>
@@ -73,6 +73,34 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
                 <Badge variant="muted">{g.rows.length}</Badge>
               </h2>
               <Card className="overflow-hidden">
+                {/* Telefon: har bir test kartochka ko'rinishida */}
+                <ul className="divide-y md:hidden">
+                  {g.rows.map((row) => {
+                    const st = TEST_STATE_BADGE[row.state];
+                    return (
+                      <li key={row.id} className="flex gap-3 px-4 py-3">
+                        {canDelete && (
+                          <input type="checkbox" aria-label={t("{title} ni tanlash", { title: row.title })} checked={selected.has(row.id)} onChange={() => toggle([row.id], !selected.has(row.id))} className="mt-1 size-4 shrink-0 accent-[#315ECA]" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-3">
+                            <Link href={`/admin/tests/${row.id}`} className="font-semibold leading-snug text-midnight hover:text-royal">{row.title}</Link>
+                            <ActiveSwitch id={row.id} active={row.isPublished} />
+                          </div>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                            <Badge variant={st.variant}>{t(st.label)}</Badge>
+                            <span>{row.duration}</span>
+                            <span>{t("Savollar")}: {row.questions}</span>
+                            <span>{t("Topshirgan")}: {row.attempts}</span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">{row.startsAt} — {row.endsAt}</p>
+                          {row.universities && <p className="mt-0.5 truncate text-xs text-muted-foreground">{row.universities}</p>}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <div className="hidden md:block">
                 <Table className="min-w-[860px] table-fixed">
                   <TableHeader>
                     <TableRow>
@@ -115,6 +143,7 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
                     })}
                   </TableBody>
                 </Table>
+                </div>
               </Card>
             </section>
           );

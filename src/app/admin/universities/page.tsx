@@ -47,11 +47,11 @@ export default async function UniversitiesPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>{t("Nomi")}</TableHead>
-                <TableHead>{t("Qisqa nomi")}</TableHead>
-                <TableHead>{t("Shahar")}</TableHead>
-                <TableHead>{t("Fakultet / guruh")}</TableHead>
-                <TableHead>{t("Talabalar")}</TableHead>
-                <TableHead>{t("Testlar")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("Qisqa nomi")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("Shahar")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("Fakultet / guruh")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("Talabalar")}</TableHead>
+                <TableHead className="hidden md:table-cell">{t("Testlar")}</TableHead>
                 <TableHead className="text-right">{t("Amallar")}</TableHead>
                 <TableHead className="w-20">{t("Faol")}</TableHead>
               </TableRow>
@@ -61,16 +61,19 @@ export default async function UniversitiesPage() {
                 <TableRow key={u.id}>
                   <TableCell>
                     <Link href={`/admin/universities/${u.id}`} className="font-semibold text-midnight hover:text-royal">{u.name}</Link>
+                    <span className="block text-xs text-muted-foreground md:hidden">
+                      {[u.shortName, u.city].filter(Boolean).join(" · ")} · {t("{n} talaba", { n: u._count.students })} · {t("Testlar")}: {u._count.tests}
+                    </span>
                   </TableCell>
-                  <TableCell>{u.shortName}</TableCell>
-                  <TableCell className="text-muted-foreground">{u.city ?? "—"}</TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">{u.shortName}</TableCell>
+                  <TableCell className="hidden text-muted-foreground md:table-cell">{u.city ?? "—"}</TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Link href={`/admin/universities/${u.id}`} className="text-royal hover:underline">{u._count.faculties} / {u._count.groups}</Link>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="hidden md:table-cell">
                     <Link href={`/admin/students?university=${u.id}`} className="font-semibold text-royal hover:underline">{u._count.students}</Link>
                   </TableCell>
-                  <TableCell>{u._count.tests}</TableCell>
+                  <TableCell className="hidden md:table-cell">{u._count.tests}</TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
                       <UniversityDialog

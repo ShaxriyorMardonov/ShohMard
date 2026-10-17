@@ -69,7 +69,7 @@ export default async function AdminDashboard() {
         title={t("Xush kelibsiz, {name}", { name: admin.fullName })}
         description={t("SAMU platformasining umumiy holati")}
       />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
         <StatCard label={t("Universitetlar")} value={universities} icon={<Building2 />} tone="midnight" />
         <StatCard label={t("Faol talabalar")} value={students} icon={<Users />} />
         <StatCard label={t("Faol testlar")} value={publishedTests} hint={t("Hozir ochiq: {n}", { n: openTests })} icon={<ClipboardList />} tone="warning" />
@@ -80,7 +80,7 @@ export default async function AdminDashboard() {
       <div className="mt-6 grid items-start gap-6 xl:grid-cols-[1.6fr_1fr]">
         <div className="grid gap-6">
         <Card className="overflow-hidden">
-          <CardHeader className="flex-row items-center justify-between">
+          <CardHeader className="flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2"><Trophy className="size-5 text-warning" /> {t("Top 10 talaba")}</CardTitle>
             <span className="text-xs text-muted-foreground">{t("Har bir testdagi eng yaxshi natija bo'yicha o'rtacha")}</span>
           </CardHeader>
@@ -94,7 +94,7 @@ export default async function AdminDashboard() {
                 <TableRow>
                   <TableHead className="w-12">№</TableHead>
                   <TableHead>{t("Talaba")}</TableHead>
-                  <TableHead>{t("Testlar")}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{t("Testlar")}</TableHead>
                   <TableHead className="text-right">{t("O'rtacha")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -108,7 +108,7 @@ export default async function AdminDashboard() {
                       <span className="font-semibold text-midnight">{s.fullName}</span>
                       <span className="block text-xs text-muted-foreground">{s.shortName ?? "—"}</span>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{Number(s.tests)}</TableCell>
+                    <TableCell className="hidden text-muted-foreground sm:table-cell">{Number(s.tests)}</TableCell>
                     <TableCell className="text-right">
                       <Badge variant="success">{Number(s.avg).toFixed(1)}%</Badge>
                     </TableCell>
@@ -132,8 +132,8 @@ export default async function AdminDashboard() {
               <TableHeader>
                 <TableRow>
                   <TableHead>{t("Talaba")}</TableHead>
-                  <TableHead>{t("Test")}</TableHead>
-                  <TableHead>{t("Vaqt")}</TableHead>
+                  <TableHead className="hidden sm:table-cell">{t("Test")}</TableHead>
+                  <TableHead className="hidden md:table-cell">{t("Vaqt")}</TableHead>
                   <TableHead className="text-right">{t("Natija")}</TableHead>
                 </TableRow>
               </TableHeader>
@@ -143,11 +143,13 @@ export default async function AdminDashboard() {
                     <TableCell>
                       <Link href={`/admin/results/${r.id}`} className="font-semibold text-midnight hover:text-royal">{r.user.fullName}</Link>
                       <span className="block text-xs text-muted-foreground">{r.user.university?.shortName}</span>
+                      <span className="mt-0.5 block text-xs text-midnight sm:hidden">{r.test.title}</span>
+                      <span className="block text-xs text-muted-foreground md:hidden">{formatDateTime(r.submittedAt, lang)}</span>
                     </TableCell>
-                    <TableCell className="max-w-[220px] truncate">{r.test.title}</TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(r.submittedAt, lang)}</TableCell>
+                    <TableCell className="hidden max-w-[220px] truncate sm:table-cell">{r.test.title}</TableCell>
+                    <TableCell className="hidden whitespace-nowrap text-muted-foreground md:table-cell">{formatDateTime(r.submittedAt, lang)}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1.5">
+                      <div className="flex flex-col items-end justify-end gap-1.5 sm:flex-row">
                         <Badge variant={(r.percent ?? 0) >= r.test.passingPercent ? "success" : "error"}>{r.percent}%</Badge>
                         <GradeBadge percent={r.percent} />
                       </div>

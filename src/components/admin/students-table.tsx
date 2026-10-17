@@ -65,6 +65,61 @@ export function StudentsTable({
           <span className="text-xs text-muted-foreground">{t("Bir nechta talabani guruhga biriktirish uchun belgilang")}</span>
         )}
       </div>
+      {/* Telefon: har bir talaba kartochka ko'rinishida */}
+      <ul className="divide-y md:hidden">
+        <li>
+          <label className="flex items-center gap-3 bg-muted/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={allChecked}
+              onChange={() => setSelected(allChecked ? new Set() : new Set(rows.map((r) => r.id)))}
+              className="size-4 accent-[#315ECA]"
+            />
+            {t("Hammasini tanlash")}
+          </label>
+        </li>
+        {rows.map((s) => (
+          <li key={s.id} className="flex gap-3 px-4 py-3">
+            <input type="checkbox" aria-label={t("{name} ni tanlash", { name: s.fullName })} checked={selected.has(s.id)} onChange={() => toggle(s.id)} className="mt-1 size-4 shrink-0 accent-[#315ECA]" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-semibold leading-snug text-midnight">{s.fullName}</p>
+                <UserActiveSwitch id={s.id} active={s.isActive} />
+              </div>
+              <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                {s.login}
+                {s.pinfl && <> · {t("JShShIR")}: {s.pinfl}</>}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {[!fixedUniversity ? s.university?.shortName : null, s.faculty?.name, s.group?.name, t(studyFormLabel(s.studyForm))].filter(Boolean).join(" · ")}
+              </p>
+              <div className="mt-1.5 flex gap-1">
+                <StudentDialog
+                  student={s}
+                  universities={universities}
+                  orgNames={orgNames}
+                  fixedUniversity={fixedUniversity}
+                  trigger={<Button size="sm" variant="outline"><Pencil /> {t("Tahrirlash")}</Button>}
+                />
+                {canDelete && (
+                  <ConfirmAction
+                    trigger={<Button size="sm" variant="ghost" className="text-error hover:bg-error/10"><Trash2 /> {t("O'chirish")}</Button>}
+                    title={t("Talabani o'chirish")}
+                    description={
+                      s.attempts
+                        ? t("{name} imtihon topshirgan. Natijalarni saqlash uchun hisobni nofaol qilish tavsiya etiladi.", { name: s.fullName })
+                        : t("{name} hisobi butunlay o'chiriladi.", { name: s.fullName })
+                    }
+                    confirmLabel={t("O'chirish")}
+                    action={deleteStudentAction.bind(null, s.id)}
+                  />
+                )}
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="hidden md:block">
       <Table>
         <TableHeader>
           <TableRow>
@@ -130,6 +185,7 @@ export function StudentsTable({
           ))}
         </TableBody>
       </Table>
+      </div>
       <AssignDialog
         open={assignOpen}
         onOpenChange={setAssignOpen}

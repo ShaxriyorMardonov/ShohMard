@@ -74,6 +74,10 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  /* Keng jadval grid ustunini kengaytirib, telefonda sahifani kichraytirib yubormasligi uchun */
+  .grid > * {
+    min-width: 0;
+  }
   ::selection {
     background: rgb(49 94 202 / 0.18);
   }
