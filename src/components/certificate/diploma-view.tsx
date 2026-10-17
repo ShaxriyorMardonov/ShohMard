@@ -4,8 +4,8 @@ import { formatDate } from "@/lib/time";
 import type { Lang } from "@/i18n/config";
 import type { TFunction } from "@/i18n/translate";
 import type { Certificate } from "@/server/certificate";
-import { SamuMark } from "@/components/brand/samu-logo";
-import { BookDivider, FlagGlobe, GlobeCap, IntlDecor, IntlSkyline, LocalDecor, LocalSkyline, LocalWave, NAVY, OrnamentDivider, WorldDots } from "./diploma-art";
+import { CertificateBrand } from "./brand";
+import { BookDivider, FlagGlobe, GlobeCap, IntlDecor, IntlSkyline, LocalDecor, LocalSkyline, LocalWave, OrnamentDivider, WorldDots } from "./diploma-art";
 import { SamuSeal } from "./seal";
 
 const script = Marck_Script({ subsets: ["latin", "cyrillic"], weight: "400", variable: "--font-script", display: "swap" });
@@ -72,20 +72,14 @@ export function DiplomaView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: stri
           {!intl && <span aria-hidden className="h-[0.18cqw] w-[7cqw] shrink-0 bg-[#0B2A6F]" />}
         </div>
 
-        {/* SAMU logotipi */}
-        <div className="mt-[1cqw] flex items-center gap-[1.4cqw]">
-          <SamuMark size={64} className="size-[7.6cqw] drop-shadow-[0_0.5cqw_0.8cqw_rgba(0,0,0,0.18)]" />
-          <div className="text-left leading-none">
-            <p className="text-[7.4cqw] font-black tracking-[0.03em]" style={{ ...serifFont, color: NAVY }}>SAMU</p>
-            <p className="mt-[0.3cqw] text-[1.3cqw] font-bold uppercase tracking-[0.16em] text-[#0B2A6F]">Smart Assessment &amp; Modern University</p>
-          </div>
-        </div>
+        {/* SAMU belgisi — sertifikatdagidek markazda */}
+        <div className="mt-[0.8cqw] w-full"><CertificateBrand variant="diploma" /></div>
 
         {intl ? (
-          <GlobeCap className="mt-[0.4cqw] h-[17cqw] w-[24cqw]" />
+          <GlobeCap className="mt-[0.2cqw] h-[14cqw] w-[20cqw]" />
         ) : (
           <>
-            <div className="-mb-[2.6cqw] mt-[-2cqw]"><LocalWave /></div>
+            <div className="-mb-[2.6cqw] mt-[-1.2cqw]"><LocalWave /></div>
             <BookDivider className="w-[38cqw]" />
           </>
         )}

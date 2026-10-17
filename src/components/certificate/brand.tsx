@@ -3,9 +3,9 @@ import { BRAND } from "@/components/brand/samu-logo";
 import { GOLD } from "./ornaments";
 
 /** Sertifikat uchun SAMU medalyoni: oltin hoshiyali doira ichida belgi. */
-function Medallion() {
+function Medallion({ className = "size-[4.6cqw]" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 100 100" aria-hidden className="size-[4.6cqw] shrink-0 drop-shadow-[0_0.3cqw_0.5cqw_rgba(11,31,99,0.25)]">
+    <svg viewBox="0 0 100 100" aria-hidden className={`${className} shrink-0 drop-shadow-[0_0.3cqw_0.5cqw_rgba(11,31,99,0.25)]`}>
       <defs>
         <linearGradient id="cert-medal" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#3D6FE6" />
@@ -40,22 +40,29 @@ function Rule({ side }: { side: "left" | "right" }) {
   );
 }
 
+/** O'lchamlar: albom sertifikat (asl) va kitob shaklidagi diplom uchun. */
+const SIZES = {
+  certificate: { row: "w-[52%] gap-[1.2cqw]", medal: "size-[4.6cqw]", word: "mt-[0.5cqw] text-[3.1cqw]", full: "mt-[0.6cqw] text-[0.9cqw]", font: undefined },
+  diploma: { row: "w-[60%] gap-[1.4cqw]", medal: "size-[6.8cqw]", word: "mt-[0.6cqw] text-[5.4cqw]", full: "mt-[0.8cqw] text-[1.3cqw]", font: "var(--font-dserif), Georgia, serif" },
+} as const;
+
 /**
  * Sertifikat sarlavhasidagi SAMU belgisi — markazga tekislangan:
  * oltin chiziqlar orasida medalyon, ostida serif "SAMU" va to'liq nomi.
  * Harf oralig'i (tracking) oxirgi harfdan keyin ham bo'sh joy qo'shadi, shuning uchun
  * chap tomonga xuddi shuncha padding berilib, yozuv aniq markazda turadi.
  */
-export function CertificateBrand() {
+export function CertificateBrand({ variant = "certificate" }: { variant?: keyof typeof SIZES }) {
+  const z = SIZES[variant];
   return (
     <div className="flex w-full flex-col items-center" aria-label={`${BRAND.name} — ${BRAND.fullName}`}>
-      <div className="flex w-[52%] items-center gap-[1.2cqw]">
+      <div className={`flex items-center ${z.row}`}>
         <Rule side="left" />
-        <Medallion />
+        <Medallion className={z.medal} />
         <Rule side="right" />
       </div>
-      <span className="cert-serif mt-[0.5cqw] pl-[0.28em] text-[3.1cqw] font-extrabold leading-none tracking-[0.28em] text-[#0B2A7A]">SAMU</span>
-      <span className="mt-[0.6cqw] pl-[0.3em] text-[0.9cqw] font-semibold uppercase leading-none tracking-[0.3em] text-[#1B2B55]/80">
+      <span className={`cert-serif pl-[0.28em] font-extrabold leading-none tracking-[0.28em] text-[#0B2A7A] ${z.word}`} style={z.font ? { fontFamily: z.font } : undefined}>SAMU</span>
+      <span className={`pl-[0.3em] font-semibold uppercase leading-none tracking-[0.3em] text-[#1B2B55]/80 ${z.full}`}>
         {BRAND.fullName}
       </span>
     </div>
