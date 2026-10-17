@@ -44,9 +44,9 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
           <p className="mt-[1.6%] max-w-[85%] rounded-lg bg-royal px-6 py-[1%] font-serif text-[clamp(14px,2.2vw,26px)] font-bold text-white">
             {t("Super! Ishtirokingiz bilan tabriklaymiz!")}
           </p>
-        ) : olympiad && key === "fail" ? (
+        ) : olympiad && key !== "fail" ? (
           <p className="mt-[1.6%] max-w-[85%] rounded-lg border-2 border-royal px-6 py-[0.8%] font-serif text-[clamp(13px,2vw,24px)] font-bold text-royal">
-            {t("Ishtirokingiz uchun")}
+            {key === "excellent" ? t("Faol ishtirokingiz uchun") : t("Ishtirokingiz uchun")}
           </p>
         ) : null}
         <p className="mt-[1.6%] max-w-[80%] text-[clamp(11px,1.45vw,17px)] leading-relaxed">
