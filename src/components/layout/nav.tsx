@@ -20,6 +20,7 @@ import {
   UserRound,
   Users,
   X,
+  UsersRound,
 } from "lucide-react";
 import { SamuLogo } from "@/components/brand/samu-logo";
 import { useT } from "@/i18n/client";
@@ -51,6 +52,7 @@ const NAV: Record<NavRole, Item[]> = {
     { href: "/admin/results", label: "Natijalar", icon: BarChart3 },
     { href: "/admin/olympiads/international", label: "Xalqaro olimpiada", short: "Xalqaro", icon: Globe2 },
     { href: "/admin/olympiads/local", label: "Mahalliy olimpiada", short: "Mahalliy", icon: Trophy },
+    { href: "/admin/olympiads/participants", label: "Olimpiada ishtirokchilari", short: "Ishtirokchilar", icon: UsersRound },
     { href: "/admin/users", label: "Rollar", icon: ShieldCheck },
     { href: "/admin/audit", label: "Jurnal", icon: ScrollText },
     { href: "/admin/settings", label: "Sozlamalar", icon: Settings },

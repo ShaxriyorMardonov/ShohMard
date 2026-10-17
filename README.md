@@ -58,6 +58,7 @@ Productionda: `SEED_DEMO=false` va kuchli `SEED_ADMIN_PASSWORD` bilan seed qilin
    - `DATABASE_URL` — baza ulanish satri;
    - `SEED_ADMIN_LOGIN` (ixtiyoriy, standart `admin`), `SEED_ADMIN_PASSWORD` — kuchli parol;
    - `SEED_DEMO=false` — demo ma'lumotlarsiz.
+   - `GOOGLE_PLACES_API_KEY` (ixtiyoriy) — olimpiadaga ro'yxatdan o'tishda universitetni Google Places orqali tekshirish (Places API (New) yoqilgan kalit). Bo'lmasa o'rnatilgan OTMlar ro'yxati ishlatiladi.
 3. Deploy. `vercel-build` migratsiyalarni qo'llaydi va `SEED_ADMIN_PASSWORD` bo'lsa administratorni yaratadi (mavjud hisob o'zgartirilmaydi). Kirgandan so'ng parolni Sozlamalarda yangilang.
 
 ### Demo hisoblar (`SEED_DEMO=true`)

@@ -90,40 +90,43 @@ model Group {
 }
 
 model User {
-  id             String    @id @default(cuid())
-  login          String    @unique
-  passwordHash   String
-  fullName       String
-  role           Role      @default(STUDENT)
+  id                   String      @id @default(cuid())
+  login                String      @unique
+  passwordHash         String
+  fullName             String
+  role                 Role        @default(STUDENT)
   /// Foydalanuvchining barcha rollari (role — asosiy rol, kirganda shu ochiladi)
-  roles          Role[]    @default([STUDENT])
-  isActive       Boolean   @default(true)
+  roles                Role[]      @default([STUDENT])
+  isActive             Boolean     @default(true)
   /// JShShIR (shaxsiy identifikatsiya raqami, 14 ta raqam) — talabalar takrorlanmasligi uchun
-  pinfl          String?   @unique
+  pinfl                String?     @unique
   /// Birinchi kirishda (yoki parol tiklangach) yangi parol qo'yish majburiy
-  mustChangePassword Boolean @default(false)
-  studyForm      StudyForm?
-  universityId   String?
-  university     University? @relation(fields: [universityId], references: [id], onDelete: Restrict)
-  facultyId      String?
-  faculty        Faculty?  @relation(fields: [facultyId], references: [id], onDelete: SetNull)
-  groupId        String?
-  group          Group?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  failedLogins   Int       @default(0)
-  lockedUntil    DateTime?
-  lastLoginAt    DateTime?
-  passwordChangedAt DateTime?
+  mustChangePassword   Boolean     @default(false)
+  studyForm            StudyForm?
+  universityId         String?
+  university           University? @relation(fields: [universityId], references: [id], onDelete: Restrict)
+  facultyId            String?
+  faculty              Faculty?    @relation(fields: [facultyId], references: [id], onDelete: SetNull)
+  groupId              String?
+  group                Group?      @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  failedLogins         Int         @default(0)
+  lockedUntil          DateTime?
+  lastLoginAt          DateTime?
+  passwordChangedAt    DateTime?
   /// Shaxsiy tasodifiy boshlang'ich parol qachon berilgan (null + mustChangePassword — eski umumiy parol)
-  initialPasswordAt DateTime?
+  initialPasswordAt    DateTime?
   /// Olimpiada ishtirokchisi: telefon va o'quv muassasasi (ro'yxatdan o'tishda kiritiladi)
-  phone          String?
-  organization   String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  phone                String?
+  organization         String?
+  /// O'quv muassasasi ro'yxatdan (Google yoki ma'lumotlar bazasi) tanlab tasdiqlangan
+  organizationVerified Boolean     @default(false)
+  organizationCountry  String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
-  sessions  Session[]
-  attempts  Attempt[]
-  testsMade Test[]     @relation("TestAuthor")
+  sessions   Session[]
+  attempts   Attempt[]
+  testsMade  Test[]       @relation("TestAuthor")
   testAccess TestAccess[]
 
   @@index([universityId])
@@ -133,11 +136,11 @@ model User {
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  tokenHash String   @unique
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
   /// Bir nechta roli bo'lgan foydalanuvchining hozir tanlagan roli
   activeRole Role?
   /// Parol to'g'ri, lekin ikki bosqichli tasdiq hali o'tilmagan
@@ -145,35 +148,35 @@ model Session {
   ip         String?
   userAgent  String?
   lastSeenAt DateTime @default(now())
-  createdAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   @@index([userId])
 }
 
 model Test {
-  id              String        @id @default(cuid())
-  kind            TestKind      @default(REGULAR)
-  title           String
-  description     String?
-  subject         String?
-  durationMinutes Int
-  startsAt        DateTime
-  endsAt          DateTime
-  isPublished     Boolean       @default(false)
-  passingPercent  Int           @default(60)
-  resultRelease   ResultRelease @default(IMMEDIATE)
+  id                  String        @id @default(cuid())
+  kind                TestKind      @default(REGULAR)
+  title               String
+  description         String?
+  subject             String?
+  durationMinutes     Int
+  startsAt            DateTime
+  endsAt              DateTime
+  isPublished         Boolean       @default(false)
+  passingPercent      Int           @default(60)
+  resultRelease       ResultRelease @default(IMMEDIATE)
   /// Har bir talabaga tasodifiy tanlanadigan savollar soni (null — hammasi)
   questionsPerAttempt Int?
   /// Testning jami (maksimal) bahosi (null — savollar ballari yig'indisi)
-  maxScore        Int?
+  maxScore            Int?
   /// Talaba testni necha marta topshira oladi
-  maxAttempts     Int           @default(1)
-  resultsReleasedAt DateTime?
-  restrictedAccess  Boolean       @default(false)
-  createdById     String?
-  createdBy       User?         @relation("TestAuthor", fields: [createdById], references: [id], onDelete: SetNull)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  maxAttempts         Int           @default(1)
+  resultsReleasedAt   DateTime?
+  restrictedAccess    Boolean       @default(false)
+  createdById         String?
+  createdBy           User?         @relation("TestAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
   universities University[]   @relation("TestUniversities")
   questions    TestQuestion[]
@@ -237,30 +240,30 @@ model TestQuestion {
 }
 
 model Attempt {
-  id            String        @id @default(cuid())
-  testId        String
-  test          Test          @relation(fields: [testId], references: [id], onDelete: Cascade)
-  userId        String
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status        AttemptStatus @default(IN_PROGRESS)
-  startedAt     DateTime      @default(now())
-  deadlineAt    DateTime
-  submittedAt   DateTime?
-  autoSubmitted Boolean       @default(false)
+  id             String        @id @default(cuid())
+  testId         String
+  test           Test          @relation(fields: [testId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         AttemptStatus @default(IN_PROGRESS)
+  startedAt      DateTime      @default(now())
+  deadlineAt     DateTime
+  submittedAt    DateTime?
+  autoSubmitted  Boolean       @default(false)
   /// Shu talabaga tushgan savollar (bo'sh — testning barcha savollari)
-  questionIds   String[]      @default([])
-  score         Float?
-  maxScore      Float?
-  percent       Float?
-  correctCount  Int?
+  questionIds    String[]      @default([])
+  score          Float?
+  maxScore       Float?
+  percent        Float?
+  correctCount   Int?
   totalQuestions Int?
   /// Talabaning shu testdagi nechanchi urinishi (1 dan)
-  attemptNo     Int           @default(1)
+  attemptNo      Int           @default(1)
   /// Imtihon nazorati: test qaysi sessiyada (qurilmada) ochilgani va shubhali harakatlar soni
-  sessionId     String?
-  tabSwitches   Int           @default(0)
-  copyEvents    Int           @default(0)
-  deviceChanges Int           @default(0)
+  sessionId      String?
+  tabSwitches    Int           @default(0)
+  copyEvents     Int           @default(0)
+  deviceChanges  Int           @default(0)
 
   answers Answer[]
 
@@ -313,4 +316,3 @@ model AuditLog {
   @@index([action, createdAt])
   @@index([userId, createdAt])
 }
-

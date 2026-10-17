@@ -16,7 +16,8 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
   const olympiad = isOlympiad(c.test.kind);
   const intl = c.test.kind === "OLYMPIAD_INTL";
   const olympiadName = intl ? t("«{name}» xalqaro olimpiadasi", { name: c.test.title }) : t("«{name}» mahalliy olimpiadasi", { name: c.test.title });
-  const org = [
+  // Xalqaro olimpiada sertifikatida universitet, fakultet va guruh ko'rsatilmaydi
+  const org = intl ? [] : [
     c.user.university?.name ?? c.user.organization,
     c.user.faculty ? t("{name} fakulteti", { name: c.user.faculty.name }) : null,
     c.user.group ? t("{name} guruhi", { name: c.user.group.name }) : null,
@@ -29,7 +30,10 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
       <div aria-hidden className="absolute -right-[8%] -top-[18%] size-[42%] rounded-full bg-royal/[0.06]" />
       <div aria-hidden className="absolute -bottom-[22%] -left-[10%] size-[45%] rounded-full bg-royal/[0.05]" />
 
-      <div className="relative flex flex-1 flex-col items-center px-[9%] pt-[5.5%] pb-[4.5%] text-center">
+      <div className="relative flex flex-1 flex-col items-center px-[9%] pt-[4.5%] pb-[4.5%] text-center">
+        <p className="mb-[1.6%] text-[clamp(9px,1.15vw,14px)] font-bold uppercase tracking-[0.14em] text-midnight">
+          {t("O'zbekiston Respublikasi Ta'lim va ilm-fan vazirligi")}
+        </p>
         <SamuLogo size="md" withFullName />
         <h1 className="mt-[2.5%] font-serif text-[clamp(28px,5.2vw,58px)] font-bold tracking-[0.18em] text-midnight">{t("SERTIFIKAT")}</h1>
         {olympiad && <p className="mt-[0.6%] text-[clamp(12px,1.6vw,19px)] font-bold uppercase tracking-[0.12em] text-royal">{olympiadName}</p>}
