@@ -103,6 +103,16 @@ model User {
   failedLogins   Int       @default(0)
   lockedUntil    DateTime?
   lastLoginAt    DateTime?
+  /// Ikki bosqichli tasdiqlash (TOTP) kaliti, base32. Super admin uchun majburiy.
+  totpSecret     String?
+  totpEnabledAt  DateTime?
+  /// Oxirgi ishlatilgan TOTP qadami (bitta koddan ikki marta foydalanishning oldini olish)
+  totpLastStep   Int?
+  /// Zaxira kodlar (sha256 xeshlari), har biri bir marta ishlatiladi
+  recoveryCodes  String[]  @default([])
+  passwordChangedAt DateTime?
+  /// Shaxsiy tasodifiy boshlang'ich parol qachon berilgan (null + mustChangePassword — eski umumiy parol)
+  initialPasswordAt DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -125,6 +135,11 @@ model Session {
   expiresAt DateTime
   /// Bir nechta roli bo'lgan foydalanuvchining hozir tanlagan roli
   activeRole Role?
+  /// Parol to'g'ri, lekin ikki bosqichli tasdiq hali o'tilmagan
+  mfaPending Boolean  @default(false)
+  ip         String?
+  userAgent  String?
+  lastSeenAt DateTime @default(now())
   createdAt DateTime @default(now())
 
   @@index([userId])
@@ -234,6 +249,11 @@ model Attempt {
   totalQuestions Int?
   /// Talabaning shu testdagi nechanchi urinishi (1 dan)
   attemptNo     Int           @default(1)
+  /// Imtihon nazorati: test qaysi sessiyada (qurilmada) ochilgani va shubhali harakatlar soni
+  sessionId     String?
+  tabSwitches   Int           @default(0)
+  copyEvents    Int           @default(0)
+  deviceChanges Int           @default(0)
 
   answers Answer[]
 
@@ -256,4 +276,33 @@ model Answer {
   updatedAt         DateTime @updatedAt
 
   @@unique([attemptId, questionId])
+}
+
+/// Kirish urinishlari: IP va login bo'yicha cheklov uchun
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  ip        String
+  login     String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([ip, createdAt])
+  @@index([login, createdAt])
+}
+
+/// Harakatlar jurnali: kim, qachon, qaysi IP'dan nima qildi. O'chirilmaydi.
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  userName  String
+  userLogin String?
+  action    String
+  target    String?
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([userId, createdAt])
 }

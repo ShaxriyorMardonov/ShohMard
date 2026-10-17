@@ -1,3 +1,4 @@
+import { audit } from "@/server/audit";
 import { NextResponse, type NextRequest } from "next/server";
 import { gradeLabel } from "@/lib/grade";
 import ExcelJS from "exceljs";
@@ -15,9 +16,9 @@ export const maxDuration = 60;
 
 const HEADER_KEYS = [
   "№", "F.I.Sh.", "Login", "JShShIR", "Universitet", "Fakultet", "Guruh", "Ta'lim shakli", "Test", "Fan",
-  "Boshlangan", "Topshirilgan", "Avtomatik", "Ball", "Maksimal ball", "To'g'ri javoblar", "Savollar", "Foiz", "Holat", "Baho",
+  "Boshlangan", "Topshirilgan", "Avtomatik", "Ball", "Maksimal ball", "To'g'ri javoblar", "Savollar", "Foiz", "Holat", "Baho", "Shubhali harakatlar",
 ];
-const WIDTHS = [6, 32, 12, 17, 28, 26, 10, 13, 34, 18, 20, 20, 10, 8, 10, 10, 9, 8, 10, 13];
+const WIDTHS = [6, 32, 12, 17, 28, 26, 10, 13, 34, 18, 20, 20, 10, 8, 10, 10, 9, 8, 10, 13, 34];
 
 export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
@@ -37,6 +38,7 @@ export async function GET(req: NextRequest) {
     take: 50_000,
     select: resultSelect,
   });
+  await audit("results.export", `${rows.length}`, Object.fromEntries(Object.entries(filters).filter(([, v]) => v)));
   const data = rows.map((r, i) => {
     const passed = (r.percent ?? 0) >= r.test.passingPercent;
     return [
@@ -60,6 +62,11 @@ export async function GET(req: NextRequest) {
       r.percent,
       passed ? PASSED : t("O'tmadi"),
       t(gradeLabel(r.percent)),
+      [
+        r.tabSwitches ? t("boshqa oynaga o'tish: {n}", { n: r.tabSwitches }) : null,
+        r.copyEvents ? t("nusxa olishga urinish: {n}", { n: r.copyEvents }) : null,
+        r.deviceChanges ? t("boshqa qurilma/sessiya: {n}", { n: r.deviceChanges }) : null,
+      ].filter(Boolean).join(", "),
     ] as (string | number | null)[];
   });
   const stamp = new Date().toISOString().slice(0, 10);

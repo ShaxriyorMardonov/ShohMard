@@ -119,6 +119,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
               score: `${r.score}/${r.maxScore}`,
               percent: r.percent,
               passed: (r.percent ?? 0) >= r.test.passingPercent,
+              flags: { tab: r.tabSwitches, copy: r.copyEvents, device: r.deviceChanges },
             }))}
           />
           <Pagination page={page} pages={Math.ceil(total / PER_PAGE)} total={total} params={params} />

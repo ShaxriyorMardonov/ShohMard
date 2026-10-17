@@ -370,3 +370,32 @@ export async function endTestNow(testId: string) {
   for (const a of open) await finalizeAttempt(a.id, { auto: true, now });
   return open.length;
 }
+
+/* ===================== Imtihon nazorati ===================== */
+
+/**
+ * Test qaysi sessiyada (qurilmada) ishlanayotganini kuzatadi.
+ * Boshqa sessiyadan ochilsa yoki javob yuborilsa — qurilma almashgani qayd etiladi.
+ * Qaytaradi: true — shu safar boshqa qurilma aniqlandi.
+ */
+export async function trackAttemptDevice(attemptId: string, userId: string, sessionId: string): Promise<boolean> {
+  const a = await prisma.attempt.findFirst({ where: { id: attemptId, userId, status: "IN_PROGRESS" }, select: { sessionId: true } });
+  if (!a || a.sessionId === sessionId) return false;
+  if (!a.sessionId) {
+    await prisma.attempt.update({ where: { id: attemptId }, data: { sessionId } });
+    return false;
+  }
+  await prisma.attempt.update({ where: { id: attemptId }, data: { sessionId, deviceChanges: { increment: 1 } } });
+  return true;
+}
+
+const EVENT_CAP = 1000;
+
+/** Imtihon paytidagi shubhali harakatni qayd etadi: boshqa oynaga o'tish yoki nusxa olish. */
+export async function recordExamEvent(attemptId: string, userId: string, kind: "tab" | "copy") {
+  const field = kind === "tab" ? "tabSwitches" : "copyEvents";
+  await prisma.attempt.updateMany({
+    where: { id: attemptId, userId, status: "IN_PROGRESS", [field]: { lt: EVENT_CAP } },
+    data: { [field]: { increment: 1 } },
+  });
+}

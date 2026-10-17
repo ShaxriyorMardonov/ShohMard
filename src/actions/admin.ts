@@ -8,14 +8,16 @@ import { requireAdmin, requireStaff, sortRoles } from "@/lib/auth";
 import { canManageTest, resolveFacultyGroup } from "@/server/org";
 import { endTestNow, ExamError, liveAttempts, recomputeDeadlines, rescoreTest } from "@/server/exam";
 import { saveQuestions } from "@/server/import";
-import { DEFAULT_STUDENT_PASSWORD, generateStudentLogins } from "@/server/student-account";
+import { audit } from "@/server/audit";
+import { generateInitialPassword, generateStudentLogins, hashInitialPassword } from "@/server/student-account";
 import { parseQuestionText, type ParsedQuestion } from "@/lib/question-text-parser";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { fromLocalInput } from "@/lib/time";
 import { getT } from "@/i18n/server";
 import {
   fieldErrors,
   passwordSchema,
+  weakPasswordReason,
   nameSchema,
   questionSchema,
   staffSchema,
@@ -26,6 +28,13 @@ import {
 } from "@/lib/validation";
 
 type Result = { error?: string } | void;
+
+/** Muhim amallardan oldin parolni qayta tekshirish (boshqa birov ochiq qolgan sessiyadan foydalanmasligi uchun). */
+async function confirmPassword(userId: string, password: string): Promise<boolean> {
+  if (!password) return false;
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+  return !!u && (await verifyPassword(password, u.passwordHash));
+}
 
 function isUnique(e: unknown) {
   return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002";
@@ -51,18 +60,21 @@ export async function saveUniversityAction(_prev: FormState, fd: FormData): Prom
     if (isUnique(e)) return { errors: { name: "Bu nomdagi universitet allaqachon mavjud" } };
     throw e;
   }
+  await audit(id ? "university.update" : "university.create", parsed.data.name);
   revalidatePath("/admin/universities");
   return { ok: true, message: id ? "Universitet yangilandi" : "Universitet qo'shildi" };
 }
 
 export async function deleteUniversityAction(id: string): Promise<Result> {
   await requireAdmin();
+  const uni = await prisma.university.findUnique({ where: { id }, select: { name: true } });
   // Talabalar va ularning natijalari saqlanadi: ular universitetsiz qoladi va
   // boshqa universitetga biriktirilguncha tizimga kira olmaydi.
   await prisma.$transaction([
     prisma.user.updateMany({ where: { universityId: id }, data: { universityId: null } }),
     prisma.university.delete({ where: { id } }),
   ]);
+  await audit("university.delete", uni?.name ?? id);
   revalidatePath("/admin/students");
   revalidatePath("/admin/universities");
 }
@@ -90,6 +102,7 @@ export async function deleteFacultyAction(id: string): Promise<Result> {
   await requireAdmin();
   // Guruh va talabalar saqlanadi, faqat fakultetdan ajratiladi (onDelete: SetNull)
   const f = await prisma.faculty.delete({ where: { id } });
+  await audit("faculty.delete", f.name);
   revalidatePath(`/admin/universities/${f.universityId}`);
   revalidatePath("/admin/students");
 }
@@ -123,6 +136,7 @@ export async function saveGroupAction(_prev: FormState, fd: FormData): Promise<F
 export async function deleteGroupAction(id: string): Promise<Result> {
   await requireAdmin();
   const g = await prisma.group.delete({ where: { id } });
+  await audit("group.delete", g.name);
   revalidatePath(`/admin/universities/${g.universityId}`);
   revalidatePath("/admin/students");
 }
@@ -156,6 +170,7 @@ export async function saveStudentAction(_prev: FormState, fd: FormData): Promise
   }
 
   let createdLogin: string | null = null;
+  const initialPassword = generateInitialPassword();
   try {
     const org = await resolveFacultyGroup(data.universityId, facultyName, groupName);
     if (id) {
@@ -169,18 +184,18 @@ export async function saveStudentAction(_prev: FormState, fd: FormData): Promise
           ...data,
           ...org,
           ...(resetPassword
-            ? { passwordHash: await hashPassword(DEFAULT_STUDENT_PASSWORD), mustChangePassword: true, failedLogins: 0, lockedUntil: null }
+            ? { passwordHash: await hashInitialPassword(initialPassword), mustChangePassword: true, initialPasswordAt: new Date(), failedLogins: 0, lockedUntil: null }
             : {}),
         },
       });
       if (resetPassword || !data.isActive) await prisma.session.deleteMany({ where: { userId: id } });
     } else {
-      // Login avtomatik: 7 xonali raqam. Parol: boshlang'ich, birinchi kirishda almashtiriladi.
-      const passwordHash = await hashPassword(DEFAULT_STUDENT_PASSWORD);
+      // Login avtomatik: 7 xonali raqam. Parol: har bir talabaga alohida tasodifiy, birinchi kirishda almashtiriladi.
+      const passwordHash = await hashInitialPassword(initialPassword);
       for (let i = 0; i < 3 && !createdLogin; i++) {
         const [login] = await generateStudentLogins(1);
         try {
-          await prisma.user.create({ data: { ...data, ...org, login: login!, role: "STUDENT", passwordHash, mustChangePassword: true } });
+          await prisma.user.create({ data: { ...data, ...org, login: login!, role: "STUDENT", passwordHash, mustChangePassword: true, initialPasswordAt: new Date() } });
           createdLogin = login!;
         } catch (e) {
           if (!(isUnique(e) && String((e as Prisma.PrismaClientKnownRequestError).meta?.target).includes("login"))) throw e;
@@ -195,9 +210,11 @@ export async function saveStudentAction(_prev: FormState, fd: FormData): Promise
   revalidatePath("/admin/students");
   const { t } = await getT();
   if (createdLogin) {
-    return { ok: true, message: t("Talaba qo'shildi. Login: {login}, boshlang'ich parol: {password}", { login: createdLogin, password: DEFAULT_STUDENT_PASSWORD }) };
+    await audit("student.create", `${data.fullName} (${createdLogin})`);
+    return { ok: true, message: t("Talaba qo'shildi. Login: {login}, boshlang'ich parol: {password}", { login: createdLogin, password: initialPassword }) };
   }
-  return { ok: true, message: resetPassword ? t("Ma'lumotlar yangilandi, parol {password} ga tiklandi", { password: DEFAULT_STUDENT_PASSWORD }) : "Talaba ma'lumotlari yangilandi" };
+  await audit(resetPassword ? "student.password_reset" : "student.update", data.fullName, { id });
+  return { ok: true, message: resetPassword ? t("Ma'lumotlar yangilandi. Yangi boshlang'ich parol: {password}", { password: initialPassword }) : "Talaba ma'lumotlari yangilandi" };
 }
 
 /** Tanlangan talabalarni bitta guruhga (va fakultetga) biriktiradi. */
@@ -232,6 +249,7 @@ export async function assignStudentsGroupAction(
       ...(input.studyForm ? { studyForm: input.studyForm as "KUNDUZGI" } : {}),
     },
   });
+  await audit("student.assign_group", `${students.length}`, { groupName, facultyName, studyForm: input.studyForm });
   revalidatePath("/admin/students");
   return { count: students.length };
 }
@@ -244,6 +262,7 @@ export async function deleteStudentAction(id: string): Promise<Result> {
   if (otherRoles.length) {
     // Boshqa rollari bor: hisob saqlanadi, faqat talaba roli olib tashlanadi
     await prisma.user.update({ where: { id }, data: { roles: otherRoles, role: otherRoles[0] } });
+    await audit("student.delete", `${user.fullName} (${user.login})`, "talaba roli olib tashlandi");
     revalidatePath("/admin/students");
     return;
   }
@@ -251,6 +270,7 @@ export async function deleteStudentAction(id: string): Promise<Result> {
     return { error: "Talabaning imtihon natijalari mavjud. Natijalarni saqlash uchun hisobni o'chirish o'rniga nofaol qiling." };
   }
   await prisma.user.delete({ where: { id } });
+  await audit("student.delete", `${user.fullName} (${user.login})`);
   revalidatePath("/admin/students");
 }
 
@@ -297,6 +317,7 @@ export async function saveQuestionAction(_prev: FormState, fd: FormData): Promis
       data: { ...data, options: { create: opts.map((o, i) => ({ ...o, position: i })) } },
     });
   }
+  await audit(id ? "question.update" : "question.create", data.text.slice(0, 120));
   revalidatePath("/admin/questions");
   redirect("/admin/questions?saved=1");
 }
@@ -310,7 +331,8 @@ export async function deleteQuestionAction(id: string): Promise<Result> {
   }
   const answered = await prisma.answer.count({ where: { questionId: id } });
   if (answered > 0) return { error: "Bu savolga talabalar javob bergan, uni o'chirib bo'lmaydi." };
-  await prisma.question.delete({ where: { id } });
+  const q = await prisma.question.delete({ where: { id } });
+  await audit("question.delete", q.text.slice(0, 120));
   revalidatePath("/admin/questions");
 }
 
@@ -377,12 +399,14 @@ export async function saveTestAction(_prev: FormState, fd: FormData): Promise<Fo
       await recomputeDeadlines(id);
     }
     revalidatePath("/admin/results");
+    await audit("test.update", data.title, { testId: id });
   } else {
     const t = await prisma.test.create({
       data: { ...data, createdById: staff.id, universities: { connect: universityIds.map((u) => ({ id: u })) } },
     });
     testId = t.id;
     if (imported.length) await saveQuestions(imported, testId);
+    await audit("test.create", data.title, { testId, questions: imported.length });
   }
   revalidatePath("/admin/tests");
   redirect(`/admin/tests/${testId}${id ? "?saved=1" : ""}`);
@@ -391,17 +415,21 @@ export async function saveTestAction(_prev: FormState, fd: FormData): Promise<Fo
 /** Testni natijalari (urinishlar, javoblar) bilan birga butunlay o'chiradi. Faqat administrator. */
 export async function deleteTestAction(id: string): Promise<Result> {
   await requireAdmin();
-  await prisma.test.delete({ where: { id } });
+  const t = await prisma.test.delete({ where: { id } });
+  await audit("test.delete", t.title);
   revalidatePath("/admin/tests");
   revalidatePath("/admin/results");
   redirect("/admin/tests");
 }
 
-export async function deleteTestsAction(ids: string[]): Promise<Result & { count?: number }> {
-  await requireAdmin();
+export async function deleteTestsAction(ids: string[], password: string): Promise<Result & { count?: number }> {
+  const admin = await requireAdmin();
+  if (!(await confirmPassword(admin.id, password))) return { error: "Parol noto'g'ri" };
   const list = Array.from(new Set(ids)).slice(0, 500);
   if (!list.length) return { error: "Test tanlanmadi" };
+  const titles = await prisma.test.findMany({ where: { id: { in: list } }, select: { title: true } });
   const r = await prisma.test.deleteMany({ where: { id: { in: list } } });
+  await audit("test.delete", titles.map((x) => x.title).join(", "), { count: r.count });
   revalidatePath("/admin/tests");
   revalidatePath("/admin/results");
   return { count: r.count };
@@ -414,7 +442,8 @@ export async function setTestActiveAction(id: string, active: boolean): Promise<
   if (active && (await prisma.testQuestion.count({ where: { testId: id } })) === 0) {
     return { error: "Savolsiz testni faollashtirib bo'lmaydi. Avval savollar qo'shing." };
   }
-  await prisma.test.update({ where: { id }, data: { isPublished: active } });
+  const t = await prisma.test.update({ where: { id }, data: { isPublished: active } });
+  await audit(active ? "test.activate" : "test.deactivate", t.title);
   revalidatePath("/admin/tests");
   revalidatePath(`/admin/tests/${id}`);
 }
@@ -454,6 +483,7 @@ export async function updateTestScheduleAction(testId: string, _prev: FormState,
     data: { startsAt: startsAt!, endsAt: endsAt!, durationMinutes: duration, maxScore, questionsPerAttempt, maxAttempts },
   });
   await recomputeDeadlines(testId);
+  await audit("test.schedule", testId, { startsAt, endsAt, duration, maxScore, questionsPerAttempt, maxAttempts });
   let rescored = 0;
   if (before.maxScore !== maxScore) rescored = await rescoreTest(testId);
   revalidatePath(`/admin/tests/${testId}`);
@@ -469,6 +499,7 @@ export async function setTestRestrictedAction(testId: string, restricted: boolea
   const staff = await requireStaff();
   if (!(await canManageTest(staff.scope, testId))) return { error: "Test topilmadi" };
   await prisma.test.update({ where: { id: testId }, data: { restrictedAccess: restricted } });
+  await audit("test.access_mode", testId, restricted ? "faqat belgilanganlar" : "barcha talabalar");
   revalidatePath(`/admin/tests/${testId}`);
 }
 
@@ -525,6 +556,7 @@ export async function addTestAccessAction(
   const students = await prisma.user.findMany({ where, select: { id: true } });
   if (!students.length) return { error: "Talabalar topilmadi" };
   const r = await prisma.testAccess.createMany({ data: students.map((s) => ({ testId, userId: s.id })), skipDuplicates: true });
+  await audit("test.access_add", testId, { added: r.count });
   revalidatePath(`/admin/tests/${testId}`);
   return { added: r.count };
 }
@@ -535,6 +567,7 @@ export async function removeTestAccessByFilterAction(testId: string, f: AccessFi
   if (!(await canManageTest(staff.scope, testId))) return { error: "Test topilmadi" };
   const base = await accessBase(testId, f);
   await prisma.testAccess.deleteMany({ where: { testId, user: base } });
+  await audit("test.access_remove", testId, f);
   revalidatePath(`/admin/tests/${testId}`);
 }
 
@@ -542,6 +575,7 @@ export async function removeTestAccessAction(testId: string, userIds: string[]):
   const staff = await requireStaff();
   if (!(await canManageTest(staff.scope, testId))) return { error: "Test topilmadi" };
   await prisma.testAccess.deleteMany({ where: { testId, ...(userIds.length ? { userId: { in: userIds } } : {}) } });
+  await audit("test.access_remove", testId, { count: userIds.length || "hammasi" });
   revalidatePath(`/admin/tests/${testId}`);
 }
 
@@ -610,6 +644,7 @@ export async function setResultsReleasedAction(testId: string, released: boolean
   if (!t) return { error: "Test topilmadi" };
   if (t.resultRelease !== "MANUAL") return { error: "Bu testda natijalar avtomatik e'lon qilinadi" };
   await prisma.test.update({ where: { id: testId }, data: { resultsReleasedAt: released ? new Date() : null } });
+  await audit(released ? "results.release" : "results.hide", t.title);
   revalidatePath(`/admin/tests/${testId}`);
   revalidatePath("/admin/results");
 }
@@ -621,6 +656,7 @@ export async function updateAdminProfileAction(_prev: FormState, fd: FormData): 
   const fullName = str(fd.get("fullName")).trim();
   if (fullName.length < 3 || fullName.length > 120) return { errors: { fullName: "Ism 3–120 belgidan iborat bo'lsin" } };
   await prisma.user.update({ where: { id: admin.id }, data: { fullName } });
+  await audit("profile.update", fullName);
   revalidatePath("/admin", "layout");
   return { ok: true, message: "Ma'lumotlar saqlandi" };
 }
@@ -638,10 +674,15 @@ export async function saveStaffUserAction(_prev: FormState, fd: FormData): Promi
     isActive: fd.get("isActive") === "on",
   });
   const password = str(fd.get("password"));
+  const resetMfa = !!id && id !== admin.id && fd.get("resetMfa") === "on";
   const errors = parsed.success ? {} : fieldErrors(parsed.error);
   if (!id || password) {
     const pw = passwordSchema.safeParse(password);
     if (!pw.success) errors.password = pw.error.issues[0]?.message;
+    else if (parsed.success) {
+      const weak = weakPasswordReason(password, parsed.data.login);
+      if (weak) errors.password = weak;
+    }
   }
   if (!parsed.success || Object.keys(errors).length) return { errors };
   const roles = sortRoles(parsed.data.roles);
@@ -668,12 +709,21 @@ export async function saveStaffUserAction(_prev: FormState, fd: FormData): Promi
         where: { id },
         data: {
           ...data,
-          ...(password ? { passwordHash: await hashPassword(password), failedLogins: 0, lockedUntil: null } : {}),
+          ...(password ? { passwordHash: await hashPassword(password), failedLogins: 0, lockedUntil: null, passwordChangedAt: new Date() } : {}),
+          ...(resetMfa ? { totpSecret: null, totpEnabledAt: null, totpLastStep: null, recoveryCodes: [] } : {}),
         },
       });
       if (id !== admin.id) await prisma.session.deleteMany({ where: { userId: id } });
+      const changes = [
+        existing.roles.join() !== roles.join() ? `rollar: ${existing.roles.join(", ")} → ${roles.join(", ")}` : null,
+        existing.isActive !== data.isActive ? (data.isActive ? "faollashtirildi" : "nofaol qilindi") : null,
+        password ? "parol almashtirildi" : null,
+        resetMfa ? "2FA qayta o'rnatishga tushirildi" : null,
+      ].filter(Boolean);
+      await audit("staff.update", `${data.fullName} (${data.login})`, changes.join("; ") || null);
     } else {
-      await prisma.user.create({ data: { ...data, passwordHash: await hashPassword(password) } });
+      await prisma.user.create({ data: { ...data, passwordHash: await hashPassword(password), passwordChangedAt: new Date() } });
+      await audit("staff.create", `${data.fullName} (${data.login})`, `rollar: ${roles.join(", ")}`);
     }
   } catch (e) {
     if (isUnique(e)) return { errors: { login: "Bu login band" } };
@@ -693,10 +743,12 @@ export async function deleteStaffUserAction(id: string): Promise<Result> {
     // Talaba sifatida natijalari bor: hisob saqlanadi, faqat xodim rollari olinadi
     await prisma.user.update({ where: { id }, data: { roles: ["STUDENT"], role: "STUDENT" } });
     await prisma.session.deleteMany({ where: { userId: id } });
+    await audit("staff.delete", `${u.fullName} (${u.login})`, "xodim rollari olib tashlandi");
     revalidatePath("/admin/users");
     return;
   }
   await prisma.user.delete({ where: { id } });
+  await audit("staff.delete", `${u.fullName} (${u.login})`);
   revalidatePath("/admin/users");
 }
 
@@ -704,7 +756,7 @@ export async function deleteStaffUserAction(id: string): Promise<Result> {
 export async function setUserActiveAction(id: string, active: boolean): Promise<Result> {
   const staff = await requireStaff();
   if (id === staff.id && !active) return { error: "O'zingizni nofaol qila olmaysiz" };
-  const user = await prisma.user.findUnique({ where: { id }, select: { roles: true, universityId: true } });
+  const user = await prisma.user.findUnique({ where: { id }, select: { roles: true, universityId: true, fullName: true, login: true } });
   if (!user) return { error: "Foydalanuvchi topilmadi" };
   // Menejer faqat o'z universitetining talabalarini boshqaradi
   if (staff.scope && (user.universityId !== staff.scope || user.roles.some((r) => r !== "STUDENT"))) {
@@ -712,16 +764,27 @@ export async function setUserActiveAction(id: string, active: boolean): Promise<
   }
   await prisma.user.update({ where: { id }, data: { isActive: active } });
   if (!active) await prisma.session.deleteMany({ where: { userId: id } });
+  await audit(active ? "user.activate" : "user.deactivate", `${user.fullName} (${user.login})`);
   revalidatePath("/admin/students");
   revalidatePath("/admin/users");
 }
 
 /** Test natijalarini (urinishlarni) o'chirish. Faqat Super admin. */
-export async function deleteResultsAction(ids: string[]): Promise<Result & { count?: number }> {
-  await requireAdmin();
+export async function deleteResultsAction(ids: string[], password: string): Promise<Result & { count?: number }> {
+  const admin = await requireAdmin();
+  if (!(await confirmPassword(admin.id, password))) return { error: "Parol noto'g'ri" };
   const list = Array.from(new Set(ids)).slice(0, 500);
   if (!list.length) return { error: "Natija tanlanmadi" };
+  const rows = await prisma.attempt.findMany({
+    where: { id: { in: list } },
+    select: { percent: true, attemptNo: true, user: { select: { fullName: true, login: true } }, test: { select: { title: true } } },
+  });
   const r = await prisma.attempt.deleteMany({ where: { id: { in: list } } });
+  await audit(
+    "results.delete",
+    `${r.count}`,
+    rows.slice(0, 50).map((x) => `${x.user.fullName} (${x.user.login}) — ${x.test.title}, ${x.attemptNo}-urinish, ${x.percent ?? "—"}%`).join("; "),
+  );
   revalidatePath("/admin/results");
   revalidatePath("/admin/tests");
   revalidatePath("/admin");
@@ -742,6 +805,7 @@ export async function endTestNowAction(testId: string): Promise<{ error?: string
   if (!(await canManageTest(staff.scope, testId))) return { error: "Test topilmadi" };
   try {
     const finalized = await endTestNow(testId);
+    await audit("test.end_now", testId, { finalized });
     revalidatePath(`/admin/tests/${testId}`);
     revalidatePath("/admin/tests");
     revalidatePath("/admin/results");
@@ -756,10 +820,44 @@ export async function endTestNowAction(testId: string): Promise<{ error?: string
 /** Universitetni faol yoki nofaol qiladi. Nofaol universitet talabalari va menejerlari tizimga kira olmaydi. */
 export async function setUniversityActiveAction(id: string, active: boolean): Promise<Result> {
   await requireAdmin();
-  await prisma.university.update({ where: { id }, data: { isActive: active } });
+  const u = await prisma.university.update({ where: { id }, data: { isActive: active } });
+  await audit(active ? "university.activate" : "university.deactivate", u.name);
   if (!active) {
     await prisma.session.deleteMany({ where: { user: { universityId: id, NOT: { roles: { has: "ADMIN" } } } } });
   }
   revalidatePath("/admin/universities");
   revalidatePath("/admin");
+}
+
+/** Tanlangan talabalarga yangi tasodifiy boshlang'ich parol beradi (faqat Super admin). Parollar faqat shu javobda qaytariladi. */
+export async function regenerateStudentPasswordsAction(
+  ids: string[] | "initial",
+): Promise<{ error?: string; accounts?: { fullName: string; login: string; password: string }[] }> {
+  await requireAdmin();
+  // "initial" — hali boshlang'ich parol bilan qolgan barcha talabalar
+  const target: Prisma.UserWhereInput = ids === "initial" ? { mustChangePassword: true, initialPasswordAt: null } : { id: { in: Array.from(new Set(ids)).slice(0, 2000) } };
+  const students = await prisma.user.findMany({
+    where: { ...target, roles: { has: "STUDENT" }, NOT: { roles: { has: "ADMIN" } } },
+    // Vaqt chegarasiga sig'ishi uchun bir martada ko'pi bilan 1000 ta (qolganlari uchun qayta bosiladi)
+    take: 1000,
+    select: { id: true, fullName: true, login: true },
+    orderBy: { fullName: "asc" },
+  });
+  if (!students.length) return { error: "Talaba tanlanmadi" };
+  const accounts: { fullName: string; login: string; password: string }[] = [];
+  const hashes: string[] = [];
+  for (const st of students) {
+    const password = generateInitialPassword();
+    hashes.push(await hashInitialPassword(password));
+    accounts.push({ fullName: st.fullName, login: st.login, password });
+  }
+  const ids2 = students.map((x) => x.id);
+  await prisma.$executeRaw`
+    UPDATE "User" AS u
+    SET "passwordHash" = v.h, "mustChangePassword" = true, "initialPasswordAt" = NOW(), "failedLogins" = 0, "lockedUntil" = NULL, "updatedAt" = NOW()
+    FROM unnest(${ids2}::text[], ${hashes}::text[]) AS v(id, h)
+    WHERE u.id = v.id`;
+  await prisma.session.deleteMany({ where: { userId: { in: students.map((x) => x.id) } } });
+  await audit("student.password_reset", `${students.length}`, students.slice(0, 50).map((x) => x.login).join(", "));
+  return { accounts };
 }

@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { parseQuestionText, type ParseIssue } from "@/lib/question-text-parser";
 import { extractWordText, importQuestions, importStudents, importUniversities, saveQuestions, type ImportResult } from "@/server/import";
 import { getT } from "@/i18n/server";
+import { audit } from "@/server/audit";
 
 type Kind = "universities" | "students" | "questions";
 
@@ -28,6 +29,7 @@ export async function importAction(kind: Kind, testId: string | null, _prev: Imp
     else res = await importQuestions(file, testId ?? undefined);
     if (res.ok) {
       revalidatePath("/admin", "layout");
+      await audit(`${kind === "universities" ? "university" : kind === "students" ? "student" : "question"}.import`, file.name, { created: res.created, skipped: res.skipped, testId });
     }
     return res;
   } catch (e) {
@@ -66,6 +68,7 @@ export async function importQuestionsTextAction(
   if (parsed.issues.length) return { error: "Matnda xatolar bor. Avval ularni tuzating.", issues: parsed.issues.slice(0, 200) };
   if (parsed.questions.length > 1000) return { error: "Bir martada ko'pi bilan 1000 ta savol" };
   await saveQuestions(parsed.questions, testId);
+  await audit("question.import", testId, { created: parsed.questions.length });
   revalidatePath(`/admin/tests/${testId}`);
   revalidatePath("/admin/questions");
   return { ok: true, created: parsed.questions.length };

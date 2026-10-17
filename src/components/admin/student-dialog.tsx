@@ -113,13 +113,13 @@ function StudentForm({
           {!fixedUniversity && (
             <label className="flex items-center gap-2">
               <input type="checkbox" name="resetPassword" className="size-4 accent-[#315ECA]" />
-              {t("Parolni boshlang'ich parolga (12345678a) tiklash")}
+              {t("Yangi boshlang'ich parol berish")}
             </label>
           )}
         </div>
       ) : (
         <p className="rounded-lg bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground">
-          {t("Login (7 xonali raqam) avtomatik beriladi. Boshlang'ich parol: 12345678a. Talaba birinchi kirishda yangi parol qo'yadi.")}
+          {t("Login (7 xonali raqam) va boshlang'ich parol avtomatik beriladi. Saqlagandan so'ng ularni talabaga bering. Talaba birinchi kirishda yangi parol qo'yadi.")}
         </p>
       )}
       <label className="flex items-center gap-2 text-sm font-medium">

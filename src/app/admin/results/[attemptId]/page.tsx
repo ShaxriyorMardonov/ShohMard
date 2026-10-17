@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SuspicionBadge } from "@/components/suspicion-badge";
 import { Award } from "lucide-react";
 import { GradeBadge } from "@/components/grade-badge";
 import { hasCertificate } from "@/lib/grade";
@@ -56,6 +57,9 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
           <div className="text-muted-foreground">
             {t("Boshlangan: {date}", { date: formatDateTime(a.startedAt, lang) })}<br />
             {t("Topshirilgan: {date}", { date: formatDateTime(a.submittedAt, lang) })} {a.autoSubmitted && t("(avtomatik)")}
+            <div className="mt-1">
+              <SuspicionBadge flags={{ tab: a.tabSwitches, copy: a.copyEvents, device: a.deviceChanges }} detailed />
+            </div>
           </div>
           {a.status === "SUBMITTED" && hasCertificate(a.percent) && (
             <Button asChild variant="success" size="sm" className="ml-auto">

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { useT } from "@/i18n/client";
+import { downloadAccounts } from "@/lib/download-accounts";
 
 type Kind = "universities" | "students" | "questions";
 
@@ -23,7 +24,7 @@ const META: Record<Kind, { title: string; description: string; accept: string; t
   },
   students: {
     title: "Talabalarni Excel'dan yuklash",
-    description: "Ustunlar: F.I.Sh., JShShIR (majburiy), Universitet (qisqa nomi), Fakultet, Guruh, Ta'lim shakli. Login (7 xonali) avtomatik beriladi, boshlang'ich parol 12345678a. JShShIR takrorlangan talaba qayta qo'shilmaydi.",
+    description: "Ustunlar: F.I.Sh., JShShIR (majburiy), Universitet (qisqa nomi), Fakultet, Guruh, Ta'lim shakli. Login (7 xonali) va har bir talabaga alohida boshlang'ich parol avtomatik beriladi. JShShIR takrorlangan talaba qayta qo'shilmaydi.",
     accept: ".xlsx",
     templates: [{ href: "/admin/templates/talabalar.xlsx", label: "Excel namuna" }],
     created: "{n} ta talaba qo'shildi",
@@ -113,8 +114,11 @@ function ImportForm({ kind, testId, onDone }: { kind: Kind; testId?: string; onD
         </ul>
       )}
       {state?.ok && !!state.accounts?.length && (
+        <p className="text-xs font-medium text-warning">{t("Parollar faqat hozir ko'rsatiladi: ro'yxatni yuklab oling va talabalarga tarqating.")}</p>
+      )}
+      {state?.ok && !!state.accounts?.length && (
         <Button type="button" variant="success" onClick={() => downloadAccounts(state.accounts!, t)}>
-          <Download /> {t("Loginlar ro'yxatini yuklab olish")}
+          <Download /> {t("Loginlar va parollar ro'yxatini yuklab olish")}
         </Button>
       )}
       {state && !state.ok && (
@@ -145,14 +149,3 @@ function ImportForm({ kind, testId, onDone }: { kind: Kind; testId?: string; onD
 }
 
 /** Yangi talabalar login va boshlang'ich parollari ro'yxati (Excel ochadigan CSV). */
-function downloadAccounts(rows: { fullName: string; login: string }[], t: (k: string) => string) {
-  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-  const lines = [[t("F.I.Sh."), t("Login"), t("Boshlang'ich parol")].map(esc).join(";")];
-  for (const r of rows) lines.push([r.fullName, r.login, "12345678a"].map(esc).join(";"));
-  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "talabalar-loginlari.csv";
-  a.click();
-  URL.revokeObjectURL(a.href);
-}

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { requireStudent } from "@/lib/auth";
 import { saveAnswerSchema } from "@/lib/validation";
-import { ExamError, getAttemptStatus, saveAnswer, startAttempt, submitAttempt } from "@/server/exam";
+import { ExamError, getAttemptStatus, recordExamEvent, saveAnswer, startAttempt, submitAttempt, trackAttemptDevice } from "@/server/exam";
 
 export type ExamActionResult =
   | { ok: true; serverNow: string }
@@ -36,6 +36,7 @@ export async function saveAnswerAction(input: unknown): Promise<ExamActionResult
   }
   try {
     await saveAnswer(user.id, parsed.data);
+    await trackAttemptDevice(parsed.data.attemptId, user.id, user.sessionId);
     return { ok: true, serverNow: new Date().toISOString() };
   } catch (e) {
     return fail(e);
@@ -61,4 +62,11 @@ export async function examStatusAction(attemptId: string): Promise<{ status?: "I
   } catch {
     return { serverNow: new Date().toISOString() };
   }
+}
+
+/** Shubhali harakat (boshqa oynaga o'tish, nusxa olish) — natijalarda o'qituvchiga ko'rsatiladi. */
+export async function reportExamEventAction(attemptId: string, kind: "tab" | "copy"): Promise<void> {
+  const user = await requireStudent();
+  if (kind !== "tab" && kind !== "copy") return;
+  await recordExamEvent(String(attemptId), user.id, kind);
 }

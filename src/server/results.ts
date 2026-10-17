@@ -59,6 +59,9 @@ export const resultSelect = {
   percent: true,
   correctCount: true,
   totalQuestions: true,
+  tabSwitches: true,
+  copyEvents: true,
+  deviceChanges: true,
   user: {
     select: {
       fullName: true,

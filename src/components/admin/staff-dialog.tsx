@@ -14,7 +14,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { useT } from "@/i18n/client";
 import type { FormState } from "@/lib/validation";
 
-export type StaffRow = { id: string; fullName: string; login: string; roles: Role[]; universityId: string | null; isActive: boolean };
+export type StaffRow = { id: string; fullName: string; login: string; roles: Role[]; universityId: string | null; isActive: boolean; totpEnabledAt?: Date | string | null };
 
 const ROLE_OPTIONS: { value: Role; label: string; hint: string }[] = [
   { value: "ADMIN", label: "Super admin", hint: "Hamma narsani boshqaradi" },
@@ -85,6 +85,15 @@ function StaffForm({ user, universities, isSelf, onDone }: { user?: StaffRow; un
         <label className="flex items-center gap-2 text-sm font-medium">
           <input type="checkbox" name="isActive" defaultChecked={user?.isActive ?? true} className="size-4 accent-[#315ECA]" />
           {t("Hisob faol")}
+        </label>
+      )}
+      {user && !isSelf && user.totpEnabledAt && (
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" name="resetMfa" className="mt-0.5 size-4 accent-[#315ECA]" />
+          <span>
+            {t("Ikki bosqichli tasdiqni qayta o'rnatish")}
+            <span className="block text-xs text-muted-foreground">{t("Telefonini yo'qotgan bo'lsa: keyingi kirishda ilovani qaytadan ulaydi.")}</span>
+          </span>
         </label>
       )}
       <DialogFooter>

@@ -281,3 +281,43 @@ describe.skipIf(!enabled)("imtihon jarayoni (PostgreSQL bilan integratsion)", as
     expect(orders.size).toBeGreaterThan(sets.size - 1);
   });
 });
+
+describe.skipIf(!enabled)("kirish cheklovi va imtihon nazorati (PostgreSQL bilan)", async () => {
+  const { prisma } = await import("@/lib/db");
+  const rl = await import("@/server/rate-limit");
+  const exam = await import("@/server/exam");
+
+  it("IP va login bo'yicha cheklov: egasi boshqa IP'dan kira oladi", async () => {
+    await prisma.loginAttempt.deleteMany();
+    for (let i = 0; i < rl.PAIR_FAIL_LIMIT; i++) await rl.recordLoginAttempt("1.1.1.1", "victim", false);
+    expect((await rl.loginGate("1.1.1.1", "victim")).blocked).toBe(true);
+    // Hujumchi talabani bloklab qo'ya olmaydi: boshqa IP'dagi egasi kira oladi
+    expect((await rl.loginGate("2.2.2.2", "victim")).blocked).toBe(false);
+    // Bitta IP'dan ko'p hisobni sinash ham bloklanadi
+    for (let i = 0; i < rl.IP_FAIL_LIMIT; i++) await rl.recordLoginAttempt("3.3.3.3", `u${i}`, false);
+    expect((await rl.loginGate("3.3.3.3", "boshqa")).blocked).toBe(true);
+    const g = await rl.loginGate("4.4.4.4", "x");
+    expect(g).toEqual({ blocked: false, captcha: false });
+    for (let i = 0; i < rl.CAPTCHA_AFTER; i++) await rl.recordLoginAttempt("4.4.4.4", "x" + i, false);
+    expect(await rl.loginGate("4.4.4.4", "x")).toEqual({ blocked: false, captcha: true });
+  });
+
+  it("qurilma almashishi va shubhali harakatlar qayd etiladi", async () => {
+    const uni = await prisma.university.create({ data: { name: "Nazorat uni", shortName: "NU" } });
+    const u = await prisma.user.create({ data: { login: "nazorat", fullName: "Nazorat", passwordHash: "x", role: "STUDENT", universityId: uni.id } });
+    const test = await prisma.test.create({
+      data: { title: "N", durationMinutes: 10, startsAt: new Date(Date.now() - 60_000), endsAt: new Date(Date.now() + 3_600_000), isPublished: true, universities: { connect: [{ id: uni.id }] } },
+    });
+    const a = await prisma.attempt.create({ data: { testId: test.id, userId: u.id, deadlineAt: new Date(Date.now() + 600_000) } });
+    expect(await exam.trackAttemptDevice(a.id, u.id, "s1")).toBe(false);
+    expect(await exam.trackAttemptDevice(a.id, u.id, "s1")).toBe(false);
+    expect(await exam.trackAttemptDevice(a.id, u.id, "s2")).toBe(true);
+    await exam.recordExamEvent(a.id, u.id, "tab");
+    await exam.recordExamEvent(a.id, u.id, "tab");
+    await exam.recordExamEvent(a.id, u.id, "copy");
+    // Boshqa talaba birovning urinishiga yozolmaydi
+    await exam.recordExamEvent(a.id, "boshqa", "copy");
+    const r = await prisma.attempt.findUniqueOrThrow({ where: { id: a.id } });
+    expect([r.deviceChanges, r.tabSwitches, r.copyEvents, r.sessionId]).toEqual([1, 2, 1, "s2"]);
+  });
+});

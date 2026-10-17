@@ -4,7 +4,7 @@ import { FilterBar } from "@/components/admin/filter-bar";
 import { ImportDialog } from "@/components/admin/import-dialog";
 import { Pagination, parsePage } from "@/components/admin/pagination";
 import { StudentDialog, type OrgNames } from "@/components/admin/student-dialog";
-import { StudentsTable } from "@/components/admin/students-table";
+import { InitialPasswordsBanner, StudentsTable } from "@/components/admin/students-table";
 import { EmptyState, PageHeader } from "@/components/layout/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -21,7 +21,7 @@ export async function generateMetadata() {
 export const maxDuration = 60;
 const PER_PAGE = 30;
 
-type SP = { q?: string; form?: string; university?: string; faculty?: string; group?: string; page?: string };
+type SP = { q?: string; form?: string; university?: string; faculty?: string; group?: string; pw?: string; page?: string };
 
 export default async function StudentsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const staff = await requireStaff();
@@ -32,10 +32,11 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
   const where: Prisma.UserWhereInput = {
     roles: { has: "STUDENT" },
     ...studentOrgWhere(staff.scope, sp),
+    ...(sp.pw === "initial" ? { mustChangePassword: true } : sp.pw === "changed" ? { mustChangePassword: false } : {}),
     ...(q ? { OR: [{ fullName: { contains: q, mode: "insensitive" } }, { login: { contains: q, mode: "insensitive" } }, { pinfl: { contains: q } }] } : {}),
   };
   const uniFilter = staff.scope ? { id: staff.scope } : {};
-  const [universities, options, total, students, faculties, groups] = await Promise.all([
+  const [universities, options, total, students, faculties, groups, initialCount] = await Promise.all([
     prisma.university.findMany({ where: uniFilter, orderBy: { name: "asc" }, select: { id: true, name: true } }),
     orgOptions(staff.scope, sp),
     prisma.user.count({ where }),
@@ -61,6 +62,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
     }),
     prisma.faculty.findMany({ where: staff.scope ? { universityId: staff.scope } : {}, select: { name: true, universityId: true }, orderBy: { name: "asc" } }),
     prisma.group.findMany({ where: staff.scope ? { universityId: staff.scope } : {}, select: { name: true, universityId: true }, orderBy: { name: "asc" } }),
+    staff.scope ? 0 : prisma.user.count({ where: { roles: { has: "STUDENT" }, mustChangePassword: true, initialPasswordAt: null, NOT: { roles: { has: "ADMIN" } } } }),
   ]);
   const orgNames: OrgNames = {};
   for (const u of universities) orgNames[u.id] = { faculties: [], groups: [] };
@@ -85,6 +87,7 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
           </>
         }
       />
+      {!staff.scope && initialCount > 0 && <InitialPasswordsBanner count={initialCount} />}
       <FilterBar
         search={{ placeholder: t("Ism, login yoki JShShIR bo'yicha qidirish") }}
         values={sp}
@@ -93,6 +96,15 @@ export default async function StudentsPage({ searchParams }: { searchParams: Pro
           ...(staff.scope ? [] : [{ name: "university", label: t("Universitet"), all: t("Barcha universitetlar"), options: options.universities, resets: ["faculty", "group"] }]),
           { name: "faculty", label: t("Fakultet"), all: t("Barcha fakultetlar"), options: options.faculties, resets: ["group"] },
           { name: "group", label: t("Guruh"), all: t("Barcha guruhlar"), options: options.groups },
+          {
+            name: "pw",
+            label: t("Parol"),
+            all: t("Parol holati: hammasi"),
+            options: [
+              { value: "initial", label: t("Boshlang'ich parol bilan") },
+              { value: "changed", label: t("Parolini almashtirgan") },
+            ],
+          },
         ]}
       />
       {students.length === 0 ? (

@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { deleteResultsAction } from "@/actions/admin";
+import { ReauthField } from "@/components/admin/reauth-field";
 import { GradeBadge } from "@/components/grade-badge";
+import { SuspicionBadge, type ExamFlags } from "@/components/suspicion-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,6 +28,7 @@ export type ResultRow = {
   score: string;
   percent: number | null;
   passed: boolean;
+  flags: ExamFlags;
 };
 
 export function ResultsTable({ rows }: { rows: ResultRow[] }) {
@@ -35,6 +38,7 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
   const [confirm, setConfirm] = React.useState<string[] | null>(null);
   const [pending, start] = React.useTransition();
   const [error, setError] = React.useState<string | null>(null);
+  const [password, setPassword] = React.useState("");
   const allChecked = rows.length > 0 && rows.every((r) => selected.has(r.id));
   const toggle = (id: string) =>
     setSelected((prev) => {
@@ -85,6 +89,7 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   <Badge variant={r.passed ? "success" : "error"}>{r.percent}%</Badge>
                   <GradeBadge percent={r.percent} />
+                  <SuspicionBadge flags={r.flags} />
                   <span>{r.score}</span>
                   <span>{r.submitted}{r.auto && ` · ${t("avtomatik")}`}</span>
                 </div>
@@ -144,6 +149,7 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Badge variant={r.passed ? "success" : "error"}>{r.percent}%</Badge>
                   <GradeBadge percent={r.percent} />
+                  <SuspicionBadge flags={r.flags} />
                 </div>
               </TableCell>
               <TableCell>
@@ -156,7 +162,7 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
         </TableBody>
       </Table>
       </div>
-      <Dialog open={!!confirm} onOpenChange={(o) => { if (!o) { setConfirm(null); setError(null); } }}>
+      <Dialog open={!!confirm} onOpenChange={(o) => { if (!o) { setConfirm(null); setError(null); setPassword(""); } }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t("Natijalarni o'chirish")}</DialogTitle>
@@ -164,15 +170,15 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
               {t("{n} ta natija butunlay o'chiriladi. Talaba testni qayta topshirishi mumkin bo'ladi.", { n: confirm?.length ?? 0 })}
             </DialogDescription>
           </DialogHeader>
-          {error && <p className="text-sm font-medium text-error">{t(error)}</p>}
+          <ReauthField value={password} onChange={setPassword} error={error} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirm(null)}>{t("Bekor qilish")}</Button>
             <Button
               variant="destructive"
-              disabled={pending}
+              disabled={pending || !password}
               onClick={() =>
                 start(async () => {
-                  const r = await deleteResultsAction(confirm ?? []);
+                  const r = await deleteResultsAction(confirm ?? [], password);
                   if (r?.error) return setError(r.error);
                   setSelected(new Set());
                   setConfirm(null);

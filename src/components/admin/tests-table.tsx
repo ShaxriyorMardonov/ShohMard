@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { deleteTestsAction, setTestActiveAction } from "@/actions/admin";
+import { ReauthField } from "@/components/admin/reauth-field";
 import { TEST_STATE_BADGE } from "@/components/admin/test-state";
 import { Badge } from "@/components/ui/badge";
 import { ToggleSwitch } from "@/components/ui/toggle-switch";
@@ -39,6 +40,8 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
   const router = useRouter();
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [confirm, setConfirm] = React.useState(false);
+  const [password, setPassword] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
   const [pending, start] = React.useTransition();
   const all = groups.flatMap((g) => g.rows);
   const chosen = all.filter((r) => selected.has(r.id));
@@ -149,7 +152,7 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
           );
         })}
       </div>
-      <Dialog open={confirm} onOpenChange={setConfirm}>
+      <Dialog open={confirm} onOpenChange={(o) => { setConfirm(o); setPassword(""); setError(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>{t("Testlarni o'chirish")}</DialogTitle>
@@ -158,14 +161,16 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
               {attempts > 0 && ` ${t("Ular bilan birga {n} ta talaba natijasi ham o'chadi va qayta tiklanmaydi.", { n: attempts })}`}
             </DialogDescription>
           </DialogHeader>
+          <ReauthField value={password} onChange={setPassword} error={error} />
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirm(false)}>{t("Bekor qilish")}</Button>
             <Button
               variant="destructive"
-              disabled={pending}
+              disabled={pending || !password}
               onClick={() =>
                 start(async () => {
-                  await deleteTestsAction([...selected]);
+                  const r = await deleteTestsAction([...selected], password);
+                  if (r?.error) return setError(r.error);
                   setSelected(new Set());
                   setConfirm(false);
                   router.refresh();

@@ -6,12 +6,13 @@ import attempts from "./attempts";
 import certificates from "./certificates";
 import common from "./common";
 import live from "./live";
+import security from "./security";
 import messages from "./messages";
 import studentExam from "./student-exam";
 import wordImport from "./word-import";
 
 /** Har bir bo'lim o'z lug'atini alohida faylda saqlaydi: { ru: {...}, en: {...} }. */
-const PARTS: { ru: Dict; en: Dict; "uz-Cyrl"?: Dict }[] = [certificates, live, wordImport, attempts, messages, studentExam, adminTests, adminOrg, common];
+const PARTS: { ru: Dict; en: Dict; "uz-Cyrl"?: Dict }[] = [security, certificates, live, wordImport, attempts, messages, studentExam, adminTests, adminOrg, common];
 
 export function dictFor(lang: Lang): Dict {
   if (lang === "uz") return {};

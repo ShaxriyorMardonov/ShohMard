@@ -25,6 +25,7 @@ export default async function TestIntroPage({ params }: { params: Promise<{ test
     t("Test boshlangach, taymer to'xtatilmaydi va sahifani yangilash vaqtni qayta boshlamaydi."),
     t("Har bir javobingiz serverga avtomatik saqlanadi."),
     t("Vaqt tugaganda javoblaringiz avtomatik topshiriladi."),
+    t("Test davomida boshqa oyna yoki ilovaga o'tish, nusxa olish va testni boshqa qurilmada ochish qayd etiladi va o'qituvchiga ko'rinadi."),
     test.maxAttempts > 1
       ? t("Testni {n} marta topshirish mumkin. Har bir urinish alohida natija sifatida saqlanadi.", { n: test.maxAttempts })
       : t("Testni faqat bir marta topshirish mumkin."),

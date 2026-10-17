@@ -14,7 +14,7 @@ import {
   Send,
   Timer,
 } from "lucide-react";
-import { examStatusAction, saveAnswerAction, submitAttemptAction } from "@/actions/exam";
+import { examStatusAction, reportExamEventAction, saveAnswerAction, submitAttemptAction } from "@/actions/exam";
 import { SamuLogo, SamuMark } from "@/components/brand/samu-logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,6 +56,7 @@ export function ExamClient(props: {
   subject: string | null;
   deadlineAt: string;
   serverNow: string;
+  otherDevice?: boolean;
   questions: Question[];
   initialAnswers: { questionId: string; selectedOptionIds: string[]; flagged: boolean }[];
 }) {
@@ -64,7 +65,9 @@ export function ExamClient(props: {
   const router = useRouter();
   // Muddat test davomida o'zgarishi mumkin (o'qituvchi vaqtni o'zgartirsa yoki testni yakunlasa)
   const [deadline, setDeadline] = React.useState(() => new Date(props.deadlineAt).getTime());
-  const [notice, setNotice] = React.useState<string | null>(null);
+  const [notice, setNotice] = React.useState<string | null>(() =>
+    props.otherDevice ? t("Diqqat: bu test boshqa qurilmada yoki sessiyada ham ochilgan. Bu holat qayd etildi va o'qituvchiga ko'rinadi.") : null,
+  );
   // Server va brauzer soatlari orasidagi farq: taymer faqat server muddatiga tayanadi.
   const offsetRef = React.useRef(new Date(props.serverNow).getTime() - Date.now());
   const serverNow = () => Date.now() + offsetRef.current;
@@ -238,6 +241,31 @@ export function ExamClient(props: {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [attemptId, goToHistory, t]);
+
+  // ---- Imtihon nazorati: boshqa oynaga o'tish va nusxa olish qayd etiladi ----
+  React.useEffect(() => {
+    const last: Record<string, number> = {};
+    const report = (kind: "tab" | "copy") => {
+      const now = Date.now();
+      if (now - (last[kind] ?? 0) < 2000) return;
+      last[kind] = now;
+      void reportExamEventAction(attemptId, kind).catch(() => {});
+    };
+    const onHidden = () => document.visibilityState === "hidden" && report("tab");
+    const onBlur = () => report("tab");
+    const onCopy = (e: Event) => {
+      e.preventDefault();
+      report("copy");
+    };
+    document.addEventListener("visibilitychange", onHidden);
+    window.addEventListener("blur", onBlur);
+    for (const ev of ["copy", "cut", "contextmenu"]) document.addEventListener(ev, onCopy);
+    return () => {
+      document.removeEventListener("visibilitychange", onHidden);
+      window.removeEventListener("blur", onBlur);
+      for (const ev of ["copy", "cut", "contextmenu"]) document.removeEventListener(ev, onCopy);
+    };
+  }, [attemptId]);
 
   // ---- Taymer ----
   const autoFired = React.useRef(false);

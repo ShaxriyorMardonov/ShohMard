@@ -3,6 +3,7 @@
 import { useFormAction } from "@/components/forms/use-form-action";
 import { AlertCircle, LogIn } from "lucide-react";
 import { loginAction } from "@/actions/auth";
+import { Captcha } from "@/components/forms/captcha";
 import { Field } from "@/components/forms/field";
 import { PasswordInput } from "@/components/forms/password-input";
 import { Alert } from "@/components/ui/alert";
@@ -10,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { useT } from "@/i18n/client";
 
-export function LoginForm({ notice }: { notice?: string }) {
+export function LoginForm({ notice, captchaSiteKey }: { notice?: string; captchaSiteKey?: string | null }) {
   const { t } = useT();
   const { state, onSubmit, pending } = useFormAction(loginAction);
   const e = state.errors ?? {};
@@ -45,6 +46,7 @@ export function LoginForm({ notice }: { notice?: string }) {
           required
         />
       </Field>
+      {state.captcha && captchaSiteKey && <Captcha key={JSON.stringify(state)} siteKey={captchaSiteKey} />}
       <SubmitButton pending={pending} size="lg" className="w-full" pendingText={t("Tekshirilmoqda...")}>
         <LogIn />
         {t("Tizimga kirish")}

@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getT } from "@/i18n/server";
 import { requireStudent } from "@/lib/auth";
 import { SAVE_GRACE_MS, isExpired } from "@/lib/exam-rules";
-import { finalizeAttempt, getExamView } from "@/server/exam";
+import { finalizeAttempt, getExamView, trackAttemptDevice } from "@/server/exam";
 import { ExamClient } from "./exam-client";
 
 export async function generateMetadata() {
@@ -22,6 +22,7 @@ export default async function ExamPage({ params }: { params: Promise<{ attemptId
     redirect(`/student/results/${view.id}`);
   }
   if (view.status !== "IN_PROGRESS") redirect(`/student/results/${view.id}`);
+  const otherDevice = await trackAttemptDevice(view.id, user.id, user.sessionId);
 
   return (
     <ExamClient
@@ -30,6 +31,7 @@ export default async function ExamPage({ params }: { params: Promise<{ attemptId
       subject={view.test.subject}
       deadlineAt={view.deadlineAt.toISOString()}
       serverNow={new Date().toISOString()}
+      otherDevice={otherDevice}
       questions={view.test.questions.map((q) => ({
         id: q.question.id,
         text: q.question.text,

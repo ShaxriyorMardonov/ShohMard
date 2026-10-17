@@ -4,11 +4,10 @@ import mammoth from "mammoth";
 import WordExtractor from "word-extractor";
 import type { QuestionType, StudyForm } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { hashPassword } from "@/lib/password";
 import { parseQuestionText, type ParsedQuestion } from "@/lib/question-text-parser";
 import { parseStudyForm } from "@/lib/labels";
 import { pinflField } from "@/lib/validation";
-import { DEFAULT_STUDENT_PASSWORD, generateStudentLogins } from "@/server/student-account";
+import { generateInitialPassword, generateStudentLogins, hashInitialPassword } from "@/server/student-account";
 import { resolveFacultyGroup } from "@/server/org";
 import { getT } from "@/i18n/server";
 import type { TFunction } from "@/i18n/translate";
@@ -22,7 +21,7 @@ export type ImportResult = {
   message?: string;
   errors?: string[];
   /** Yangi yaratilgan talaba hisoblari (login avtomatik beriladi). */
-  accounts?: { fullName: string; login: string }[];
+  accounts?: { fullName: string; login: string; password: string }[];
 };
 
 /** Birinchi varaqni o'qiydi: sarlavha qatori + ma'lumot qatorlari (matn ko'rinishida). */
@@ -161,7 +160,10 @@ export async function importStudents(file: File, scope: string | null = null): P
   const skippedRows = data.filter((d) => existingBy.has(d.pinfl));
   const fresh = data.filter((d) => !existingBy.has(d.pinfl));
   const logins = await generateStudentLogins(fresh.length);
-  const passwordHash = await hashPassword(DEFAULT_STUDENT_PASSWORD);
+  // Har bir talabaga alohida tasodifiy boshlang'ich parol
+  const passwords = fresh.map(() => generateInitialPassword());
+  const hashes: string[] = [];
+  for (const pw of passwords) hashes.push(await hashInitialPassword(pw));
   const orgCache = new Map<string, { facultyId: string | null; groupId: string | null }>();
   const prepared = [];
   for (const [i, d] of fresh.entries()) {
@@ -179,8 +181,9 @@ export async function importStudents(file: File, scope: string | null = null): P
       ...org,
       studyForm: d.studyForm,
       role: "STUDENT" as const,
-      passwordHash,
+      passwordHash: hashes[i]!,
       mustChangePassword: true,
+      initialPasswordAt: new Date(),
     });
   }
   if (prepared.length) await prisma.user.createMany({ data: prepared });
@@ -191,7 +194,7 @@ export async function importStudents(file: File, scope: string | null = null): P
     errors: skippedRows.slice(0, 50).map((d) =>
       t("{line}-qator: JShShIR {pinfl} bilan talaba allaqachon mavjud ({name}), qayta qo'shilmadi", { line: d.line, pinfl: d.pinfl, name: existingBy.get(d.pinfl)! }),
     ),
-    accounts: prepared.map((p) => ({ fullName: p.fullName, login: p.login })),
+    accounts: prepared.map((p, i) => ({ fullName: p.fullName, login: p.login, password: passwords[i]! })),
   };
 }
 

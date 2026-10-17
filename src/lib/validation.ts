@@ -8,6 +8,21 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Parol kiriting").max(128, "Parol juda uzun"),
 });
 
+// Eng ko'p uchraydigan, oson topiladigan parollar
+const COMMON_PASSWORDS = new Set([
+  "12345678a", "a12345678", "password1", "parol123", "qwerty123", "1234qwer", "qwer1234", "abc12345", "abcd1234",
+  "samu2026", "samu12345", "talaba123", "student1", "admin123", "11111111a", "1q2w3e4r", "1qaz2wsx", "parol1234",
+]);
+
+/** Parol talablarga mos bo'lsa ham, uni oson topish mumkin bo'lsa — sabab. */
+export function weakPasswordReason(password: string, login: string): string | null {
+  const p = password.toLowerCase();
+  if (p.includes(login.toLowerCase())) return "Parol loginni o'z ichiga olmasligi kerak";
+  if (COMMON_PASSWORDS.has(p)) return "Bu parol juda oddiy, boshqasini tanlang";
+  if (/^(.)\1+$/.test(p.replace(/\d/g, "")) && /^(.)\1+$/.test(p.replace(/\D/g, ""))) return "Bu parol juda oddiy, boshqasini tanlang";
+  return null;
+}
+
 export const passwordSchema = z
   .string()
   .min(8, "Parol kamida 8 ta belgidan iborat bo'lishi kerak")
@@ -138,4 +153,4 @@ export function fieldErrors(error: z.ZodError): FieldErrors {
   return out;
 }
 
-export type FormState = { ok?: boolean; message?: string; errors?: FieldErrors };
+export type FormState = { ok?: boolean; message?: string; errors?: FieldErrors; captcha?: boolean; recoveryCodes?: string[] };

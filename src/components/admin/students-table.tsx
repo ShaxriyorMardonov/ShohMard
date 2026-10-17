@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, UsersRound } from "lucide-react";
-import { assignStudentsGroupAction, deleteStudentAction } from "@/actions/admin";
+import { KeyRound, Pencil, Trash2, UsersRound } from "lucide-react";
+import { assignStudentsGroupAction, deleteStudentAction, regenerateStudentPasswordsAction } from "@/actions/admin";
+import { downloadAccounts } from "@/lib/download-accounts";
 import { Field } from "@/components/forms/field";
 import { StudentDialog, type OrgNames, type StudentRow } from "@/components/admin/student-dialog";
 import { UserActiveSwitch } from "@/components/admin/user-active-switch";
@@ -38,6 +39,7 @@ export function StudentsTable({
   const { t } = useT();
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [assignOpen, setAssignOpen] = React.useState(false);
+  const [pwOpen, setPwOpen] = React.useState(false);
   const allChecked = rows.length > 0 && rows.every((r) => selected.has(r.id));
   const toggle = (id: string) =>
     setSelected((s) => {
@@ -59,6 +61,11 @@ export function StudentsTable({
               <UsersRound /> {t("Guruhga biriktirish")}
             </Button>
             {uniOfSelection.size > 1 && <span className="text-xs text-muted-foreground">{t("Bitta universitet talabalarini tanlang")}</span>}
+            {canDelete && (
+              <Button size="sm" variant="outline" onClick={() => setPwOpen(true)}>
+                <KeyRound /> {t("Yangi boshlang'ich parol")}
+              </Button>
+            )}
             <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>{t("Bekor qilish")}</Button>
           </>
         ) : (
@@ -186,6 +193,7 @@ export function StudentsTable({
         </TableBody>
       </Table>
       </div>
+      <PasswordsDialog open={pwOpen} onOpenChange={setPwOpen} ids={[...selected]} onDone={() => setSelected(new Set())} />
       <AssignDialog
         open={assignOpen}
         onOpenChange={setAssignOpen}
@@ -264,5 +272,93 @@ function AssignDialog({
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** Tanlangan talabalarga yangi tasodifiy boshlang'ich parol berish va ro'yxatni yuklab olish. */
+function PasswordsDialog({ open, onOpenChange, ids, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; ids: string[]; onDone: () => void }) {
+  const { t } = useT();
+  const router = useRouter();
+  const [error, setError] = React.useState<string | null>(null);
+  const [pending, start] = React.useTransition();
+  return (
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); setError(null); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{t("Yangi boshlang'ich parol")}</DialogTitle>
+          <DialogDescription>
+            {t("{n} ta talabaga yangi tasodifiy parol beriladi, eski paroli ishlamay qoladi. Parollar ro'yxati faqat hozir yuklab olinadi.", { n: ids.length })}
+          </DialogDescription>
+        </DialogHeader>
+        {error && <p className="text-sm font-medium text-error">{t(error)}</p>}
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{t("Bekor qilish")}</Button>
+          <Button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              start(async () => {
+                const r = await regenerateStudentPasswordsAction(ids);
+                if (r.error || !r.accounts) return setError(r.error ?? "Xatolik");
+                downloadAccounts(r.accounts, t);
+                onOpenChange(false);
+                onDone();
+                router.refresh();
+              })
+            }
+          >
+            <KeyRound /> {pending ? t("Saqlanmoqda...") : t("Parollarni yaratish va yuklab olish")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Hali boshlang'ich parol bilan qolgan talabalar: barchasiga yangi shaxsiy parol berish (faqat Super admin). */
+export function InitialPasswordsBanner({ count }: { count: number }) {
+  const { t } = useT();
+  const router = useRouter();
+  const [open, setOpen] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [pending, start] = React.useTransition();
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-midnight">
+        {t("{n} ta talabada hali eski umumiy parol (12345678a) turibdi va ular tizimga kira olmaydi. Ularga shaxsiy parol bering.", { n: count })}
+      </p>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)} className="shrink-0">
+        <KeyRound /> {t("Barchasiga yangi parol berish")}
+      </Button>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); setError(null); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Barchasiga yangi parol berish")}</DialogTitle>
+            <DialogDescription>
+              {t("{n} ta talabaga yangi tasodifiy parol beriladi, eski paroli ishlamay qoladi. Parollar ro'yxati faqat hozir yuklab olinadi.", { n: count })}
+            </DialogDescription>
+          </DialogHeader>
+          {error && <p className="text-sm font-medium text-error">{t(error)}</p>}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("Bekor qilish")}</Button>
+            <Button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                start(async () => {
+                  const r = await regenerateStudentPasswordsAction("initial");
+                  if (r.error || !r.accounts) return setError(r.error ?? "Xatolik");
+                  downloadAccounts(r.accounts, t);
+                  setOpen(false);
+                  router.refresh();
+                })
+              }
+            >
+              <KeyRound /> {pending ? t("Saqlanmoqda...") : t("Parollarni yaratish va yuklab olish")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

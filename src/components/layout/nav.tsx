@@ -12,6 +12,7 @@ import {
   History,
   LayoutDashboard,
   Menu,
+  ScrollText,
   Settings,
   ShieldCheck,
   UserRound,
@@ -41,6 +42,7 @@ const NAV: Record<NavRole, Item[]> = {
     { href: "/admin/tests", label: "Testlar", icon: ClipboardList, also: ["/admin/questions"] },
     { href: "/admin/results", label: "Natijalar", icon: BarChart3 },
     { href: "/admin/users", label: "Rollar", icon: ShieldCheck },
+    { href: "/admin/audit", label: "Jurnal", icon: ScrollText },
     { href: "/admin/settings", label: "Sozlamalar", icon: Settings },
   ],
   MANAGER: [
