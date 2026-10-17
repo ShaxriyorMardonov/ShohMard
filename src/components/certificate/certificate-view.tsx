@@ -7,6 +7,8 @@ import type { TFunction } from "@/i18n/translate";
 import type { Certificate } from "@/server/certificate";
 import { SamuSeal } from "./seal";
 
+const fmtScore = (v: number | null) => String(Math.round((v ?? 0) * 100) / 100);
+
 /** A4 (albom) sertifikat varag'i. */
 export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: string; t: TFunction; lang: Lang }) {
   const key = gradeKey(c.percent, c.test.kind);
@@ -42,22 +44,30 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
           <p className="mt-[1.6%] max-w-[85%] rounded-lg bg-royal px-6 py-[1%] font-serif text-[clamp(14px,2.2vw,26px)] font-bold text-white">
             {t("Super! Ishtirokingiz bilan tabriklaymiz!")}
           </p>
+        ) : olympiad && key === "fail" ? (
+          <p className="mt-[1.6%] max-w-[85%] rounded-lg border-2 border-royal px-6 py-[0.8%] font-serif text-[clamp(13px,2vw,24px)] font-bold text-royal">
+            {t("Ishtirokingiz uchun")}
+          </p>
         ) : null}
         <p className="mt-[1.6%] max-w-[80%] text-[clamp(11px,1.45vw,17px)] leading-relaxed">
           {olympiad
-            ? t("{olympiad}da {date} kuni ishtirok etib, quyidagi natijani qayd etgani uchun berildi.", {
+            ? t("{olympiad}da {date} kuni ishtirok etib, {max} balldan {score} ball to'plagani uchun berildi.", {
                 olympiad: olympiadName,
                 date: formatDate(c.submittedAt, lang),
+                score: fmtScore(c.score),
+                max: fmtScore(c.maxScore),
               })
-            : t("«{test}» testini {date} kuni topshirib, quyidagi natijani qayd etgani uchun berildi.", {
+            : t("«{test}» testini {date} kuni topshirib, {max} balldan {score} ball to'plagani uchun berildi.", {
                 test: c.test.title,
                 date: formatDate(c.submittedAt, lang),
+                score: fmtScore(c.score),
+                max: fmtScore(c.maxScore),
               })}
         </p>
         <div className="mt-[2%] grid w-full max-w-[78%] grid-cols-4 overflow-hidden rounded-lg border border-royal/30 text-[clamp(10px,1.2vw,14px)]">
           {[
             [t("Natija"), `${c.percent}%`],
-            [t("Ball"), `${c.score}/${c.maxScore}`],
+            [t("Ball"), `${fmtScore(c.score)}/${fmtScore(c.maxScore)}`],
             [t("To'g'ri javoblar"), `${c.correctCount}/${c.totalQuestions}`],
             [t("Baho"), grade],
           ].map(([k, v], i) => (

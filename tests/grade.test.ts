@@ -25,13 +25,16 @@ describe("olimpiada baholari", () => {
     expect(gradeKey(89, "OLYMPIAD_LOCAL")).toBe("good");
     expect(gradeKey(99, "OLYMPIAD_LOCAL")).toBe("excellent");
     expect(gradeKey(100, "OLYMPIAD_LOCAL")).toBe("super");
-    expect(hasCertificate(50, "OLYMPIAD_LOCAL")).toBe(false);
+    expect(hasCertificate(50, "OLYMPIAD_LOCAL")).toBe(true);
     expect(hasCertificate(100, "OLYMPIAD_LOCAL")).toBe(true);
   });
 
   it("xalqaro: 100% — g'olib, sertifikat har bir ishtirokchiga", () => {
     expect(gradeKey(100, "OLYMPIAD_INTL")).toBe("winner");
     expect(gradeKey(99, "OLYMPIAD_INTL")).toBe("excellent");
+    expect(gradeKey(75, "OLYMPIAD_INTL")).toBe("good");
+    expect(gradeKey(65, "OLYMPIAD_INTL")).toBe("satisfactory");
+    expect(gradeKey(40, "OLYMPIAD_INTL")).toBe("fail");
     expect(gradeKey(100)).toBe("excellent");
     expect(hasCertificate(10, "OLYMPIAD_INTL")).toBe(true);
     expect(hasCertificate(10)).toBe(false);

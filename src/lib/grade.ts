@@ -31,9 +31,9 @@ export function gradeLabel(percent: number | null | undefined, kind: TestKind = 
 
 /**
  * Sertifikat qoniqarli, yaxshi va a'lo natijalar uchun beriladi.
- * Xalqaro olimpiadada har bir ishtirokchiga beriladi (100% — g'olib sertifikati).
+ * Olimpiadalarda har bir ishtirokchiga beriladi (60% dan past — "ishtirokingiz uchun").
  */
 export function hasCertificate(percent: number | null | undefined, kind: TestKind = "REGULAR") {
-  if (kind === "OLYMPIAD_INTL") return percent !== null && percent !== undefined;
+  if (kind !== "REGULAR") return percent !== null && percent !== undefined;
   return gradeKey(percent, kind) !== "fail";
 }
