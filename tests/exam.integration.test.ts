@@ -321,3 +321,51 @@ describe.skipIf(!enabled)("kirish cheklovi va imtihon nazorati (PostgreSQL bilan
     expect([r.deviceChanges, r.tabSwitches, r.copyEvents, r.sessionId]).toEqual([1, 2, 1, "s2"]);
   });
 });
+
+describe.skipIf(!enabled)("olimpiada testlari (PostgreSQL bilan integratsion)", async () => {
+  const { prisma } = await import("@/lib/db");
+  const exam = await import("@/server/exam");
+  const { getOlympiadTests, getStudentTests, getStudentAttempts } = await import("@/server/student");
+
+  it("olimpiada umumiy testlardan ajralgan, ishtirokchi universitetsiz qatnasha oladi", async () => {
+    const uni = await prisma.university.create({ data: { name: "O universiteti", shortName: "O" } });
+    const student = await prisma.user.create({ data: { login: "ostudent", fullName: "S", passwordHash: "x", role: "STUDENT", universityId: uni.id } });
+    const guest = await prisma.user.create({ data: { login: "oguest", fullName: "G", passwordHash: "x", role: "PARTICIPANT", roles: ["PARTICIPANT"] } });
+    const q = await prisma.question.create({
+      data: { text: "2+2", type: "SINGLE", options: { create: [{ text: "4", isCorrect: true, position: 0 }, { text: "5", isCorrect: false, position: 1 }] } },
+      include: { options: true },
+    });
+    const now = Date.now();
+    const olymp = await prisma.test.create({
+      data: {
+        kind: "OLYMPIAD_LOCAL",
+        title: "Matematika",
+        durationMinutes: 30,
+        startsAt: new Date(now - 60_000),
+        endsAt: new Date(now + 3_600_000),
+        isPublished: true,
+        maxScore: 100,
+        questions: { create: [{ questionId: q.id, position: 0, points: 1 }] },
+      },
+    });
+
+    expect((await getStudentTests(student.id, uni.id)).map((t) => t.id)).not.toContain(olymp.id);
+    expect((await getOlympiadTests(student.id)).map((t) => t.id)).toContain(olymp.id);
+    expect((await getOlympiadTests(guest.id, "OLYMPIAD_INTL")).map((t) => t.id)).not.toContain(olymp.id);
+
+    const a = await exam.startAttempt(guest.id, null, olymp.id);
+    await exam.saveAnswer(guest.id, { attemptId: a.id, questionId: q.id, selectedOptionIds: [q.options.find((o) => o.isCorrect)!.id], flagged: false });
+    await exam.submitAttempt(guest.id, a.id);
+    const done = await prisma.attempt.findUniqueOrThrow({ where: { id: a.id } });
+    expect(done.score).toBe(100);
+    expect(done.percent).toBe(100);
+    expect((await getStudentAttempts(guest.id)).length).toBe(0);
+    expect((await getStudentAttempts(guest.id, true)).length).toBe(1);
+
+    // Ishtirokchi universitet testini boshlay olmaydi
+    const regular = await prisma.test.create({
+      data: { title: "Oddiy", durationMinutes: 30, startsAt: new Date(now - 60_000), endsAt: new Date(now + 3_600_000), isPublished: true, universities: { connect: [{ id: uni.id }] }, questions: { create: [{ questionId: q.id, position: 0, points: 1 }] } },
+    });
+    await expect(exam.startAttempt(guest.id, null, regular.id)).rejects.toThrow();
+  });
+});

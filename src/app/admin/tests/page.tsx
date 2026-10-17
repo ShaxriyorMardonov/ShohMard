@@ -44,7 +44,8 @@ export default async function TestsPage({ searchParams }: { searchParams: Promis
   const sp = await searchParams;
   const now = new Date();
   const q = (sp.q ?? "").trim().slice(0, 100);
-  const scope = testScopeWhere(staff.scope);
+  // Olimpiadalar o'z bo'limlarida, bu yerda faqat oddiy testlar
+  const scope: Prisma.TestWhereInput = { kind: "REGULAR", ...testScopeWhere(staff.scope) };
   const where: Prisma.TestWhereInput = {
     AND: [
       scope,

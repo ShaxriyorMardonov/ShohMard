@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useT } from "@/i18n/client";
+import type { TestKind } from "@prisma/client";
 
 export type ResultRow = {
   id: string;
@@ -29,6 +30,7 @@ export type ResultRow = {
   percent: number | null;
   passed: boolean;
   flags: ExamFlags;
+  kind?: TestKind;
 };
 
 export function ResultsTable({ rows }: { rows: ResultRow[] }) {
@@ -88,7 +90,7 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
                 </p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                   <Badge variant={r.passed ? "success" : "error"}>{r.percent}%</Badge>
-                  <GradeBadge percent={r.percent} />
+                  <GradeBadge percent={r.percent} kind={r.kind} />
                   <SuspicionBadge flags={r.flags} />
                   <span>{r.score}</span>
                   <span>{r.submitted}{r.auto && ` · ${t("avtomatik")}`}</span>
@@ -148,7 +150,7 @@ export function ResultsTable({ rows }: { rows: ResultRow[] }) {
               <TableCell>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Badge variant={r.passed ? "success" : "error"}>{r.percent}%</Badge>
-                  <GradeBadge percent={r.percent} />
+                  <GradeBadge percent={r.percent} kind={r.kind} />
                   <SuspicionBadge flags={r.flags} />
                 </div>
               </TableCell>

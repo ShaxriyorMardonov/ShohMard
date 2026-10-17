@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { BarChart3, ClipboardCheck, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { BarChart3, ClipboardCheck, ShieldCheck, Trophy } from "lucide-react";
 import { BRAND, SamuLogo } from "@/components/brand/samu-logo";
 import { LangSwitcher } from "@/components/layout/lang-switcher";
 import { getT } from "@/i18n/server";
@@ -21,8 +22,7 @@ const FEATURES = [
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const user = await getCurrentUser();
   // Universitetsiz qolgan talaba/menejer qayta yo'naltirish halqasiga tushmasligi uchun
-  if (user && (user.role === "ADMIN" || user.university)) redirect(homeFor(user.role));
-  // Parol to'g'ri kiritilgan, ikki bosqichli tasdiq kutilmoqda
+  if (user && (user.role === "ADMIN" || user.role === "PARTICIPANT" || user.university)) redirect(homeFor(user.role));
   const { t } = await getT();
   const { error } = await searchParams;
   const notice = error === "university" ? t("Hisobingiz universitetga biriktirilmagan. Administrator bilan bog'laning.") : undefined;
@@ -75,6 +75,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           <p className="mt-6 text-center text-xs text-muted-foreground">
             {t("Login va parolni universitetingiz yoki platforma administratoridan oling.")}
           </p>
+          <Link
+            href="/register"
+            className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-royal/25 bg-royal/5 px-4 py-3 text-sm font-semibold text-royal transition-colors hover:bg-royal/10"
+          >
+            <Trophy className="size-4" /> {t("Olimpiadada qatnashish uchun ro'yxatdan o'tish")}
+          </Link>
         </div>
       </section>
     </main>

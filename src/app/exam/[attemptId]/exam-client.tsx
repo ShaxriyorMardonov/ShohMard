@@ -52,6 +52,8 @@ function fmt(ms: number) {
 
 export function ExamClient(props: {
   attemptId: string;
+  /** Yakunlangach o'tiladigan natija sahifasi. */
+  resultHref: string;
   title: string;
   subject: string | null;
   deadlineAt: string;
@@ -60,7 +62,7 @@ export function ExamClient(props: {
   questions: Question[];
   initialAnswers: { questionId: string; selectedOptionIds: string[]; flagged: boolean }[];
 }) {
-  const { attemptId, questions } = props;
+  const { attemptId, questions, resultHref } = props;
   const { t } = useT();
   const router = useRouter();
   // Muddat test davomida o'zgarishi mumkin (o'qituvchi vaqtni o'zgartirsa yoki testni yakunlasa)
@@ -111,9 +113,9 @@ export function ExamClient(props: {
       localStorage.removeItem(storageKey);
     } catch {}
     // Yakunlangach talaba darhol natijasini ko'radi (test sozlamasi ruxsat bersa)
-    router.replace(`/student/results/${attemptId}`);
+    router.replace(resultHref);
     router.refresh();
-  }, [router, storageKey, attemptId]);
+  }, [router, storageKey, resultHref]);
 
   const flush = React.useCallback(async (): Promise<boolean> => {
     if (inflight.current || stopped.current) return dirty.current.size === 0;

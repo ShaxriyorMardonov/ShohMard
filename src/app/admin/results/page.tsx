@@ -26,14 +26,14 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
   await finalizeExpiredAttempts();
   const sp = await searchParams;
   const page = parsePage(sp.page);
-  const where = await resultsWhere(sp);
+  const where = await resultsWhere({ ...sp, kind: undefined });
   const [tests, subjects, options, total, agg, passedCount, rows] = await Promise.all([
     prisma.test.findMany({
-      where: sp.subject ? { subject: sp.subject === "__none" ? null : sp.subject } : {},
+      where: { kind: "REGULAR", ...(sp.subject ? { subject: sp.subject === "__none" ? null : sp.subject } : {}) },
       orderBy: { startsAt: "desc" },
       select: { id: true, title: true },
     }),
-    prisma.test.findMany({ distinct: ["subject"], select: { subject: true }, orderBy: { subject: "asc" } }),
+    prisma.test.findMany({ where: { kind: "REGULAR" }, distinct: ["subject"], select: { subject: true }, orderBy: { subject: "asc" } }),
     orgOptions(null, sp),
     prisma.attempt.count({ where }),
     prisma.attempt.aggregate({ where, _avg: { percent: true } }),
@@ -41,7 +41,7 @@ export default async function AdminResultsPage({ searchParams }: { searchParams:
     prisma.attempt.findMany({ where, orderBy: { submittedAt: "desc" }, skip: (page - 1) * PER_PAGE, take: PER_PAGE, select: resultSelect }),
   ]);
   const params: Record<string, string | undefined> = {};
-  for (const k of RESULT_FILTER_KEYS) params[k] = sp[k];
+  for (const k of RESULT_FILTER_KEYS) if (k !== "kind") params[k] = sp[k];
   const exportParams = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v) exportParams.set(k, v);
   const csvParams = new URLSearchParams(exportParams);

@@ -1,5 +1,6 @@
 import { SamuLogo } from "@/components/brand/samu-logo";
 import { GRADE, gradeKey } from "@/lib/grade";
+import { isOlympiad } from "@/lib/olympiad";
 import { formatDate } from "@/lib/time";
 import type { Lang } from "@/i18n/config";
 import type { TFunction } from "@/i18n/translate";
@@ -8,9 +9,13 @@ import { SamuSeal } from "./seal";
 
 /** A4 (albom) sertifikat varag'i. */
 export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: string; t: TFunction; lang: Lang }) {
-  const grade = t(GRADE[gradeKey(c.percent)].label);
+  const key = gradeKey(c.percent, c.test.kind);
+  const grade = t(GRADE[key].label);
+  const olympiad = isOlympiad(c.test.kind);
+  const intl = c.test.kind === "OLYMPIAD_INTL";
+  const olympiadName = intl ? t("«{name}» xalqaro olimpiadasi", { name: c.test.title }) : t("«{name}» mahalliy olimpiadasi", { name: c.test.title });
   const org = [
-    c.user.university?.name,
+    c.user.university?.name ?? c.user.organization,
     c.user.faculty ? t("{name} fakulteti", { name: c.user.faculty.name }) : null,
     c.user.group ? t("{name} guruhi", { name: c.user.group.name }) : null,
   ].filter(Boolean);
@@ -25,14 +30,29 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
       <div className="relative flex flex-1 flex-col items-center px-[9%] pt-[5.5%] pb-[4.5%] text-center">
         <SamuLogo size="md" withFullName />
         <h1 className="mt-[2.5%] font-serif text-[clamp(28px,5.2vw,58px)] font-bold tracking-[0.18em] text-midnight">{t("SERTIFIKAT")}</h1>
+        {olympiad && <p className="mt-[0.6%] text-[clamp(12px,1.6vw,19px)] font-bold uppercase tracking-[0.12em] text-royal">{olympiadName}</p>}
         <p className="mt-[1%] text-[clamp(11px,1.3vw,15px)] uppercase tracking-[0.25em] text-muted-foreground">{t("Ushbu sertifikat")}</p>
         <p className="mt-[1.6%] border-b-2 border-royal/40 px-8 pb-1 font-serif text-[clamp(22px,3.6vw,40px)] font-bold text-royal">{c.user.fullName}</p>
         {org.length > 0 && <p className="mt-[1.4%] text-[clamp(11px,1.35vw,16px)] text-midnight/80">{org.join(" · ")}</p>}
+        {key === "winner" ? (
+          <p className="mt-[1.6%] max-w-[85%] rounded-lg bg-royal px-6 py-[1%] font-serif text-[clamp(14px,2.2vw,26px)] font-bold uppercase tracking-wide text-white">
+            {t("«{name}» xalqaro olimpiadasi g'olibi", { name: c.test.title })}
+          </p>
+        ) : key === "super" ? (
+          <p className="mt-[1.6%] max-w-[85%] rounded-lg bg-royal px-6 py-[1%] font-serif text-[clamp(14px,2.2vw,26px)] font-bold text-white">
+            {t("Super! Ishtirokingiz bilan tabriklaymiz!")}
+          </p>
+        ) : null}
         <p className="mt-[1.6%] max-w-[80%] text-[clamp(11px,1.45vw,17px)] leading-relaxed">
-          {t("«{test}» testini {date} kuni topshirib, quyidagi natijani qayd etgani uchun berildi.", {
-            test: c.test.title,
-            date: formatDate(c.submittedAt, lang),
-          })}
+          {olympiad
+            ? t("{olympiad}da {date} kuni ishtirok etib, quyidagi natijani qayd etgani uchun berildi.", {
+                olympiad: olympiadName,
+                date: formatDate(c.submittedAt, lang),
+              })
+            : t("«{test}» testini {date} kuni topshirib, quyidagi natijani qayd etgani uchun berildi.", {
+                test: c.test.title,
+                date: formatDate(c.submittedAt, lang),
+              })}
         </p>
         <div className="mt-[2%] grid w-full max-w-[78%] grid-cols-4 overflow-hidden rounded-lg border border-royal/30 text-[clamp(10px,1.2vw,14px)]">
           {[

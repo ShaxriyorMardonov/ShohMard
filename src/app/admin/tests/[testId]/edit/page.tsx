@@ -1,4 +1,5 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { slugOf, testBasePath } from "@/lib/olympiad";
 import { TestForm } from "@/components/admin/test-form";
 import { PageHeader } from "@/components/layout/app-shell";
 import { getT } from "@/i18n/server";
@@ -12,10 +13,10 @@ export async function generateMetadata() {
   return { title: t("Testni tahrirlash") };
 }
 
-export default async function EditTestPage({ params }: { params: Promise<{ testId: string }> }) {
+export default async function EditTestPage({ params }: { params: Promise<{ testId: string; kind?: string }> }) {
   const staff = await requireStaff();
   const { t } = await getT();
-  const { testId } = await params;
+  const { testId, kind: slug } = await params;
   const [test, universities] = await Promise.all([
     prisma.test.findFirst({
       where: { id: testId, ...testScopeWhere(staff.scope) },
@@ -24,11 +25,15 @@ export default async function EditTestPage({ params }: { params: Promise<{ testI
     prisma.university.findMany({ where: staff.scope ? { id: staff.scope } : {}, orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
   if (!test) notFound();
+  // Olimpiada testi o'z bo'limida ochiladi
+  if (slugOf(test.kind) !== slug) redirect(`${testBasePath(test.kind)}/${test.id}/edit`);
   const subjects = await testSubjects(staff.scope);
   return (
     <div className="max-w-3xl">
       <PageHeader title={t("Testni tahrirlash")} description={test.title} />
       <TestForm
+        kind={test.kind}
+        basePath={testBasePath(test.kind)}
         universities={universities}
         subjects={subjects}
         fixedUniversity={staff.scope ? staff.university?.name : undefined}

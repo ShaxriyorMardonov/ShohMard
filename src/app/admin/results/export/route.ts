@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
       r.user.fullName,
       r.user.login,
       r.user.pinfl ?? "",
-      r.user.university?.name ?? "",
+      r.user.university?.name ?? r.user.organization ?? "",
       r.user.faculty?.name ?? "",
       r.user.group?.name ?? "",
       r.user.studyForm ? t(studyFormLabel(r.user.studyForm)) : "",
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
       r.totalQuestions,
       r.percent,
       passed ? PASSED : t("O'tmadi"),
-      t(gradeLabel(r.percent)),
+      t(gradeLabel(r.percent, r.test.kind)),
       [
         r.tabSwitches ? t("boshqa oynaga o'tish: {n}", { n: r.tabSwitches }) : null,
         r.copyEvents ? t("nusxa olishga urinish: {n}", { n: r.copyEvents }) : null,

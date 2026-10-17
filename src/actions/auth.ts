@@ -17,6 +17,8 @@ import { changePasswordSchema, fieldErrors, loginSchema, weakPasswordReason, typ
 const DUMMY_HASH = "$2b$12$MyICijd/656fvs1jImXUEO1QH0N7gXAYXFgxYi.UCVn33eA.reuvS";
 
 const isAdminUser = (u: { role: Role; roles: Role[] }) => u.role === "ADMIN" || u.roles.includes("ADMIN");
+/** Universitetga biriktirilishi shart bo'lmagan foydalanuvchi: Super admin yoki olimpiada ishtirokchisi. */
+const noUniversityNeeded = (u: { role: Role; roles: Role[] }) => isAdminUser(u) || (u.roles.length ? u.roles : [u.role]).every((r) => r === "PARTICIPANT");
 
 export async function loginAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = loginSchema.safeParse({
@@ -56,7 +58,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   if (!user.isActive) {
     return { message: "Hisobingiz faol emas. Administrator bilan bog'laning." };
   }
-  if (!isAdminUser(user) && !user.universityId) {
+  if (!noUniversityNeeded(user) && !user.universityId) {
     return { message: "Hisobingiz universitetga biriktirilmagan. Administrator bilan bog'laning." };
   }
   if (!isAdminUser(user) && user.universityId) {

@@ -35,7 +35,7 @@ export function ActiveSwitch({ id, active, disabled }: { id: string; active: boo
   return <ToggleSwitch active={active} disabled={disabled} onToggle={(next) => setTestActiveAction(id, next)} />;
 }
 
-export function TestsTable({ groups, canDelete }: { groups: { subject: string; rows: TestListRow[] }[]; canDelete: boolean }) {
+export function TestsTable({ groups, canDelete, basePath = "/admin/tests" }: { groups: { subject: string; rows: TestListRow[] }[]; canDelete: boolean; basePath?: string }) {
   const { t } = useT();
   const router = useRouter();
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
@@ -87,7 +87,7 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
                         )}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
-                            <Link href={`/admin/tests/${row.id}`} className="font-semibold leading-snug text-midnight hover:text-royal">{row.title}</Link>
+                            <Link href={`${basePath}/${row.id}`} className="font-semibold leading-snug text-midnight hover:text-royal">{row.title}</Link>
                             <ActiveSwitch id={row.id} active={row.isPublished} />
                           </div>
                           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
@@ -132,7 +132,7 @@ export function TestsTable({ groups, canDelete }: { groups: { subject: string; r
                             </TableCell>
                           )}
                           <TableCell>
-                            <Link href={`/admin/tests/${row.id}`} className="font-semibold text-midnight hover:text-royal">{row.title}</Link>
+                            <Link href={`${basePath}/${row.id}`} className="font-semibold text-midnight hover:text-royal">{row.title}</Link>
                             <span className="block text-xs text-muted-foreground">{row.duration}</span>
                           </TableCell>
                           <TableCell><Badge variant={st.variant}>{t(st.label)}</Badge></TableCell>

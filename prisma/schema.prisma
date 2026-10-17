@@ -11,6 +11,15 @@ enum Role {
   ADMIN
   MANAGER
   STUDENT
+  /// Olimpiadaga o'zi ro'yxatdan o'tgan tashqi ishtirokchi (universitetga biriktirilmaydi)
+  PARTICIPANT
+}
+
+/// Test turi: oddiy test yoki olimpiada (olimpiadalar umumiy testlar va natijalardan alohida)
+enum TestKind {
+  REGULAR
+  OLYMPIAD_INTL
+  OLYMPIAD_LOCAL
 }
 
 enum StudyForm {
@@ -106,6 +115,9 @@ model User {
   passwordChangedAt DateTime?
   /// Shaxsiy tasodifiy boshlang'ich parol qachon berilgan (null + mustChangePassword — eski umumiy parol)
   initialPasswordAt DateTime?
+  /// Olimpiada ishtirokchisi: telefon va o'quv muassasasi (ro'yxatdan o'tishda kiritiladi)
+  phone          String?
+  organization   String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -140,6 +152,7 @@ model Session {
 
 model Test {
   id              String        @id @default(cuid())
+  kind            TestKind      @default(REGULAR)
   title           String
   description     String?
   subject         String?
@@ -169,6 +182,7 @@ model Test {
 
   @@index([startsAt, endsAt])
   @@index([subject])
+  @@index([kind])
 }
 
 /// Test "faqat ruxsat berilgan talabalar" rejimida bo'lsa, kim topshira olishi.

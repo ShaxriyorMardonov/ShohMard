@@ -13,6 +13,7 @@ export function certificateNumber(attemptId: string) {
 /**
  * Sertifikat ma'lumotlari. Faqat topshirilgan, natijasi e'lon qilingan va
  * qoniqarsiz bo'lmagan (60% va undan yuqori) urinish uchun qaytadi.
+ * Xalqaro olimpiadada har bir ishtirokchiga beriladi.
  */
 export async function getCertificate(attemptId: string) {
   const a = await prisma.attempt.findUnique({
@@ -31,16 +32,17 @@ export async function getCertificate(attemptId: string) {
       user: {
         select: {
           fullName: true,
+          organization: true,
           university: { select: { name: true } },
           faculty: { select: { name: true } },
           group: { select: { name: true } },
         },
       },
-      test: { select: { title: true, subject: true, resultRelease: true, endsAt: true, resultsReleasedAt: true } },
+      test: { select: { kind: true, title: true, subject: true, resultRelease: true, endsAt: true, resultsReleasedAt: true } },
     },
   });
   if (!a || a.status !== "SUBMITTED" || !a.submittedAt || a.percent === null) return null;
-  if (!isResultReleased(a.test, new Date()) || !hasCertificate(a.percent)) return null;
+  if (!isResultReleased(a.test, new Date()) || !hasCertificate(a.percent, a.test.kind)) return null;
   return { ...a, number: certificateNumber(a.id), percent: a.percent, submittedAt: a.submittedAt };
 }
 

@@ -2,6 +2,7 @@ import "server-only";
 import { seededShuffle } from "@/lib/shuffle";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { OLYMPIAD_KINDS, type OlympiadKind } from "@/lib/olympiad";
 import {
   SAVE_GRACE_MS,
   computeDeadline,
@@ -28,13 +29,24 @@ export class ExamError extends Error {
   }
 }
 
-/** Talaba ko'ra oladigan testlar: faol, universitetiga biriktirilgan va (cheklangan bo'lsa) ruxsat berilgan. */
+/** Talaba ko'ra oladigan oddiy testlar: faol, universitetiga biriktirilgan va (cheklangan bo'lsa) ruxsat berilgan. */
 export function studentTestWhere(userId: string, universityId: string): Prisma.TestWhereInput {
   return {
+    kind: "REGULAR",
     isPublished: true,
     universities: { some: { id: universityId } },
     OR: [{ restrictedAccess: false }, { access: { some: { userId } } }],
   };
+}
+
+/** Faol olimpiada testlari: tizimdagi talabalar va ro'yxatdan o'tgan ishtirokchilar uchun ochiq. */
+export function olympiadTestWhere(kind?: OlympiadKind): Prisma.TestWhereInput {
+  return { kind: kind ?? { in: OLYMPIAD_KINDS }, isPublished: true };
+}
+
+/** Foydalanuvchi boshlay oladigan testlar: universitet testlari (talaba bo'lsa) va olimpiadalar. */
+export function examineeTestWhere(userId: string, universityId: string | null): Prisma.TestWhereInput {
+  return universityId ? { OR: [studentTestWhere(userId, universityId), olympiadTestWhere()] } : olympiadTestWhere();
 }
 
 /**
@@ -117,10 +129,10 @@ export async function finalizeExpiredAttempts(filter: { userId?: string; testId?
   return expired.length;
 }
 
-export async function startAttempt(userId: string, universityId: string, testId: string) {
+export async function startAttempt(userId: string, universityId: string | null, testId: string) {
   const now = new Date();
   const test = await prisma.test.findFirst({
-    where: { id: testId, ...studentTestWhere(userId, universityId) },
+    where: { AND: [{ id: testId }, examineeTestWhere(userId, universityId)] },
     select: {
       id: true,
       isPublished: true,
@@ -267,6 +279,7 @@ export async function getExamView(userId: string, attemptId: string) {
       test: {
         select: {
           id: true,
+          kind: true,
           title: true,
           subject: true,
           questions: {

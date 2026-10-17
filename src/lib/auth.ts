@@ -146,7 +146,16 @@ export async function requireStudent(): Promise<CurrentUser & { university: NonN
   return user as CurrentUser & { university: NonNullable<CurrentUser["university"]> };
 }
 
-const ROLE_ORDER: Role[] = ["ADMIN", "MANAGER", "STUDENT"];
+/** Test topshiruvchi: universitet talabasi yoki olimpiada ishtirokchisi. */
+export async function requireExaminee(): Promise<CurrentUser> {
+  const user = await requireUser();
+  if (user.role === "PARTICIPANT") return user;
+  if (user.role !== "STUDENT") redirect(homeFor(user.role));
+  if (!user.university) redirect("/login?error=university");
+  return user;
+}
+
+const ROLE_ORDER: Role[] = ["ADMIN", "MANAGER", "STUDENT", "PARTICIPANT"];
 
 export function sortRoles(roles: Role[]): Role[] {
   return ROLE_ORDER.filter((r) => roles.includes(r));
@@ -161,5 +170,5 @@ export async function setActiveRole(role: Role) {
 }
 
 export function homeFor(role: Role) {
-  return role === "ADMIN" ? "/admin" : role === "MANAGER" ? "/admin/tests" : "/student";
+  return role === "ADMIN" ? "/admin" : role === "MANAGER" ? "/admin/tests" : role === "PARTICIPANT" ? "/olympiad" : "/student";
 }

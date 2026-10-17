@@ -17,3 +17,23 @@ describe("baho", () => {
     expect(hasCertificate(60)).toBe(true);
   });
 });
+
+describe("olimpiada baholari", () => {
+  it("mahalliy: 100% — Super, qolganlari oddiy baho", () => {
+    expect(gradeKey(59.9, "OLYMPIAD_LOCAL")).toBe("fail");
+    expect(gradeKey(65, "OLYMPIAD_LOCAL")).toBe("satisfactory");
+    expect(gradeKey(89, "OLYMPIAD_LOCAL")).toBe("good");
+    expect(gradeKey(99, "OLYMPIAD_LOCAL")).toBe("excellent");
+    expect(gradeKey(100, "OLYMPIAD_LOCAL")).toBe("super");
+    expect(hasCertificate(50, "OLYMPIAD_LOCAL")).toBe(false);
+    expect(hasCertificate(100, "OLYMPIAD_LOCAL")).toBe(true);
+  });
+
+  it("xalqaro: 100% — g'olib, sertifikat har bir ishtirokchiga", () => {
+    expect(gradeKey(100, "OLYMPIAD_INTL")).toBe("winner");
+    expect(gradeKey(99, "OLYMPIAD_INTL")).toBe("excellent");
+    expect(gradeKey(100)).toBe("excellent");
+    expect(hasCertificate(10, "OLYMPIAD_INTL")).toBe(true);
+    expect(hasCertificate(10)).toBe(false);
+  });
+});

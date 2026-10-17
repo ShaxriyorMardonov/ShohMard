@@ -1,19 +1,32 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { isExpired, isResultReleased, testState, SAVE_GRACE_MS } from "@/lib/exam-rules";
-import { finalizeExpiredAttempts, studentTestWhere } from "./exam";
+import type { Prisma } from "@prisma/client";
+import { finalizeExpiredAttempts, olympiadTestWhere, studentTestWhere } from "./exam";
+import { OLYMPIAD_KINDS, type OlympiadKind } from "@/lib/olympiad";
 
 export type StudentTestStatus = "in_progress" | "submitted" | "open" | "upcoming" | "missed";
 
 /** Talabaning universitetiga tegishli testlar va ularning talaba uchun holati. */
 export async function getStudentTests(userId: string, universityId: string) {
+  return getExamineeTests(userId, studentTestWhere(userId, universityId));
+}
+
+/** Faol olimpiadalar (talaba va ishtirokchi uchun bir xil). */
+export async function getOlympiadTests(userId: string, kind?: OlympiadKind) {
+  return getExamineeTests(userId, olympiadTestWhere(kind));
+}
+
+async function getExamineeTests(userId: string, where: Prisma.TestWhereInput) {
   await finalizeExpiredAttempts({ userId });
   const now = new Date();
   const tests = await prisma.test.findMany({
-    where: studentTestWhere(userId, universityId),
+    where,
     orderBy: { startsAt: "asc" },
     select: {
       id: true,
+      kind: true,
+      questionsPerAttempt: true,
       title: true,
       subject: true,
       description: true,
@@ -51,11 +64,12 @@ export async function getStudentTests(userId: string, universityId: string) {
 
 export type StudentTest = Awaited<ReturnType<typeof getStudentTests>>[number];
 
-export async function getStudentAttempts(userId: string) {
+export async function getStudentAttempts(userId: string, olympiad = false) {
   await finalizeExpiredAttempts({ userId });
   const now = new Date();
   const attempts = await prisma.attempt.findMany({
-    where: { userId },
+    // Olimpiada natijalari umumiy natijalardan alohida
+    where: { userId, test: { kind: olympiad ? { in: OLYMPIAD_KINDS } : "REGULAR" } },
     orderBy: { startedAt: "desc" },
     select: {
       id: true,
@@ -72,6 +86,7 @@ export async function getStudentAttempts(userId: string) {
       test: {
         select: {
           id: true,
+          kind: true,
           title: true,
           subject: true,
           passingPercent: true,

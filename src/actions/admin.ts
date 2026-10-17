@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { Prisma } from "@prisma/client";
+import { Prisma, type TestKind } from "@prisma/client";
+import { OLYMPIAD_MAX_SCORE, isOlympiad, testBasePath } from "@/lib/olympiad";
 import { prisma } from "@/lib/db";
 import { requireAdmin, requireStaff, sortRoles } from "@/lib/auth";
 import { canManageTest, resolveFacultyGroup } from "@/server/org";
@@ -342,6 +343,11 @@ export async function saveTestAction(_prev: FormState, fd: FormData): Promise<Fo
   const staff = await requireStaff();
   const id = str(fd.get("id"));
   if (id && !(await canManageTest(staff.scope, id))) return { message: "Test topilmadi" };
+  // Test turi yaratilganda belgilanadi va keyin o'zgarmaydi; olimpiadalarni faqat Super admin yaratadi
+  const kind: TestKind = id
+    ? (await prisma.test.findUniqueOrThrow({ where: { id }, select: { kind: true } })).kind
+    : !staff.scope && isOlympiad(str(fd.get("kind")) as TestKind) ? (str(fd.get("kind")) as TestKind) : "REGULAR";
+  const olympiad = isOlympiad(kind);
   const parsed = testSchema.safeParse({
     title: str(fd.get("title")),
     description: str(fd.get("description")),
@@ -355,10 +361,13 @@ export async function saveTestAction(_prev: FormState, fd: FormData): Promise<Fo
     maxAttempts: str(fd.get("maxAttempts")).trim() || "1",
     resultRelease: str(fd.get("resultRelease")),
     isPublished: fd.get("isPublished") === "on",
-    universityIds: staff.scope ? [staff.scope] : fd.getAll("universityIds").map(String),
+    universityIds: olympiad ? [] : staff.scope ? [staff.scope] : fd.getAll("universityIds").map(String),
   });
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
   const { universityIds, ...data } = parsed.data;
+  if (!olympiad && universityIds.length === 0) return { errors: { universityIds: "Kamida bitta universitetni tanlang" } };
+  // Olimpiada 100 ballik tizimda baholanadi
+  if (olympiad) data.maxScore = OLYMPIAD_MAX_SCORE;
 
   const unis = await prisma.university.count({ where: { id: { in: universityIds } } });
   if (unis !== universityIds.length) return { errors: { universityIds: "Universitet topilmadi" } };
@@ -402,14 +411,14 @@ export async function saveTestAction(_prev: FormState, fd: FormData): Promise<Fo
     await audit("test.update", data.title, { testId: id });
   } else {
     const t = await prisma.test.create({
-      data: { ...data, createdById: staff.id, universities: { connect: universityIds.map((u) => ({ id: u })) } },
+      data: { ...data, kind, createdById: staff.id, universities: { connect: universityIds.map((u) => ({ id: u })) } },
     });
     testId = t.id;
     if (imported.length) await saveQuestions(imported, testId);
     await audit("test.create", data.title, { testId, questions: imported.length });
   }
   revalidatePath("/admin/tests");
-  redirect(`/admin/tests/${testId}${id ? "?saved=1" : ""}`);
+  redirect(`${testBasePath(kind)}/${testId}${id ? "?saved=1" : ""}`);
 }
 
 /** Testni natijalari (urinishlar, javoblar) bilan birga butunlay o'chiradi. Faqat administrator. */
@@ -419,7 +428,7 @@ export async function deleteTestAction(id: string): Promise<Result> {
   await audit("test.delete", t.title);
   revalidatePath("/admin/tests");
   revalidatePath("/admin/results");
-  redirect("/admin/tests");
+  redirect(testBasePath(t.kind));
 }
 
 export async function deleteTestsAction(ids: string[], password: string): Promise<Result & { count?: number }> {
@@ -456,7 +465,7 @@ export async function updateTestScheduleAction(testId: string, _prev: FormState,
   const endsAt = fromLocalInput(str(fd.get("endsAt")));
   const duration = Number(str(fd.get("durationMinutes")));
   const maxRaw = str(fd.get("maxScore")).trim();
-  const maxScore = maxRaw === "" ? null : Number(maxRaw);
+  let maxScore = maxRaw === "" ? null : Number(maxRaw);
   const qRaw = str(fd.get("questionsPerAttempt")).trim();
   const questionsPerAttempt = qRaw === "" ? null : Number(qRaw);
   const maxAttempts = Number(str(fd.get("maxAttempts")).trim() || "1");
@@ -473,8 +482,9 @@ export async function updateTestScheduleAction(testId: string, _prev: FormState,
   if (Object.keys(errors).length) return { errors };
   const before = await prisma.test.findUniqueOrThrow({
     where: { id: testId },
-    select: { maxScore: true, questionsPerAttempt: true, _count: { select: { attempts: true } } },
+    select: { kind: true, maxScore: true, questionsPerAttempt: true, _count: { select: { attempts: true } } },
   });
+  if (isOlympiad(before.kind)) maxScore = OLYMPIAD_MAX_SCORE;
   if (before._count.attempts > 0 && before.questionsPerAttempt !== questionsPerAttempt) {
     return { errors: { questionsPerAttempt: "Test boshlangan, savollar sonini o'zgartirib bo'lmaydi" } };
   }

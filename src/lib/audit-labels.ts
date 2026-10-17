@@ -4,6 +4,7 @@ export const AUDIT_ACTIONS: Record<string, { label: string; group: string; dange
   "password.change": { label: "Parolini almashtirdi", group: "auth" },
   "mfa.enable": { label: "2FA yoqildi", group: "auth" },
   "session.revoke_others": { label: "Boshqa qurilmalardan chiqdi", group: "auth" },
+  "participant.register": { label: "Olimpiadaga ro'yxatdan o'tdi", group: "auth" },
   "university.create": { label: "Universitet qo'shildi", group: "org" },
   "university.update": { label: "Universitet o'zgartirildi", group: "org" },
   "university.delete": { label: "Universitet o'chirildi", group: "org", danger: true },

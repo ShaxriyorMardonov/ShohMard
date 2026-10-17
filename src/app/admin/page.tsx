@@ -21,16 +21,17 @@ export default async function AdminDashboard() {
     await Promise.all([
       prisma.university.count(),
       prisma.user.count({ where: { roles: { has: "STUDENT" }, isActive: true } }),
-      prisma.test.count({ where: { isPublished: true } }),
-      prisma.test.count({ where: { isPublished: true, startsAt: { lte: now }, endsAt: { gt: now } } }),
-      prisma.attempt.count({ where: { status: "SUBMITTED" } }),
-      prisma.attempt.count({ where: { status: "IN_PROGRESS" } }),
+      prisma.test.count({ where: { kind: "REGULAR", isPublished: true } }),
+      prisma.test.count({ where: { kind: "REGULAR", isPublished: true, startsAt: { lte: now }, endsAt: { gt: now } } }),
+      prisma.attempt.count({ where: { status: "SUBMITTED", test: { kind: "REGULAR" } } }),
+      prisma.attempt.count({ where: { status: "IN_PROGRESS", test: { kind: "REGULAR" } } }),
       // Har bir test bo'yicha eng yaxshi urinish, so'ng talabaning o'rtacha foizi
       prisma.$queryRaw<{ id: string; fullName: string; shortName: string | null; tests: bigint; avg: number }[]>`
         SELECT s."id", s."fullName", un."shortName", COUNT(*) AS tests, AVG(b.best) AS avg
         FROM (
-          SELECT "userId", "testId", MAX("percent") AS best FROM "Attempt"
-          WHERE "status" = 'SUBMITTED' AND "percent" IS NOT NULL GROUP BY "userId", "testId"
+          SELECT a."userId", a."testId", MAX(a."percent") AS best FROM "Attempt" a
+          JOIN "Test" t ON t."id" = a."testId" AND t."kind" = 'REGULAR'
+          WHERE a."status" = 'SUBMITTED' AND a."percent" IS NOT NULL GROUP BY a."userId", a."testId"
         ) b
         JOIN "User" s ON s."id" = b."userId"
         LEFT JOIN "University" un ON un."id" = s."universityId"
@@ -38,7 +39,7 @@ export default async function AdminDashboard() {
         ORDER BY avg DESC, tests DESC, s."fullName" ASC
         LIMIT 10`,
       prisma.attempt.findMany({
-        where: { status: "SUBMITTED" },
+        where: { status: "SUBMITTED", test: { kind: "REGULAR" } },
         orderBy: { submittedAt: "desc" },
         take: 8,
         select: {
@@ -53,10 +54,11 @@ export default async function AdminDashboard() {
         SELECT u."id", u."shortName",
           (SELECT COUNT(*) FROM "User" s WHERE s."universityId" = u."id" AND 'STUDENT' = ANY(s."roles")) AS students,
           (SELECT AVG(a."percent") FROM "Attempt" a JOIN "User" s ON s."id" = a."userId"
+             JOIN "Test" t ON t."id" = a."testId" AND t."kind" = 'REGULAR'
              WHERE s."universityId" = u."id" AND a."status" = 'SUBMITTED') AS avg
         FROM "University" u ORDER BY u."shortName"`,
       prisma.test.findMany({
-        where: { isPublished: true, endsAt: { gt: now } },
+        where: { kind: "REGULAR", isPublished: true, endsAt: { gt: now } },
         orderBy: { startsAt: "asc" },
         take: 5,
         select: { id: true, title: true, startsAt: true, endsAt: true, _count: { select: { attempts: true } } },

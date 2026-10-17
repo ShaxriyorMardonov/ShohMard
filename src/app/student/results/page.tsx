@@ -57,8 +57,8 @@ export default async function ResultsPage() {
                       {t("{score}/{max} ball · {correct}/{total} to'g'ri", { score: a.score, max: a.maxScore, correct: a.correctCount, total: a.totalQuestions })}
                     </p>
                   </div>
-                  <GradeBadge percent={a.percent} />
-                  {hasCertificate(a.percent) && (
+                  <GradeBadge percent={a.percent} kind={a.test.kind} />
+                  {hasCertificate(a.percent, a.test.kind) && (
                     <Button asChild size="sm" variant="success">
                       <Link href={`/certificate/${a.id}`}><Award /> {t("Sertifikat")}</Link>
                     </Button>

@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireStudent } from "@/lib/auth";
+import { requireExaminee } from "@/lib/auth";
 import { saveAnswerSchema } from "@/lib/validation";
 import { ExamError, getAttemptStatus, recordExamEvent, saveAnswer, startAttempt, submitAttempt, trackAttemptDevice } from "@/server/exam";
 
@@ -16,10 +16,10 @@ function fail(e: unknown): ExamActionResult {
 }
 
 export async function startAttemptAction(testId: string): Promise<{ error: string } | void> {
-  const user = await requireStudent();
+  const user = await requireExaminee();
   let attemptId: string;
   try {
-    const attempt = await startAttempt(user.id, user.university.id, String(testId));
+    const attempt = await startAttempt(user.id, user.university?.id ?? null, String(testId));
     attemptId = attempt.id;
   } catch (e) {
     if (e instanceof ExamError) return { error: e.message };
@@ -29,7 +29,7 @@ export async function startAttemptAction(testId: string): Promise<{ error: strin
 }
 
 export async function saveAnswerAction(input: unknown): Promise<ExamActionResult> {
-  const user = await requireStudent();
+  const user = await requireExaminee();
   const parsed = saveAnswerSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: "Noto'g'ri so'rov", code: "INVALID", serverNow: new Date().toISOString() };
@@ -44,7 +44,7 @@ export async function saveAnswerAction(input: unknown): Promise<ExamActionResult
 }
 
 export async function submitAttemptAction(attemptId: string): Promise<ExamActionResult> {
-  const user = await requireStudent();
+  const user = await requireExaminee();
   try {
     await submitAttempt(user.id, String(attemptId));
     return { ok: true, serverNow: new Date().toISOString() };
@@ -55,7 +55,7 @@ export async function submitAttemptAction(attemptId: string): Promise<ExamAction
 
 /** Imtihon oynasi vaqti-vaqti bilan so'raydi: muddat o'zgargan yoki test yakunlangan bo'lsa bilib oladi. */
 export async function examStatusAction(attemptId: string): Promise<{ status?: "IN_PROGRESS" | "SUBMITTED"; deadlineAt?: string; serverNow: string }> {
-  const user = await requireStudent();
+  const user = await requireExaminee();
   try {
     const s = await getAttemptStatus(user.id, String(attemptId));
     return { status: s.status, deadlineAt: s.deadlineAt.toISOString(), serverNow: new Date().toISOString() };
@@ -66,7 +66,7 @@ export async function examStatusAction(attemptId: string): Promise<{ status?: "I
 
 /** Shubhali harakat (boshqa oynaga o'tish, nusxa olish) — natijalarda o'qituvchiga ko'rsatiladi. */
 export async function reportExamEventAction(attemptId: string, kind: "tab" | "copy"): Promise<void> {
-  const user = await requireStudent();
+  const user = await requireExaminee();
   if (kind !== "tab" && kind !== "copy") return;
   await recordExamEvent(String(attemptId), user.id, kind);
 }

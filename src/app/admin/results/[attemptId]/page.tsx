@@ -3,6 +3,7 @@ import { SuspicionBadge } from "@/components/suspicion-badge";
 import { Award } from "lucide-react";
 import { GradeBadge } from "@/components/grade-badge";
 import { hasCertificate } from "@/lib/grade";
+import { isOlympiad, testBasePath } from "@/lib/olympiad";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { PageHeader } from "@/components/layout/app-shell";
@@ -23,7 +24,7 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
   const a = await prisma.attempt.findUnique({
     where: { id: attemptId },
     include: {
-      user: { select: { fullName: true, login: true, group: { select: { name: true } }, university: { select: { name: true } } } },
+      user: { select: { fullName: true, login: true, organization: true, group: { select: { name: true } }, university: { select: { name: true } } } },
       test: {
         include: {
           questions: {
@@ -41,14 +42,14 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
-        <Link href="/admin/results"><ArrowLeft /> {t("Natijalar")}</Link>
+        <Link href={isOlympiad(a.test.kind) ? `${testBasePath(a.test.kind)}/results` : "/admin/results"}><ArrowLeft /> {t("Natijalar")}</Link>
       </Button>
-      <PageHeader title={a.user.fullName} description={`${a.user.university?.name ?? ""}${a.user.group ? ` · ${a.user.group.name}` : ""} · ${a.test.title}`} />
+      <PageHeader title={a.user.fullName} description={`${a.user.university?.name ?? a.user.organization ?? ""}${a.user.group ? ` · ${a.user.group.name}` : ""} · ${a.test.title}`} />
       <Card className="mb-6">
         <CardContent className="flex flex-wrap items-center gap-6 pt-5 text-sm">
           {a.status === "SUBMITTED" ? (
             <div>
-              <p className="flex items-center gap-2 text-3xl font-extrabold text-midnight">{a.percent}% <GradeBadge percent={a.percent} className="text-sm" /></p>
+              <p className="flex items-center gap-2 text-3xl font-extrabold text-midnight">{a.percent}% <GradeBadge percent={a.percent} kind={a.test.kind} className="text-sm" /></p>
               <p className="text-muted-foreground">{t("{score}/{max} ball · {correct}/{total} to'g'ri", { score: a.score, max: a.maxScore, correct: a.correctCount, total: a.totalQuestions })}</p>
             </div>
           ) : (
@@ -61,7 +62,7 @@ export default async function AdminAttemptPage({ params }: { params: Promise<{ a
               <SuspicionBadge flags={{ tab: a.tabSwitches, copy: a.copyEvents, device: a.deviceChanges }} detailed />
             </div>
           </div>
-          {a.status === "SUBMITTED" && hasCertificate(a.percent) && (
+          {a.status === "SUBMITTED" && hasCertificate(a.percent, a.test.kind) && (
             <Button asChild variant="success" size="sm" className="ml-auto">
               <Link href={`/certificate/${a.id}`}><Award /> {t("Sertifikat")}</Link>
             </Button>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, BarChart3, Lock, Megaphone, Pencil, Trash2, Undo2, Upload } from "lucide-react";
 import { deleteTestAction, setResultsReleasedAction } from "@/actions/admin";
 import { ImportDialog } from "@/components/admin/import-dialog";
@@ -23,14 +23,15 @@ import { QUESTION_TYPE_LABEL, RESULT_RELEASE_LABEL, isResultReleased, testState 
 import { formatDateTime, formatDuration, toLocalInput } from "@/lib/time";
 import { finalizeExpiredAttempts } from "@/server/exam";
 import { testScopeWhere } from "@/server/org";
+import { OLYMPIAD, isOlympiad, slugOf, testBasePath } from "@/lib/olympiad";
 
 export const maxDuration = 60;
 
-export default async function TestDetailPage({ params, searchParams }: { params: Promise<{ testId: string }>; searchParams: Promise<{ saved?: string }> }) {
+export default async function TestDetailPage({ params, searchParams }: { params: Promise<{ testId: string; kind?: string }>; searchParams: Promise<{ saved?: string }> }) {
   const staff = await requireStaff();
   const { t, lang } = await getT();
   const isAdmin = !staff.scope;
-  const { testId } = await params;
+  const { testId, kind: slug } = await params;
   const { saved } = await searchParams;
   await finalizeExpiredAttempts({ testId });
   const test = await prisma.test.findFirst({
@@ -45,6 +46,10 @@ export default async function TestDetailPage({ params, searchParams }: { params:
     },
   });
   if (!test) notFound();
+  const olympiad = isOlympiad(test.kind);
+  // Olimpiada testi o'z bo'limida ochiladi (menyu ham shunga mos belgilanadi)
+  if (slugOf(test.kind) !== slug) redirect(`${testBasePath(test.kind)}/${test.id}`);
+  const base = testBasePath(test.kind);
   const uniIds = test.universities.map((u) => u.id);
   const [bank, stats, inProgress, groups, faculties] = await Promise.all([
     prisma.question.findMany({ orderBy: { createdAt: "desc" }, take: 1000, select: { id: true, text: true, subject: true, type: true } }),
@@ -65,15 +70,15 @@ export default async function TestDetailPage({ params, searchParams }: { params:
   return (
     <>
       <Button asChild variant="ghost" size="sm" className="mb-4 -ml-2">
-        <Link href="/admin/tests"><ArrowLeft /> {t("Testlar")}</Link>
+        <Link href={base}><ArrowLeft /> {olympiad ? t(OLYMPIAD[slugOf(test.kind)!].title) : t("Testlar")}</Link>
       </Button>
       <PageHeader
         title={test.title}
         description={test.subject ?? undefined}
         actions={
           <>
-            {isAdmin && <Button asChild variant="outline"><Link href={`/admin/results?test=${test.id}`}><BarChart3 /> {t("Natijalar")}</Link></Button>}
-            <Button asChild><Link href={`/admin/tests/${test.id}/edit`}><Pencil /> {t("Tahrirlash")}</Link></Button>
+            {isAdmin && <Button asChild variant="outline"><Link href={olympiad ? `${base}/results?test=${test.id}` : `/admin/results?test=${test.id}`}><BarChart3 /> {t("Natijalar")}</Link></Button>}
+            <Button asChild><Link href={`${base}/${test.id}/edit`}><Pencil /> {t("Tahrirlash")}</Link></Button>
             {isAdmin && (
               <ConfirmAction
                 trigger={<Button variant="outline" className="text-error"><Trash2 /> {t("O'chirish")}</Button>}
@@ -135,7 +140,7 @@ export default async function TestDetailPage({ params, searchParams }: { params:
             </CardHeader>
             <CardContent>
               <div className="mb-4 flex items-center justify-between gap-3 rounded-lg bg-muted/60 px-3 py-2.5">
-                <span className="text-sm font-semibold text-midnight">{test.isPublished ? t("Faol: talabalarga ko'rinadi") : t("Nofaol: talabalarga ko'rinmaydi")}</span>
+                <span className="text-sm font-semibold text-midnight">{test.isPublished ? (olympiad ? t("Faol: ishtirokchilarga ko'rinadi") : t("Faol: talabalarga ko'rinadi")) : olympiad ? t("Nofaol: ishtirokchilarga ko'rinmaydi") : t("Nofaol: talabalarga ko'rinmaydi")}</span>
                 <ActiveSwitch id={test.id} active={test.isPublished} />
               </div>
               {testState(test, now) === "open" && (
@@ -148,7 +153,7 @@ export default async function TestDetailPage({ params, searchParams }: { params:
                   [t("Boshlanish"), formatDateTime(test.startsAt, lang)],
                   [t("Tugash"), formatDateTime(test.endsAt, lang)],
                   [t("Davomiylik"), formatDuration(test.durationMinutes, lang)],
-                  [t("O'tish chegarasi"), `${test.passingPercent}%`],
+                  ...(olympiad ? [] : [[t("O'tish chegarasi"), `${test.passingPercent}%`]]),
                   [
                     t("Savollar (har bir talabaga)"),
                     test.questionsPerAttempt && test.questionsPerAttempt < test.questions.length
@@ -158,7 +163,7 @@ export default async function TestDetailPage({ params, searchParams }: { params:
                   [t("Jami baho"), t("{n} ball", { n: test.maxScore ?? rawMax })],
                   [t("Urinishlar soni"), test.maxAttempts > 1 ? t("{n} marta", { n: test.maxAttempts }) : t("1 marta")],
                   [t("Natija"), t(RESULT_RELEASE_LABEL[test.resultRelease])],
-                  [t("Universitetlar"), test.universities.map((u) => u.name).join(", ") || "—"],
+                  ...(olympiad ? [] : [[t("Universitetlar"), test.universities.map((u) => u.name).join(", ") || "—"]]),
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-4">
                     <dt className="text-muted-foreground">{k}</dt>
@@ -181,14 +186,14 @@ export default async function TestDetailPage({ params, searchParams }: { params:
             totalQuestions={test.questions.length}
             locked={locked}
           />
-          <TestAccessCard
+          {!olympiad && <TestAccessCard
             testId={test.id}
             restricted={test.restrictedAccess}
             allowedCount={test._count.access}
             universities={test.universities.map((u) => ({ id: u.id, name: u.name }))}
             faculties={faculties}
             groups={groups}
-          />
+          />}
           <Card>
             <CardHeader><CardTitle>{t("Statistika")}</CardTitle></CardHeader>
             <CardContent className="grid gap-3 text-sm">

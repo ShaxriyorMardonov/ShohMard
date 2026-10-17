@@ -9,12 +9,14 @@ import {
   BookOpenCheck,
   Building2,
   ClipboardList,
+  Globe2,
   History,
   LayoutDashboard,
   Menu,
   ScrollText,
   Settings,
   ShieldCheck,
+  Trophy,
   UserRound,
   Users,
   X,
@@ -25,7 +27,7 @@ import { cn } from "@/lib/utils";
 
 type Item = { href: string; label: string; short?: string; icon: React.ComponentType<{ className?: string }>; exact?: boolean; also?: string[] };
 
-type NavRole = "ADMIN" | "MANAGER" | "STUDENT";
+type NavRole = "ADMIN" | "MANAGER" | "STUDENT" | "PARTICIPANT";
 
 const NAV: Record<NavRole, Item[]> = {
   STUDENT: [
@@ -33,7 +35,13 @@ const NAV: Record<NavRole, Item[]> = {
     { href: "/student/tests", label: "Mavjud testlar", short: "Testlar", icon: BookOpenCheck },
     { href: "/student/history", label: "Testlar tarixi", short: "Tarix", icon: History },
     { href: "/student/results", label: "Natijalarim", short: "Natijalar", icon: BarChart3 },
+    { href: "/olympiad", label: "Olimpiadalar", icon: Trophy },
     { href: "/student/profile", label: "Profil", icon: UserRound },
+  ],
+  PARTICIPANT: [
+    { href: "/olympiad", label: "Olimpiadalar", icon: Trophy, exact: true, also: ["/olympiad/tests"] },
+    { href: "/olympiad/results", label: "Natijalarim", short: "Natijalar", icon: BarChart3 },
+    { href: "/olympiad/profile", label: "Profil", icon: UserRound },
   ],
   ADMIN: [
     { href: "/admin", label: "Bosh sahifa", icon: LayoutDashboard, exact: true },
@@ -41,6 +49,8 @@ const NAV: Record<NavRole, Item[]> = {
     { href: "/admin/students", label: "Talabalar", icon: Users },
     { href: "/admin/tests", label: "Testlar", icon: ClipboardList, also: ["/admin/questions"] },
     { href: "/admin/results", label: "Natijalar", icon: BarChart3 },
+    { href: "/admin/olympiads/international", label: "Xalqaro olimpiada", short: "Xalqaro", icon: Globe2 },
+    { href: "/admin/olympiads/local", label: "Mahalliy olimpiada", short: "Mahalliy", icon: Trophy },
     { href: "/admin/users", label: "Rollar", icon: ShieldCheck },
     { href: "/admin/audit", label: "Jurnal", icon: ScrollText },
     { href: "/admin/settings", label: "Sozlamalar", icon: Settings },
@@ -50,6 +60,13 @@ const NAV: Record<NavRole, Item[]> = {
     { href: "/admin/students", label: "Talabalar", icon: Users },
     { href: "/admin/settings", label: "Sozlamalar", icon: Settings },
   ],
+};
+
+const PANEL_TITLE: Record<NavRole, string> = {
+  ADMIN: "Super admin paneli",
+  MANAGER: "Menejer paneli",
+  STUDENT: "Talaba kabineti",
+  PARTICIPANT: "Olimpiada ishtirokchisi",
 };
 
 function NavLinks({ role, onNavigate }: { role: NavRole; onNavigate?: () => void }) {
@@ -87,7 +104,7 @@ export function Sidebar({ role, footer }: { role: NavRole; footer?: React.ReactN
       <div className="px-2">
         <SamuLogo tone="dark" size="sm" />
         <p className="mt-2 text-[11px] font-medium text-white/45">
-          {t(role === "ADMIN" ? "Super admin paneli" : role === "MANAGER" ? "Menejer paneli" : "Talaba kabineti")}
+          {t(PANEL_TITLE[role])}
         </p>
       </div>
       <div className="mt-8 flex-1 overflow-y-auto">
@@ -101,7 +118,8 @@ export function Sidebar({ role, footer }: { role: NavRole; footer?: React.ReactN
 function useActive() {
   const pathname = usePathname();
   return ({ href, exact, also = [] }: Item) =>
-    exact ? pathname === href : [href, ...also].some((h) => pathname === h || pathname.startsWith(h + "/"));
+    (exact ? pathname === href : pathname === href || pathname.startsWith(href + "/")) ||
+    also.some((h) => pathname === h || pathname.startsWith(h + "/"));
 }
 
 /**
@@ -134,7 +152,7 @@ function MobileDrawer({ role, open, onClose }: { role: NavRole; open: boolean; o
           <div>
             <SamuLogo tone="dark" size="sm" />
             <p className="mt-2 text-[11px] font-medium text-white/45">
-              {t(role === "ADMIN" ? "Super admin paneli" : role === "MANAGER" ? "Menejer paneli" : "Talaba kabineti")}
+              {t(PANEL_TITLE[role])}
             </p>
           </div>
           <button

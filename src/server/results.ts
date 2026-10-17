@@ -2,8 +2,11 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { studentOrgWhere, type OrgFilters } from "@/server/filters";
+import { OLYMPIAD, parseOlympiadSlug } from "@/lib/olympiad";
 
 export type ResultFilters = OrgFilters & {
+  /** Olimpiada bo'limi ("international" | "local"); bo'sh — oddiy testlar */
+  kind?: string;
   test?: string;
   subject?: string;
   q?: string;
@@ -12,7 +15,7 @@ export type ResultFilters = OrgFilters & {
   to?: string;
 };
 
-export const RESULT_FILTER_KEYS = ["q", "test", "subject", "university", "faculty", "group", "form", "status", "from", "to"] as const;
+export const RESULT_FILTER_KEYS = ["kind", "q", "test", "subject", "university", "faculty", "group", "form", "status", "from", "to"] as const;
 
 const dayStart = (v: string | undefined, plusDays = 0) => {
   if (!v || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return undefined;
@@ -25,7 +28,9 @@ export async function resultsWhere(f: ResultFilters): Promise<Prisma.AttemptWher
   const q = (f.q ?? "").trim().slice(0, 100);
   const from = dayStart(f.from);
   const to = dayStart(f.to, 1);
-  const and: Prisma.AttemptWhereInput[] = [{ status: "SUBMITTED" }];
+  const slug = parseOlympiadSlug(f.kind);
+  // Olimpiada natijalari umumiy natijalarga aralashmaydi
+  const and: Prisma.AttemptWhereInput[] = [{ status: "SUBMITTED" }, { test: { kind: slug ? OLYMPIAD[slug].kind : "REGULAR" } }];
   if (f.test) and.push({ testId: f.test });
   if (f.subject) and.push({ test: { subject: f.subject === "__none" ? null : f.subject } });
   if (from || to) and.push({ submittedAt: { ...(from ? { gte: from } : {}), ...(to ? { lt: to } : {}) } });
@@ -67,11 +72,13 @@ export const resultSelect = {
       fullName: true,
       login: true,
       pinfl: true,
+      phone: true,
+      organization: true,
       studyForm: true,
       group: { select: { name: true } },
       faculty: { select: { name: true } },
       university: { select: { name: true, shortName: true } },
     },
   },
-  test: { select: { id: true, title: true, subject: true, passingPercent: true } },
+  test: { select: { id: true, kind: true, title: true, subject: true, passingPercent: true } },
 } satisfies Prisma.AttemptSelect;

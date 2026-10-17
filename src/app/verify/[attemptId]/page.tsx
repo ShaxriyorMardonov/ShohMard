@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getT } from "@/i18n/server";
 import { formatDate } from "@/lib/time";
 import { getCertificate } from "@/server/certificate";
+import { OLYMPIAD, isOlympiad, olympiadSlug } from "@/lib/olympiad";
 
 export async function generateMetadata() {
   const { t } = await getT();
@@ -38,11 +39,19 @@ export default async function VerifyPage({ params }: { params: Promise<{ attempt
                 <dl className="grid gap-2 text-sm">
                   {[
                     [t("Sertifikat raqami"), c.number],
-                    [t("Talaba"), c.user.fullName],
-                    [t("Universitet"), c.user.university?.name ?? "—"],
-                    [t("Fakultet"), c.user.faculty?.name ?? "—"],
-                    [t("Guruh"), c.user.group?.name ?? "—"],
-                    [t("Test"), c.test.title],
+                    ...(isOlympiad(c.test.kind)
+                      ? [
+                          [t("Ishtirokchi"), c.user.fullName],
+                          [t("O'quv muassasasi"), c.user.university?.name ?? c.user.organization ?? "—"],
+                          [t("Olimpiada"), `${c.test.title} · ${t(OLYMPIAD[olympiadSlug(c.test.kind)].title)}`],
+                        ]
+                      : [
+                          [t("Talaba"), c.user.fullName],
+                          [t("Universitet"), c.user.university?.name ?? "—"],
+                          [t("Fakultet"), c.user.faculty?.name ?? "—"],
+                          [t("Guruh"), c.user.group?.name ?? "—"],
+                          [t("Test"), c.test.title],
+                        ]),
                     [t("Sana"), formatDate(c.submittedAt, lang)],
                     [t("Natija"), `${c.percent}% · ${c.score}/${c.maxScore}`],
                   ].map(([k, v]) => (
@@ -53,7 +62,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ attempt
                   ))}
                   <div className="flex justify-between gap-4">
                     <dt className="text-muted-foreground">{t("Baho")}</dt>
-                    <dd><GradeBadge percent={c.percent} /></dd>
+                    <dd><GradeBadge percent={c.percent} kind={c.test.kind} /></dd>
                   </div>
                 </dl>
               </>

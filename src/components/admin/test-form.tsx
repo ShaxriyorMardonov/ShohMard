@@ -39,8 +39,13 @@ export function TestForm({
   universities,
   subjects = [],
   fixedUniversity,
+  kind = "REGULAR",
+  basePath = "/admin/tests",
 }: {
   initial?: TestInitial;
+  /** Olimpiada testi: universitetlar tanlanmaydi, baho 100 ballik. */
+  kind?: "REGULAR" | "OLYMPIAD_INTL" | "OLYMPIAD_LOCAL";
+  basePath?: string;
   universities: { id: string; name: string }[];
   subjects?: string[];
   /** Menejer uchun: test faqat shu universitetga biriktiriladi. */
@@ -52,15 +57,17 @@ export function TestForm({
   const e = state.errors ?? {};
   const [questionsText, setQuestionsText] = React.useState("");
   const qStatus = useQuestionTextStatus(questionsText);
+  const olympiad = kind !== "REGULAR";
   return (
     <form onSubmit={onSubmit} className="grid gap-6">
       {initial && <input type="hidden" name="id" value={initial.id} />}
+      <input type="hidden" name="kind" value={kind} />
       {state.message && <Alert variant="error"><span>{t(state.message)}</span></Alert>}
       <Card>
         <CardHeader><CardTitle>{t("Asosiy ma'lumotlar")}</CardTitle></CardHeader>
         <CardContent className="grid gap-4">
-          <Field label={t("Test nomi")} htmlFor="t-title" error={e.title}>
-            <Input id="t-title" name="title" defaultValue={initial?.title} placeholder={t("Masalan: Oliy matematika — oraliq nazorat")} aria-invalid={!!e.title} />
+          <Field label={olympiad ? t("Olimpiada nomi") : t("Test nomi")} htmlFor="t-title" error={e.title} hint={olympiad ? t("Sertifikatda shu nom bilan chiqadi") : undefined}>
+            <Input id="t-title" name="title" defaultValue={initial?.title} placeholder={olympiad ? t("Masalan: Matematika") : t("Masalan: Oliy matematika — oraliq nazorat")} aria-invalid={!!e.title} />
           </Field>
           <Field label={t("Fan")} htmlFor="t-subject" error={e.subject}>
             <Input id="t-subject" name="subject" list="t-subjects" defaultValue={initial?.subject ?? ""} placeholder={t("Oliy matematika")} autoComplete="off" />
@@ -94,22 +101,32 @@ export function TestForm({
         <CardHeader><CardTitle>{t("Baholash va natijalar")}</CardTitle></CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <Field
-            label={t("Har bir talabaga savollar soni")}
+            label={olympiad ? t("Har bir ishtirokchiga savollar soni") : t("Har bir talabaga savollar soni")}
             htmlFor="t-qcount"
             error={e.questionsPerAttempt}
             hint={initial?.locked ? t("Test boshlangan, o'zgartirib bo'lmaydi") : t("Bo'sh qolsa, testdagi barcha savollar beriladi. Aks holda har bir talabaga tasodifiy tanlanadi")}
           >
             <Input id="t-qcount" name="questionsPerAttempt" type="number" min={1} max={1000} placeholder={t("Hammasi")} defaultValue={initial?.questionsPerAttempt ?? ""} readOnly={initial?.locked} aria-invalid={!!e.questionsPerAttempt} />
           </Field>
-          <Field label={t("Maksimal ball (jami baho)")} htmlFor="t-max" error={e.maxScore} hint={t("Bo'sh qolsa, savollar ballari yig'indisi. Masalan, 100 yoki 5")}>
-            <Input id="t-max" name="maxScore" type="number" min={1} max={1000} placeholder={t("Savollar ballari yig'indisi")} defaultValue={initial?.maxScore ?? ""} aria-invalid={!!e.maxScore} />
-          </Field>
-          <Field label={t("Urinishlar soni")} htmlFor="t-att" error={e.maxAttempts} hint={t("Talaba testni necha marta topshira oladi")}>
+          {olympiad ? (
+            <Field label={t("Maksimal ball (jami baho)")} htmlFor="t-max" hint={t("Olimpiada 100 ballik tizimda baholanadi")}>
+              <Input id="t-max" value="100" readOnly />
+            </Field>
+          ) : (
+            <Field label={t("Maksimal ball (jami baho)")} htmlFor="t-max" error={e.maxScore} hint={t("Bo'sh qolsa, savollar ballari yig'indisi. Masalan, 100 yoki 5")}>
+              <Input id="t-max" name="maxScore" type="number" min={1} max={1000} placeholder={t("Savollar ballari yig'indisi")} defaultValue={initial?.maxScore ?? ""} aria-invalid={!!e.maxScore} />
+            </Field>
+          )}
+          <Field label={t("Urinishlar soni")} htmlFor="t-att" error={e.maxAttempts} hint={olympiad ? t("Ishtirokchi testni necha marta topshira oladi") : t("Talaba testni necha marta topshira oladi")}>
             <Input id="t-att" name="maxAttempts" type="number" min={1} max={20} defaultValue={initial?.maxAttempts ?? 1} aria-invalid={!!e.maxAttempts} />
           </Field>
-          <Field label={t("O'tish chegarasi (%)")} htmlFor="t-pass" error={e.passingPercent}>
-            <Input id="t-pass" name="passingPercent" type="number" min={0} max={100} defaultValue={initial?.passingPercent ?? 60} />
-          </Field>
+          {olympiad ? (
+            <input type="hidden" name="passingPercent" value={initial?.passingPercent ?? 60} />
+          ) : (
+            <Field label={t("O'tish chegarasi (%)")} htmlFor="t-pass" error={e.passingPercent}>
+              <Input id="t-pass" name="passingPercent" type="number" min={0} max={100} defaultValue={initial?.passingPercent ?? 60} />
+            </Field>
+          )}
           <Field label={t("Natijalarni e'lon qilish")} htmlFor="t-rel" error={e.resultRelease} hint={t("To'g'ri javoblar faqat natija e'lon qilingach ko'rsatiladi")}>
             <NativeSelect id="t-rel" name="resultRelease" defaultValue={initial?.resultRelease ?? "IMMEDIATE"}>
               <option value="IMMEDIATE">{t("Topshirilgandan so'ng darhol")}</option>
@@ -136,7 +153,9 @@ export function TestForm({
         </Card>
       )}
 
-      {fixedUniversity ? (
+      {olympiad ? (
+        <p className="text-sm text-muted-foreground">{t("Olimpiadada tizimdagi barcha talabalar va ro'yxatdan o'tgan ishtirokchilar qatnasha oladi.")}</p>
+      ) : fixedUniversity ? (
         <p className="text-sm text-muted-foreground">{uniBefore}<b className="text-midnight">{fixedUniversity}</b>{uniAfter}</p>
       ) : (
       <Card>
@@ -160,7 +179,7 @@ export function TestForm({
         <CardContent className="grid gap-2 pt-5">
           <label className="flex items-center gap-2.5 text-sm font-semibold">
             <input type="checkbox" name="isPublished" defaultChecked={initial?.isPublished} className="size-4 accent-[#315ECA]" />
-            {t("Faol (talabalarga ko'rinadi)")}
+            {olympiad ? t("Faol (ishtirokchilarga ko'rinadi)") : t("Faol (talabalarga ko'rinadi)")}
           </label>
           {e.isPublished ? (
             <p className="text-xs font-medium text-error">{t(e.isPublished)}</p>
@@ -174,7 +193,7 @@ export function TestForm({
 
       <div className="flex justify-end gap-2">
         <Button asChild variant="outline">
-          <Link href={initial ? `/admin/tests/${initial.id}` : "/admin/tests"}>{t("Bekor qilish")}</Link>
+          <Link href={initial ? `${basePath}/${initial.id}` : basePath}>{t("Bekor qilish")}</Link>
         </Button>
         <SubmitButton pending={pending} pendingText={t("Saqlanmoqda...")}>{initial ? t("O'zgarishlarni saqlash") : t("Testni yaratish")}</SubmitButton>
       </div>

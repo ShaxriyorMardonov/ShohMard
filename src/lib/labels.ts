@@ -22,4 +22,4 @@ export function isStudyForm(v: string): v is StudyForm {
   return STUDY_FORMS.some((f) => f.value === v);
 }
 
-export const ROLE_LABEL = { ADMIN: "Super admin", MANAGER: "Menejer", STUDENT: "Talaba" } as const;
+export const ROLE_LABEL = { ADMIN: "Super admin", MANAGER: "Menejer", STUDENT: "Talaba", PARTICIPANT: "Olimpiada ishtirokchisi" } as const;

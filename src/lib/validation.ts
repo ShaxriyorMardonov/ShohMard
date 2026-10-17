@@ -131,7 +131,7 @@ export const testSchema = z
     maxAttempts: z.coerce.number({ error: "Son kiriting" }).int("Butun son kiriting").min(1, "Kamida 1 marta").max(20, "Ko'pi bilan 20 marta"),
     resultRelease: z.enum(["IMMEDIATE", "AFTER_END", "MANUAL"], { error: "Qiymatni tanlang" }),
     isPublished: z.boolean(),
-    universityIds: z.array(z.string().min(1)).min(1, "Kamida bitta universitetni tanlang"),
+    universityIds: z.array(z.string().min(1)),
   })
   .refine((t) => t.endsAt > t.startsAt, { path: ["endsAt"], message: "Tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak" });
 
