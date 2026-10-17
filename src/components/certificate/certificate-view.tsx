@@ -1,10 +1,10 @@
-import { SamuLogo } from "@/components/brand/samu-logo";
 import { GRADE, gradeKey } from "@/lib/grade";
 import { isOlympiad } from "@/lib/olympiad";
 import { formatDate } from "@/lib/time";
 import type { Lang } from "@/i18n/config";
 import type { TFunction } from "@/i18n/translate";
 import type { Certificate } from "@/server/certificate";
+import { CertificateBrand } from "./brand";
 import { SamuSeal } from "./seal";
 
 const fmtScore = (v: number | null) => String(Math.round((v ?? 0) * 100) / 100);
@@ -30,30 +30,30 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
       <div aria-hidden className="absolute -right-[8%] -top-[18%] size-[42%] rounded-full bg-royal/[0.06]" />
       <div aria-hidden className="absolute -bottom-[22%] -left-[10%] size-[45%] rounded-full bg-royal/[0.05]" />
 
-      <div className="relative flex flex-1 flex-col items-center px-[9%] pt-[4.5%] pb-[4.5%] text-center">
-        <p className="mb-[1.6%] text-[clamp(9px,1.15vw,14px)] font-bold uppercase tracking-[0.14em] text-midnight">
+      <div className="relative flex flex-1 flex-col items-center px-[9%] pt-[3.8%] pb-[3.6%] text-center">
+        <p className="mb-[1.4%] text-[clamp(11px,1.45vw,17px)] font-bold uppercase tracking-[0.12em] text-midnight print:text-[17px]">
           {t("O'zbekiston Respublikasi Ta'lim va ilm-fan vazirligi")}
         </p>
-        <SamuLogo size="md" withFullName />
-        <h1 className="mt-[2.5%] font-serif text-[clamp(28px,5.2vw,58px)] font-bold tracking-[0.18em] text-midnight">{t("SERTIFIKAT")}</h1>
+        <CertificateBrand />
+        <h1 className="mt-[1.2%] font-serif text-[clamp(26px,4.8vw,54px)] font-bold tracking-[0.18em] text-midnight">{t("SERTIFIKAT")}</h1>
         {olympiad && <p className="mt-[0.6%] text-[clamp(12px,1.6vw,19px)] font-bold uppercase tracking-[0.12em] text-royal">{olympiadName}</p>}
         <p className="mt-[1%] text-[clamp(11px,1.3vw,15px)] uppercase tracking-[0.25em] text-muted-foreground">{t("Ushbu sertifikat")}</p>
-        <p className="mt-[1.6%] border-b-2 border-royal/40 px-8 pb-1 font-serif text-[clamp(22px,3.6vw,40px)] font-bold text-royal">{c.user.fullName}</p>
-        {org.length > 0 && <p className="mt-[1.4%] text-[clamp(11px,1.35vw,16px)] text-midnight/80">{org.join(" · ")}</p>}
+        <p className="mt-[1.1%] border-b-2 border-royal/40 px-8 pb-1 font-serif text-[clamp(22px,3.6vw,40px)] font-bold text-royal">{c.user.fullName}</p>
+        {org.length > 0 && <p className="mt-[1%] text-[clamp(11px,1.35vw,16px)] text-midnight/80">{org.join(" · ")}</p>}
         {key === "winner" ? (
-          <p className="mt-[1.6%] max-w-[85%] rounded-lg bg-royal px-6 py-[1%] font-serif text-[clamp(14px,2.2vw,26px)] font-bold uppercase tracking-wide text-white">
+          <p className="mt-[1.1%] max-w-[85%] rounded-lg bg-royal px-6 py-[1%] font-serif text-[clamp(14px,2.2vw,26px)] font-bold uppercase tracking-wide text-white">
             {t("«{name}» xalqaro olimpiadasi g'olibi", { name: c.test.title })}
           </p>
         ) : key === "super" ? (
-          <p className="mt-[1.6%] max-w-[85%] rounded-lg bg-royal px-6 py-[1%] font-serif text-[clamp(14px,2.2vw,26px)] font-bold text-white">
+          <p className="mt-[1.1%] max-w-[85%] rounded-lg bg-royal px-6 py-[1%] font-serif text-[clamp(14px,2.2vw,26px)] font-bold text-white">
             {t("Super! Ishtirokingiz bilan tabriklaymiz!")}
           </p>
         ) : olympiad && key !== "fail" ? (
-          <p className="mt-[1.6%] max-w-[85%] rounded-lg border-2 border-royal px-6 py-[0.8%] font-serif text-[clamp(13px,2vw,24px)] font-bold text-royal">
+          <p className="mt-[1.1%] max-w-[85%] rounded-lg border-2 border-royal px-6 py-[0.8%] font-serif text-[clamp(13px,2vw,24px)] font-bold text-royal">
             {key === "excellent" ? t("Faol ishtirokingiz uchun") : t("Ishtirokingiz uchun")}
           </p>
         ) : null}
-        <p className="mt-[1.6%] max-w-[80%] text-[clamp(11px,1.45vw,17px)] leading-relaxed">
+        <p className="mt-[1.1%] max-w-[80%] text-[clamp(11px,1.45vw,17px)] leading-relaxed">
           {olympiad
             ? t("{olympiad}da {date} kuni ishtirok etib, {max} balldan {score} ball to'plagani uchun berildi.", {
                 olympiad: olympiadName,
@@ -68,7 +68,7 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
                 max: fmtScore(c.maxScore),
               })}
         </p>
-        <div className="mt-[2%] grid w-full max-w-[78%] grid-cols-4 overflow-hidden rounded-lg border border-royal/30 text-[clamp(10px,1.2vw,14px)]">
+        <div className="mt-[1.4%] grid w-full max-w-[78%] grid-cols-4 overflow-hidden rounded-lg border border-royal/30 text-[clamp(10px,1.2vw,14px)]">
           {[
             [t("Natija"), `${c.percent}%`],
             [t("Ball"), `${fmtScore(c.score)}/${fmtScore(c.maxScore)}`],
@@ -84,7 +84,7 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
 
         <div className="mt-auto flex w-full items-end justify-between gap-4">
           <div className="flex w-[30%] flex-col items-center">
-            <div className="w-[min(130px,12vw)] print:w-[130px]"><SamuSeal size={130} /></div>
+            <div className="w-[min(118px,10.5vw)] print:w-[118px]"><SamuSeal size={118} /></div>
             <p className="mt-1 text-[clamp(9px,1vw,12px)] text-muted-foreground">{t("SAMU platformasi muhri")}</p>
           </div>
           <div className="w-[36%] text-[clamp(9px,1.05vw,13px)] text-midnight/80">
