@@ -130,3 +130,9 @@ Palitra `src/app/globals.css` da: Midnight Blue `#101D3A`, Royal Blue `#315ECA`,
 - Universitet → Fakultet → Guruh. Talabada ta'lim shakli (Kunduzgi, Sirtqi, Kechki, Masofaviy) bor. Excel'dan yuklashda fakultet va guruh avtomatik yaratiladi.
 - Testni "Faqat ruxsat berilgan talabalar" rejimiga o'tkazib, guruh, fakultet yoki loginlar bo'yicha ruxsat berish mumkin.
 - Natijalar Excel jadval (.xlsx) yoki CSV ko'rinishida filtrlar bilan yuklab olinadi.
+
+## Diplom bezaklari manbalari
+
+- `public/diploma/emblem-uz.svg` — O'zbekiston gerbi, `coat-of-arms` npm paketidan (MIT).
+- `public/diploma/flags/*` — `flag-icons` npm paketidan (MIT).
+- `public/diploma/world-dots.png` va `globe.png` — `@svg-maps/world` xaritasidan yasalgan (CC BY 4.0, VictorCazanave/svg-maps).
