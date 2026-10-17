@@ -61,13 +61,15 @@ export function DiplomaView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: stri
         </>
       )}
       <div className="relative flex flex-1 flex-col items-center px-[7%] pt-[7cqw] pb-[1cqw] text-center">
-        {/* Vazirlik nomi, ikki yonida chiziq */}
+        {/* Olimpiada nomi, ikki yonida chiziq */}
         <div className="mt-[0.8cqw] flex w-full items-center justify-center gap-[2cqw]">
-          <span aria-hidden className="h-[0.18cqw] w-[9cqw] bg-[#0B2A6F]" />
-          <p className="max-w-[46cqw] text-[2.15cqw] font-bold uppercase leading-[1.3] tracking-[0.05em] text-balance text-[#0B2A6F]">
-            {t("O'zbekiston Respublikasi Ta'lim va ilm-fan vazirligi")}
+          {!intl && <span aria-hidden className="h-[0.18cqw] w-[7cqw] shrink-0 bg-[#0B2A6F]" />}
+          <p className={`${intl ? "max-w-[52cqw]" : "max-w-[64cqw]"} text-[2.1cqw] font-bold uppercase leading-[1.3] tracking-[0.04em] text-balance text-[#0B2A6F]`}>
+            {intl
+              ? t("Oliy ta'lim muassasalari o'rtasida o'tkazilgan «{subject}» fani yuzasidan xalqaro olimpiada", { subject: c.test.subject ?? c.test.title })
+              : t("Oliy ta'lim muassasalari o'rtasida o'tkazilgan «{subject}» fani yuzasidan mahalliy olimpiada", { subject: c.test.subject ?? c.test.title })}
           </p>
-          <span aria-hidden className="h-[0.18cqw] w-[9cqw] bg-[#0B2A6F]" />
+          {!intl && <span aria-hidden className="h-[0.18cqw] w-[7cqw] shrink-0 bg-[#0B2A6F]" />}
         </div>
 
         {/* SAMU logotipi */}

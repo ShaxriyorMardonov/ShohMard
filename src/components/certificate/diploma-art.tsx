@@ -1,5 +1,5 @@
 /**
- * Olimpiada diplomi bezaklari: mahalliy (milliy naqsh, bayroq lentasi, Registon) va
+ * Olimpiada diplomi bezaklari: mahalliy (milliy naqsh, to'lqinli lenta, Registon) va
  * xalqaro (to'q ko'k-oltin burchaklar, globus, dunyo obidalari) uslublari.
  * Rasmlar public/diploma ichida: globus, nuqtali xarita va bayroqlar.
  */
@@ -7,7 +7,6 @@ import { Laurel } from "./ornaments";
 
 export const NAVY = "#0B2A6F";
 const GOLD = "#C9A227";
-const FLAG = { blue: "#0099B5", white: "#FFFFFF", red: "#CE1126", green: "#1EB53A" };
 
 /** Sharqona girih naqshi (8 qirrali yulduzli plitka). */
 function GirihPattern({ id, size, color = "#2E6FD0" }: { id: string; size: number; color?: string }) {
@@ -25,33 +24,16 @@ function GirihPattern({ id, size, color = "#2E6FD0" }: { id: string; size: numbe
   );
 }
 
-/** Bayroq rangidagi to'lqinli lenta (ko'k, oq — qizil hoshiyali, yashil). */
-function FlagRibbon({ d, w }: { d: string; w: number }) {
+/** To'lqinli lenta: ko'k, oltin hoshiyali oq va to'q ko'k qatlamlar (SAMU ranglari). */
+function Ribbon({ d, w }: { d: string; w: number }) {
   return (
     <g fill="none" strokeLinecap="butt">
       <path d={d} stroke="#000000" strokeOpacity="0.07" strokeWidth={w * 3.4} transform={`translate(0 ${w * 0.5})`} />
-      <path d={d} stroke={FLAG.green} strokeWidth={w} transform={`translate(0 ${w * 1.05})`} />
-      <path d={d} stroke={FLAG.red} strokeWidth={w * 1.1} />
-      <path d={d} stroke={FLAG.white} strokeWidth={w * 0.86} />
-      <path d={d} stroke={FLAG.blue} strokeWidth={w} transform={`translate(0 ${-w * 1.05})`} />
+      <path d={d} stroke={NAVY} strokeWidth={w} transform={`translate(0 ${w * 1.05})`} />
+      <path d={d} stroke={GOLD} strokeWidth={w * 1.1} />
+      <path d={d} stroke="#FFFFFF" strokeWidth={w * 0.86} />
+      <path d={d} stroke="#2F6FD8" strokeWidth={w} transform={`translate(0 ${-w * 1.05})`} />
       <path d={d} stroke="#FFFFFF" strokeOpacity="0.35" strokeWidth={w * 0.2} transform={`translate(0 ${-w * 1.35})`} />
-    </g>
-  );
-}
-
-/** Oq yarim oy va 12 yulduz (bayroqdagidek), ko'k tasma ustida. */
-function CrescentStars({ x, y }: { x: number; y: number }) {
-  const stars: [number, number][] = [];
-  [3, 4, 5].forEach((n, row) => {
-    for (let i = 0; i < n; i++) stars.push([3.2 + (5 - n + i) * 0.82, -1.25 + row * 1.0]);
-  });
-  return (
-    <g transform={`translate(${x} ${y})`}>
-      <circle cx="0" cy="0" r="1.75" fill="#FFFFFF" />
-      <circle cx="0.6" cy="-0.15" r="1.5" fill={FLAG.blue} />
-      {stars.map(([sx, sy], i) => (
-        <circle key={i} cx={sx} cy={sy} r="0.3" fill="#FFFFFF" />
-      ))}
     </g>
   );
 }
@@ -135,9 +117,9 @@ export function LocalDecor() {
       <rect width="210" height="297" fill="url(#ld-bg)" />
       {/* chap-yuqori burchakdagi girih naqshi */}
       <rect width="62" height="118" fill="url(#ld-girih)" mask="url(#ld-corner)" opacity="0.9" />
-      <FlagRibbon d="M-8 52C8 34 26 14 58 -8" w={4.2} />
+      <Ribbon d="M-8 52C8 34 26 14 58 -8" w={4.2} />
       {/* pastki lenta va naqshli hoshiya */}
-      <FlagRibbon d="M-10 276C40 270 110 282 220 270" w={2.8} />
+      <Ribbon d="M-10 276C40 270 110 282 220 270" w={2.8} />
       <rect x="0" y="283" width="210" height="8" fill="url(#ld-girih-s)" />
       <path d="M0 283H210M0 291H210" stroke="#1F4FC4" strokeWidth="0.6" />
       <rect x="0" y="291" width="210" height="6" fill="#FFFFFF" />
@@ -145,12 +127,11 @@ export function LocalDecor() {
   );
 }
 
-/** SAMU ostidagi bayroq to'lqini: chapda yarim oy va yulduzlar. */
+/** SAMU ostidagi to'lqinli lenta. */
 export function LocalWave() {
   return (
     <svg aria-hidden viewBox="0 0 210 30" className="block w-[100cqw] max-w-none">
-      <FlagRibbon d="M-6 22C30 30 70 16 110 14S170 10 216 -2" w={4.4} />
-      <CrescentStars x={8.5} y={19.4} />
+      <Ribbon d="M-6 22C30 30 70 16 110 14S170 10 216 -2" w={4.4} />
     </svg>
   );
 }

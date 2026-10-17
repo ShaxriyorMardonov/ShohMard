@@ -20,6 +20,8 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
   const key = gradeKey(c.percent, c.test.kind);
   const grade = t(GRADE[key].label);
   const olympiad = isOlympiad(c.test.kind);
+  // Sarlavhada vazirlik ostida talabaning universiteti
+  const university = c.user.university?.name ?? c.user.organization;
   const intl = c.test.kind === "OLYMPIAD_INTL";
   const olympiadName = intl ? t("«{name}» xalqaro olimpiadasi", { name: c.test.title }) : t("«{name}» mahalliy olimpiadasi", { name: c.test.title });
   // Xalqaro olimpiada sertifikatida universitet, fakultet va guruh ko'rsatilmaydi
@@ -55,6 +57,9 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
         <p className="pl-[0.08em] text-[1.6cqw] font-extrabold uppercase leading-none tracking-[0.08em] text-[#0B1B4D]">
           {t("O'zbekiston Respublikasi Ta'lim va ilm-fan vazirligi")}
         </p>
+        {university && (
+          <p className="mt-[0.6cqw] pl-[0.06em] text-[1.45cqw] font-bold uppercase leading-none tracking-[0.06em] text-[#1F4FC4]">{university}</p>
+        )}
         <div className="mt-[1cqw] w-full"><CertificateBrand /></div>
         <h1
           className="cert-serif mt-[0.8cqw] pl-[0.06em] text-[6.6cqw] font-black uppercase leading-none tracking-[0.06em] text-[#0B1F5C]"
