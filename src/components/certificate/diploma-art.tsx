@@ -1,19 +1,13 @@
 /**
  * Olimpiada diplomi bezaklari: mahalliy (milliy naqsh, bayroq lentasi, Registon) va
  * xalqaro (to'q ko'k-oltin burchaklar, globus, dunyo obidalari) uslublari.
- * Rasmlar public/diploma ichida: gerb, globus, nuqtali xarita va bayroqlar.
+ * Rasmlar public/diploma ichida: globus, nuqtali xarita va bayroqlar.
  */
 import { Laurel } from "./ornaments";
 
 export const NAVY = "#0B2A6F";
 const GOLD = "#C9A227";
 const FLAG = { blue: "#0099B5", white: "#FFFFFF", red: "#CE1126", green: "#1EB53A" };
-
-/** O'zbekiston gerbi */
-export function Emblem({ className }: { className?: string }) {
-  // eslint-disable-next-line @next/next/no-img-element
-  return <img src="/diploma/emblem-uz.svg" width={1349} height={1372} alt="" className={className} />;
-}
 
 /** Sharqona girih naqshi (8 qirrali yulduzli plitka). */
 function GirihPattern({ id, size, color = "#2E6FD0" }: { id: string; size: number; color?: string }) {

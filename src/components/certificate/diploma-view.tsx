@@ -5,7 +5,7 @@ import type { Lang } from "@/i18n/config";
 import type { TFunction } from "@/i18n/translate";
 import type { Certificate } from "@/server/certificate";
 import { SamuMark } from "@/components/brand/samu-logo";
-import { BookDivider, Emblem, FlagGlobe, GlobeCap, IntlDecor, IntlSkyline, LocalDecor, LocalSkyline, LocalWave, NAVY, OrnamentDivider, WorldDots } from "./diploma-art";
+import { BookDivider, FlagGlobe, GlobeCap, IntlDecor, IntlSkyline, LocalDecor, LocalSkyline, LocalWave, NAVY, OrnamentDivider, WorldDots } from "./diploma-art";
 import { SamuSeal } from "./seal";
 
 const script = Marck_Script({ subsets: ["latin", "cyrillic"], weight: "400", variable: "--font-script", display: "swap" });
@@ -60,8 +60,7 @@ export function DiplomaView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: stri
           <LocalSkyline />
         </>
       )}
-      <div className="relative flex flex-1 flex-col items-center px-[7%] pt-[2.6cqw] pb-[1cqw] text-center">
-        <Emblem className="h-[8.8cqw] w-auto drop-shadow-[0_0.3cqw_0.5cqw_rgba(0,0,0,0.15)]" />
+      <div className="relative flex flex-1 flex-col items-center px-[7%] pt-[7cqw] pb-[1cqw] text-center">
         {/* Vazirlik nomi, ikki yonida chiziq */}
         <div className="mt-[0.8cqw] flex w-full items-center justify-center gap-[2cqw]">
           <span aria-hidden className="h-[0.18cqw] w-[9cqw] bg-[#0B2A6F]" />

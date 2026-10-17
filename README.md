@@ -133,6 +133,5 @@ Palitra `src/app/globals.css` da: Midnight Blue `#101D3A`, Royal Blue `#315ECA`,
 
 ## Diplom bezaklari manbalari
 
-- `public/diploma/emblem-uz.svg` — O'zbekiston gerbi, `coat-of-arms` npm paketidan (MIT).
 - `public/diploma/flags/*` — `flag-icons` npm paketidan (MIT).
 - `public/diploma/world-dots.png` va `globe.png` — `@svg-maps/world` xaritasidan yasalgan (CC BY 4.0, VictorCazanave/svg-maps).
