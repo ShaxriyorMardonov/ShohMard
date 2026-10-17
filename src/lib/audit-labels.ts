@@ -3,7 +3,7 @@ export const AUDIT_ACTIONS: Record<string, { label: string; group: string; dange
   login: { label: "Tizimga kirdi", group: "auth" },
   "password.change": { label: "Parolini almashtirdi", group: "auth" },
   "mfa.enable": { label: "2FA yoqildi", group: "auth" },
-  "mfa.recovery_codes": { label: "Zaxira kodlar yangilandi", group: "auth" },
+  "email.verify": { label: "Email tasdiqlandi", group: "auth" },
   "session.revoke_others": { label: "Boshqa qurilmalardan chiqdi", group: "auth" },
   "university.create": { label: "Universitet qo'shildi", group: "org" },
   "university.update": { label: "Universitet o'zgartirildi", group: "org" },

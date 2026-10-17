@@ -7,7 +7,11 @@ import { getT } from "@/i18n/server";
 import { requireStaff } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatDateTime } from "@/lib/time";
-import { RecoveryCodesForm, SessionsList, type SessionRow } from "@/components/admin/security-card";
+import { SessionsList, type SessionRow } from "@/components/admin/security-card";
+import { EmailSetupForm } from "@/components/forms/email-code-forms";
+import { Alert } from "@/components/ui/alert";
+import { emailTwoFactorRequired } from "@/server/email-code";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 
 export async function generateMetadata() {
   const { t } = await getT();
@@ -37,7 +41,7 @@ export default async function SettingsPage() {
       take: 20,
       select: { id: true, ip: true, userAgent: true, lastSeenAt: true },
     }),
-    prisma.user.findUniqueOrThrow({ where: { id: admin.id }, select: { totpEnabledAt: true, recoveryCodes: true } }),
+    prisma.user.findUniqueOrThrow({ where: { id: admin.id }, select: { email: true, emailVerifiedAt: true } }),
   ]);
   const sessionRows: SessionRow[] = sessions.map((s) => ({
     id: s.id,
@@ -68,10 +72,26 @@ export default async function SettingsPage() {
           </CardHeader>
           <CardContent><SessionsList sessions={sessionRows} /></CardContent>
         </Card>
-        {me.totpEnabledAt && (
-          <Card>
-            <CardHeader><CardTitle>{t("Ikki bosqichli tasdiqlash")}</CardTitle></CardHeader>
-            <CardContent><RecoveryCodesForm enabledAt={formatDateTime(me.totpEnabledAt, lang)} left={me.recoveryCodes.length} /></CardContent>
+        {admin.roles.includes("ADMIN") && (
+          <Card id="email-2fa">
+            <CardHeader>
+              <CardTitle>{t("Ikki bosqichli tasdiqlash")}</CardTitle>
+              <CardDescription>{t("Tizimga kirishda paroldan keyin Gmail pochtangizga kelgan kod so'raladi.")}</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              {me.email && me.emailVerifiedAt ? (
+                <p className="flex items-center gap-2 text-sm font-medium text-success">
+                  <ShieldCheck className="size-4 shrink-0" />
+                  {t("Tasdiqlangan email: {email}", { email: me.email })}
+                </p>
+              ) : (
+                <Alert variant="warning"><AlertTriangle /><span>{t("Email hali tasdiqlanmagan. Gmail manzilingizni kiriting va kelgan kod bilan tasdiqlang.")}</span></Alert>
+              )}
+              {!emailTwoFactorRequired() && (
+                <Alert variant="warning"><AlertTriangle /><span>{t("Xat yuborish hozircha sozlanmagan, shuning uchun kirishda kod so'ralmayapti.")}</span></Alert>
+              )}
+              <EmailSetupForm mode="settings" />
+            </CardContent>
           </Card>
         )}
         <Card className="lg:col-span-2">

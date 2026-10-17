@@ -6,11 +6,10 @@ import { prisma } from "@/lib/db";
 import type { Role } from "@prisma/client";
 import { completeMfa, createSession, destroySession, getCurrentUser, getPendingMfa, homeFor, requireUser, revokeOtherSessions, setActiveRole } from "@/lib/auth";
 import { captchaSiteKey, verifyCaptcha } from "@/lib/captcha";
-import { generateRecoveryCodes, hashRecoveryCode } from "@/lib/recovery-codes";
 import { getClientIp } from "@/lib/request-info";
-import { verifyTotp } from "@/lib/totp";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { audit } from "@/server/audit";
+import { EMAIL_RE, emailTwoFactorRequired, issueEmailCode, maskEmail, verifyEmailCode } from "@/server/email-code";
 import { loginGate, recordLoginAttempt } from "@/server/rate-limit";
 import { LEGACY_DEFAULT_PASSWORD } from "@/server/student-account";
 import { changePasswordSchema, fieldErrors, loginSchema, weakPasswordReason, type FormState } from "@/lib/validation";
@@ -67,9 +66,17 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   }
 
   await recordLoginAttempt(ip, login, true);
-  // Super admin: paroldan keyin ikki bosqichli tasdiq majburiy
-  if (isAdminUser(user)) {
-    await createSession(user.id, { mfaPending: true });
+  // Super admin: paroldan keyin emailga yuborilgan kod bilan tasdiqlash majburiy
+  if (isAdminUser(user) && emailTwoFactorRequired()) {
+    const sessionId = await createSession(user.id, { mfaPending: true });
+    if (user.email && user.emailVerifiedAt) {
+      const err = await issueEmailCode(user.id, "login", user.email, sessionId);
+      if (err) {
+        // Xat ketmasa kirish yopiq qoladi
+        await prisma.session.deleteMany({ where: { id: sessionId } });
+        return { message: err };
+      }
+    }
     redirect("/login/2fa");
   }
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
@@ -86,7 +93,7 @@ async function finishMfa(sessionId: string, user: { id: string; fullName: string
   await audit("login", null, how, { id: user.id, fullName: user.fullName, login: user.login });
 }
 
-async function mfaFailed(userId: string, sessionId: string): Promise<FormState> {
+async function codeFailed(userId: string, sessionId: string, error: string): Promise<FormState> {
   const ip = await getClientIp();
   await recordLoginAttempt(ip, `mfa:${userId}`, false);
   const fails = await prisma.loginAttempt.count({ where: { login: `mfa:${userId}`, success: false, createdAt: { gte: new Date(Date.now() - 15 * 60 * 1000) } } });
@@ -94,47 +101,75 @@ async function mfaFailed(userId: string, sessionId: string): Promise<FormState> 
     await prisma.session.deleteMany({ where: { id: sessionId } });
     return { message: "Juda ko'p noto'g'ri kod. Qaytadan tizimga kiring." };
   }
-  return { errors: { code: "Kod noto'g'ri yoki eskirgan" } };
+  return { errors: { code: error } };
 }
 
-/** Kirishda ikki bosqichli tasdiq: ilovadagi 6 xonali kod yoki zaxira kod. */
+/** Kirishda ikkinchi bosqich: Super admin emailiga yuborilgan 6 xonali kod. */
 export async function verifyMfaAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const pending = await getPendingMfa();
   if (!pending) redirect("/login");
   const { user } = pending;
-  if (!user.totpSecret || !user.totpEnabledAt) redirect("/login/2fa");
-  const raw = String(formData.get("code") ?? "").trim();
-  if (!raw) return { errors: { code: "Kodni kiriting" } };
-  const step = verifyTotp(user.totpSecret, raw, user.totpLastStep);
-  if (step !== null) {
-    await prisma.user.update({ where: { id: user.id }, data: { totpLastStep: step } });
-    await finishMfa(pending.id, user, "2FA");
-  } else {
-    const h = hashRecoveryCode(raw);
-    if (!user.recoveryCodes.includes(h)) return mfaFailed(user.id, pending.id);
-    await prisma.user.update({ where: { id: user.id }, data: { recoveryCodes: user.recoveryCodes.filter((c) => c !== h) } });
-    await finishMfa(pending.id, user, "zaxira kod");
-  }
+  if (!user.email || !user.emailVerifiedAt) redirect("/login/2fa");
+  const code = String(formData.get("code") ?? "").trim();
+  if (!code) return { errors: { code: "Kodni kiriting" } };
+  const res = await verifyEmailCode(user.id, "login", code, pending.id);
+  if (!res.ok) return codeFailed(user.id, pending.id, res.error);
+  await finishMfa(pending.id, user, "email kod");
   redirect(user.mustChangePassword ? "/change-password" : homeFor(user.role));
 }
 
-/** Birinchi marta: autentifikator ilovasini ulash. Kod to'g'ri bo'lsa, zaxira kodlar bir marta ko'rsatiladi. */
-export async function setupMfaAction(_prev: FormState, formData: FormData): Promise<FormState> {
+/** Kirish kodini qayta yuborish. */
+export async function resendMfaCodeAction(): Promise<FormState> {
   const pending = await getPendingMfa();
   if (!pending) redirect("/login");
   const { user } = pending;
-  if (user.totpEnabledAt) redirect("/login/2fa");
-  if (!user.totpSecret) return { message: "Sahifani yangilang" };
-  const step = verifyTotp(user.totpSecret, String(formData.get("code") ?? ""), null);
-  if (step === null) return mfaFailed(user.id, pending.id);
-  const codes = generateRecoveryCodes();
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { totpEnabledAt: new Date(), totpLastStep: step, recoveryCodes: codes.map(hashRecoveryCode) },
-  });
-  await finishMfa(pending.id, user, "2FA yoqildi");
-  await audit("mfa.enable", user.fullName, null, { id: user.id, fullName: user.fullName, login: user.login });
-  return { ok: true, recoveryCodes: codes };
+  if (!user.email || !user.emailVerifiedAt) redirect("/login/2fa");
+  const err = await issueEmailCode(user.id, "login", user.email, pending.id);
+  return err ? { message: err } : { ok: true, sentTo: maskEmail(user.email) };
+}
+
+async function checkNewEmail(raw: FormDataEntryValue | null, userId: string): Promise<{ email: string } | { error: string }> {
+  const email = String(raw ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email) || email.length > 120) return { error: "Email manzilini to'g'ri kiriting" };
+  const taken = await prisma.user.findFirst({ where: { email, NOT: { id: userId } }, select: { id: true } });
+  if (taken) return { error: "Bu email boshqa hisobga biriktirilgan" };
+  return { email };
+}
+
+/** Birinchi kirishda: Super admin Gmail manzilini kiritadi, unga tasdiqlash kodi yuboriladi. */
+export async function startMfaEmailSetupAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const pending = await getPendingMfa();
+  if (!pending) redirect("/login");
+  if (pending.user.emailVerifiedAt) redirect("/login/2fa");
+  const r = await checkNewEmail(formData.get("email"), pending.user.id);
+  if ("error" in r) return { errors: { email: r.error } };
+  const err = await issueEmailCode(pending.user.id, "verify_email", r.email, pending.id);
+  return err ? { message: err } : { ok: true, sentTo: maskEmail(r.email) };
+}
+
+/** Birinchi kirishda: emailga kelgan kod to'g'ri bo'lsa, email tasdiqlanadi va kirish yakunlanadi. */
+export async function confirmMfaEmailSetupAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const pending = await getPendingMfa();
+  if (!pending) redirect("/login");
+  const { user } = pending;
+  if (user.emailVerifiedAt) redirect("/login/2fa");
+  const res = await verifyEmailCode(user.id, "verify_email", String(formData.get("code") ?? ""), pending.id);
+  if (!res.ok) return codeFailed(user.id, pending.id, res.error);
+  const saved = await saveVerifiedEmail(user.id, res.email);
+  if (!saved) return { message: "Bu email boshqa hisobga biriktirilgan" };
+  await finishMfa(pending.id, user, "email tasdiqlandi");
+  await audit("email.verify", user.fullName, maskEmail(res.email), { id: user.id, fullName: user.fullName, login: user.login });
+  redirect(user.mustChangePassword ? "/change-password" : homeFor(user.role));
+}
+
+async function saveVerifiedEmail(userId: string, email: string) {
+  try {
+    await prisma.user.update({ where: { id: userId }, data: { email, emailVerifiedAt: new Date() } });
+    return true;
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002") return false;
+    throw e;
+  }
 }
 
 /** Bir nechta roli bo'lgan foydalanuvchi faol rolni almashtiradi. */
@@ -190,15 +225,28 @@ export async function logoutOtherSessionsAction(): Promise<void> {
   revalidatePath("/admin/settings");
 }
 
-/** Yangi zaxira kodlar (eskilari bekor bo'ladi). Ilovadagi joriy kod bilan tasdiqlanadi. */
-export async function regenerateRecoveryCodesAction(_prev: FormState, formData: FormData): Promise<FormState> {
+/** Sozlamalar: yangi email manziliga tasdiqlash kodi yuborish (joriy parol bilan). */
+export async function startEmailChangeAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const me = await requireUser();
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: me.id }, select: { totpSecret: true, totpEnabledAt: true, totpLastStep: true } });
-  if (!user.totpSecret || !user.totpEnabledAt) return { message: "Ikki bosqichli tasdiq yoqilmagan" };
-  const step = verifyTotp(user.totpSecret, String(formData.get("code") ?? ""), user.totpLastStep);
-  if (step === null) return { errors: { code: "Kod noto'g'ri yoki eskirgan" } };
-  const codes = generateRecoveryCodes();
-  await prisma.user.update({ where: { id: me.id }, data: { totpLastStep: step, recoveryCodes: codes.map(hashRecoveryCode) } });
-  await audit("mfa.recovery_codes", me.fullName);
-  return { ok: true, recoveryCodes: codes };
+  if (!me.roles.includes("ADMIN")) return { message: "Ruxsat yo'q" };
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: me.id }, select: { passwordHash: true } });
+  if (!(await verifyPassword(String(formData.get("password") ?? ""), user.passwordHash))) {
+    return { errors: { password: "Joriy parol noto'g'ri" } };
+  }
+  const r = await checkNewEmail(formData.get("email"), me.id);
+  if ("error" in r) return { errors: { email: r.error } };
+  const err = await issueEmailCode(me.id, "verify_email", r.email, me.sessionId);
+  return err ? { message: err } : { ok: true, sentTo: maskEmail(r.email) };
+}
+
+/** Sozlamalar: kod to'g'ri bo'lsa, yangi email saqlanadi. */
+export async function confirmEmailChangeAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const me = await requireUser();
+  if (!me.roles.includes("ADMIN")) return { message: "Ruxsat yo'q" };
+  const res = await verifyEmailCode(me.id, "verify_email", String(formData.get("code") ?? ""), me.sessionId);
+  if (!res.ok) return { errors: { code: res.error } };
+  if (!(await saveVerifiedEmail(me.id, res.email))) return { message: "Bu email boshqa hisobga biriktirilgan" };
+  await audit("email.verify", me.fullName, maskEmail(res.email));
+  revalidatePath("/admin", "layout");
+  return { ok: true, message: "Email tasdiqlandi. Endi tizimga kirishda shu manzilga kod yuboriladi." };
 }

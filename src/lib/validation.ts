@@ -153,4 +153,4 @@ export function fieldErrors(error: z.ZodError): FieldErrors {
   return out;
 }
 
-export type FormState = { ok?: boolean; message?: string; errors?: FieldErrors; captcha?: boolean; recoveryCodes?: string[] };
+export type FormState = { ok?: boolean; message?: string; errors?: FieldErrors; captcha?: boolean; sentTo?: string };

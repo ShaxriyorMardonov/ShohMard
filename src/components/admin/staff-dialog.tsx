@@ -14,7 +14,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { useT } from "@/i18n/client";
 import type { FormState } from "@/lib/validation";
 
-export type StaffRow = { id: string; fullName: string; login: string; roles: Role[]; universityId: string | null; isActive: boolean; totpEnabledAt?: Date | string | null };
+export type StaffRow = { id: string; fullName: string; login: string; roles: Role[]; universityId: string | null; isActive: boolean; email?: string | null; emailVerifiedAt?: Date | string | null };
 
 const ROLE_OPTIONS: { value: Role; label: string; hint: string }[] = [
   { value: "ADMIN", label: "Super admin", hint: "Hamma narsani boshqaradi" },
@@ -87,12 +87,12 @@ function StaffForm({ user, universities, isSelf, onDone }: { user?: StaffRow; un
           {t("Hisob faol")}
         </label>
       )}
-      {user && !isSelf && user.totpEnabledAt && (
+      {user && !isSelf && user.emailVerifiedAt && (
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="resetMfa" className="mt-0.5 size-4 accent-[#315ECA]" />
           <span>
-            {t("Ikki bosqichli tasdiqni qayta o'rnatish")}
-            <span className="block text-xs text-muted-foreground">{t("Telefonini yo'qotgan bo'lsa: keyingi kirishda ilovani qaytadan ulaydi.")}</span>
+            {t("Tasdiqlash emailini qayta o'rnatish")} {user.email && <span className="font-mono text-xs">({user.email})</span>}
+            <span className="block text-xs text-muted-foreground">{t("Pochtasiga kira olmasa: keyingi kirishda yangi Gmail manzilini tasdiqlaydi.")}</span>
           </span>
         </label>
       )}

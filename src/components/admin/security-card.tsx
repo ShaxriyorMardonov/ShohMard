@@ -1,15 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { AlertCircle, KeyRound, LogOut, Monitor, ShieldCheck, Smartphone } from "lucide-react";
-import { logoutOtherSessionsAction, regenerateRecoveryCodesAction } from "@/actions/auth";
-import { Field } from "@/components/forms/field";
-import { useFormAction } from "@/components/forms/use-form-action";
-import { Alert } from "@/components/ui/alert";
+import { LogOut, Monitor, Smartphone } from "lucide-react";
+import { logoutOtherSessionsAction } from "@/actions/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { useT } from "@/i18n/client";
 
 export type SessionRow = { id: string; current: boolean; ip: string | null; device: string; mobile: boolean; lastSeen: string };
@@ -36,37 +31,6 @@ export function SessionsList({ sessions }: { sessions: SessionRow[] }) {
         <Button type="button" variant="outline" size="sm" className="w-fit" disabled={pending} onClick={() => start(() => logoutOtherSessionsAction())}>
           <LogOut /> {t("Boshqa qurilmalardan chiqish ({n})", { n: others })}
         </Button>
-      )}
-    </div>
-  );
-}
-
-export function RecoveryCodesForm({ enabledAt, left }: { enabledAt: string; left: number }) {
-  const { t } = useT();
-  const { state, onSubmit, pending } = useFormAction(regenerateRecoveryCodesAction);
-  return (
-    <div className="grid gap-3 text-sm">
-      <p className="flex items-center gap-2 font-medium text-success">
-        <ShieldCheck className="size-4" /> {t("Ikki bosqichli tasdiq yoqilgan: {date}", { date: enabledAt })}
-      </p>
-      <p className="text-muted-foreground">{t("Qolgan zaxira kodlar: {n} ta", { n: left })}</p>
-      {state.ok && state.recoveryCodes ? (
-        <div>
-          <Alert variant="success"><KeyRound /><span>{t("Yangi zaxira kodlar. Ularni xavfsiz joyga yozib qo'ying: ular boshqa ko'rsatilmaydi.")}</span></Alert>
-          <pre className="mt-2 grid grid-cols-2 gap-1 rounded-lg bg-muted/60 p-3 text-center font-mono text-sm">
-            {state.recoveryCodes.map((c) => <span key={c}>{c}</span>)}
-          </pre>
-        </div>
-      ) : (
-        <form onSubmit={onSubmit} className="grid gap-2 sm:max-w-xs">
-          {state.message && <Alert variant="error"><AlertCircle /><span>{t(state.message)}</span></Alert>}
-          <Field label={t("Yangi zaxira kodlar olish uchun ilovadagi kodni kiriting")} htmlFor="rc-code" error={state.errors?.code ? t(state.errors.code) : undefined}>
-            <Input id="rc-code" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="123456" className="font-mono tracking-widest" />
-          </Field>
-          <SubmitButton pending={pending} size="sm" variant="outline" className="w-fit" pendingText={t("Tekshirilmoqda...")}>
-            <KeyRound /> {t("Yangi zaxira kodlar")}
-          </SubmitButton>
-        </form>
       )}
     </div>
   );

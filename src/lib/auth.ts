@@ -21,7 +21,7 @@ function hashToken(token: string) {
 export async function createSession(userId: string, opts: { mfaPending?: boolean } = {}) {
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + (opts.mfaPending ? MFA_PENDING_MS : SESSION_TTL_MS));
-  await prisma.session.create({
+  const session = await prisma.session.create({
     data: {
       tokenHash: hashToken(token),
       userId,
@@ -40,6 +40,7 @@ export async function createSession(userId: string, opts: { mfaPending?: boolean
     path: "/",
     expires: new Date(Date.now() + SESSION_TTL_MS),
   });
+  return session.id;
 }
 
 export async function destroySession() {
@@ -117,7 +118,7 @@ export async function getPendingMfa() {
       id: true,
       expiresAt: true,
       mfaPending: true,
-      user: { select: { id: true, login: true, fullName: true, role: true, roles: true, isActive: true, totpSecret: true, totpEnabledAt: true, totpLastStep: true, recoveryCodes: true, mustChangePassword: true } },
+      user: { select: { id: true, login: true, fullName: true, role: true, roles: true, isActive: true, email: true, emailVerifiedAt: true, mustChangePassword: true } },
     },
   });
   if (!session || !session.mfaPending || session.expiresAt < new Date() || !session.user.isActive) return null;
@@ -126,7 +127,7 @@ export async function getPendingMfa() {
 
 /** Ikki bosqichli tasdiq o'tildi: sessiya to'liq sessiyaga aylanadi. */
 export async function completeMfa(sessionId: string) {
-  // Cookie bu yerda o'zgartirilmaydi: aks holda sahifa qayta chizilib, zaxira kodlar ko'rinmay qoladi
+  // Cookie bu yerda o'zgartirilmaydi: sessiya muddatini baza belgilaydi
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
   await prisma.session.update({ where: { id: sessionId }, data: { mfaPending: false, expiresAt, lastSeenAt: new Date() } });
 }

@@ -26,7 +26,7 @@ export default async function UsersPage() {
     prisma.user.findMany({
       where: { roles: { hasSome: ["ADMIN", "MANAGER"] } },
       orderBy: [{ role: "asc" }, { fullName: "asc" }],
-      select: { id: true, fullName: true, login: true, role: true, roles: true, universityId: true, isActive: true, lastLoginAt: true, totpEnabledAt: true, university: { select: { shortName: true } } },
+      select: { id: true, fullName: true, login: true, role: true, roles: true, universityId: true, isActive: true, lastLoginAt: true, email: true, emailVerifiedAt: true, university: { select: { shortName: true } } },
     }),
     prisma.university.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
