@@ -89,3 +89,8 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Sertifikat sarlavhalari uchun serif shrift (next/font orqali yuklanadi) */
+.cert-serif {
+  font-family: var(--font-cert), Georgia, "Times New Roman", serif;
+}

@@ -1,11 +1,11 @@
 import { BRAND } from "@/components/brand/samu-logo";
 
-const GOLD = "#C9A227";
+import { GOLD } from "./ornaments";
 
 /** Sertifikat uchun SAMU medalyoni: oltin hoshiyali doira ichida belgi. */
 function Medallion() {
   return (
-    <svg viewBox="0 0 100 100" aria-hidden className="size-[clamp(30px,4vw,46px)] shrink-0">
+    <svg viewBox="0 0 100 100" aria-hidden className="size-[4.6cqw] shrink-0 drop-shadow-[0_0.3cqw_0.5cqw_rgba(11,31,99,0.25)]">
       <defs>
         <linearGradient id="cert-medal" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#3D6FE6" />
@@ -33,9 +33,9 @@ function Medallion() {
 /** Bezak chizig'i: chetga qarab so'nadigan oltin chiziq va ichki uchida romb. */
 function Rule({ side }: { side: "left" | "right" }) {
   return (
-    <span aria-hidden className={`flex flex-1 items-center gap-[6px] ${side === "left" ? "" : "flex-row-reverse"}`}>
-      <span className="h-px flex-1" style={{ background: `linear-gradient(to ${side === "left" ? "right" : "left"}, transparent, ${GOLD})` }} />
-      <span className="text-[clamp(7px,0.8vw,10px)] leading-none" style={{ color: GOLD }}>◆</span>
+    <span aria-hidden className={`flex flex-1 items-center gap-[0.8cqw] ${side === "left" ? "" : "flex-row-reverse"}`}>
+      <span className="h-[0.12cqw] flex-1" style={{ background: `linear-gradient(to ${side === "left" ? "right" : "left"}, transparent, ${GOLD})` }} />
+      <span className="size-[0.75cqw] rotate-45" style={{ background: GOLD }} />
     </span>
   );
 }
@@ -49,15 +49,13 @@ function Rule({ side }: { side: "left" | "right" }) {
 export function CertificateBrand() {
   return (
     <div className="flex w-full flex-col items-center" aria-label={`${BRAND.name} — ${BRAND.fullName}`}>
-      <div className="flex w-[46%] items-center gap-[clamp(8px,1.2vw,14px)]">
+      <div className="flex w-[52%] items-center gap-[1.2cqw]">
         <Rule side="left" />
         <Medallion />
         <Rule side="right" />
       </div>
-      <span className="mt-[0.25em] bg-gradient-to-b from-[#1B2E6E] to-[#315ECA] bg-clip-text pl-[0.34em] font-serif text-[clamp(20px,2.9vw,34px)] font-bold leading-none tracking-[0.34em] text-transparent">
-        SAMU
-      </span>
-      <span className="mt-[0.5em] pl-[0.3em] text-[clamp(7px,0.82vw,10px)] font-semibold uppercase leading-none tracking-[0.3em] text-midnight/70">
+      <span className="cert-serif mt-[0.5cqw] pl-[0.28em] text-[3.1cqw] font-extrabold leading-none tracking-[0.28em] text-[#0B2A7A]">SAMU</span>
+      <span className="mt-[0.6cqw] pl-[0.3em] text-[0.9cqw] font-semibold uppercase leading-none tracking-[0.3em] text-[#1B2B55]/80">
         {BRAND.fullName}
       </span>
     </div>

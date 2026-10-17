@@ -4,8 +4,14 @@ import { formatDate } from "@/lib/time";
 import type { Lang } from "@/i18n/config";
 import type { TFunction } from "@/i18n/translate";
 import type { Certificate } from "@/server/certificate";
+import { Award, Star, Trophy } from "lucide-react";
+import { Noto_Serif } from "next/font/google";
 import { CertificateBrand } from "./brand";
+import { CertificateDecor, GOLD, GoldDivider, Laurel, RibbonShape } from "./ornaments";
 import { SamuSeal } from "./seal";
+
+/** Sertifikat sarlavhalari uchun og'ir serif shrift (lotin va kirill). */
+const certSerif = Noto_Serif({ subsets: ["latin", "cyrillic"], weight: ["700", "800", "900"], variable: "--font-cert", display: "swap" });
 
 const fmtScore = (v: number | null) => String(Math.round((v ?? 0) * 100) / 100);
 
@@ -22,38 +28,62 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
     c.user.faculty ? t("{name} fakulteti", { name: c.user.faculty.name }) : null,
     c.user.group ? t("{name} guruhi", { name: c.user.group.name }) : null,
   ].filter(Boolean);
+  const ribbon =
+    key === "winner"
+      ? t("«{name}» xalqaro olimpiadasi g'olibi", { name: c.test.title })
+      : key === "super"
+        ? t("Super! Ishtirokingiz bilan tabriklaymiz!")
+        : olympiad && key !== "fail"
+          ? key === "excellent"
+            ? t("Faol ishtirokingiz uchun")
+            : t("Ishtirokingiz uchun")
+          : null;
+  // Uzun matnlar (masalan, ruscha) lenta va baho katagiga sig'ishi uchun shrift o'lchami moslashadi
+  const fit = (text: string, max: number, room: number, k: number) => `${Math.min(max, room / (text.length * k)).toFixed(2)}cqw`;
+  const stats = [
+    { icon: Trophy, label: t("Natija"), value: `${c.percent}%` },
+    { icon: Star, label: t("Ball"), value: `${fmtScore(c.score)}/${fmtScore(c.maxScore)}` },
+    { icon: Award, label: t("To'g'ri javoblar"), value: `${c.correctCount}/${c.totalQuestions}` },
+  ];
   return (
-    <div className="certificate relative mx-auto flex aspect-[297/210] w-full max-w-[1100px] flex-col overflow-hidden bg-white text-midnight shadow-xl print:max-w-none print:shadow-none">
-      {/* Bezak ramkalari */}
-      <div aria-hidden className="absolute inset-[2.2%] rounded-sm border-[3px] border-midnight" />
-      <div aria-hidden className="absolute inset-[3.2%] rounded-sm border border-royal/60" />
-      <div aria-hidden className="absolute -right-[8%] -top-[18%] size-[42%] rounded-full bg-royal/[0.06]" />
-      <div aria-hidden className="absolute -bottom-[22%] -left-[10%] size-[45%] rounded-full bg-royal/[0.05]" />
+    <div
+      className={`certificate ${certSerif.variable} relative mx-auto flex aspect-[297/210] w-full max-w-[1100px] flex-col overflow-hidden bg-white text-[#0B1B4D] shadow-xl [container-type:inline-size] print:max-w-none print:shadow-none`}
+    >
+      <CertificateDecor />
 
-      <div className="relative flex flex-1 flex-col items-center px-[9%] pt-[3.4%] pb-[3.2%] text-center">
-        <p className="mb-[1%] pl-[0.12em] text-[clamp(11px,1.45vw,17px)] font-bold uppercase tracking-[0.12em] text-midnight print:text-[17px]">
+      <div className="relative flex flex-1 flex-col items-center px-[11%] pt-[3.4cqw] pb-[3cqw] text-center">
+        <p className="pl-[0.08em] text-[1.6cqw] font-extrabold uppercase leading-none tracking-[0.08em] text-[#0B1B4D]">
           {t("O'zbekiston Respublikasi Ta'lim va ilm-fan vazirligi")}
         </p>
-        <CertificateBrand />
-        <h1 className="mt-[1%] pl-[0.18em] font-serif text-[clamp(24px,4.3vw,48px)] font-bold leading-tight tracking-[0.18em] text-midnight">{t("SERTIFIKAT")}</h1>
-        {olympiad && <p className="mt-[0.6%] text-[clamp(12px,1.6vw,19px)] font-bold uppercase tracking-[0.12em] text-royal">{olympiadName}</p>}
-        <p className="mt-[1%] text-[clamp(11px,1.3vw,15px)] uppercase tracking-[0.25em] text-muted-foreground">{t("Ushbu sertifikat")}</p>
-        <p className="mt-[1.1%] border-b-2 border-royal/40 px-8 pb-1 font-serif text-[clamp(20px,3.3vw,36px)] font-bold text-royal">{c.user.fullName}</p>
-        {org.length > 0 && <p className="mt-[1%] text-[clamp(11px,1.35vw,16px)] text-midnight/80">{org.join(" · ")}</p>}
-        {key === "winner" ? (
-          <p className="mt-[1.1%] max-w-[85%] rounded-lg bg-royal px-6 py-[0.7%] font-serif text-[clamp(13px,2vw,23px)] font-bold uppercase tracking-wide text-white">
-            {t("«{name}» xalqaro olimpiadasi g'olibi", { name: c.test.title })}
-          </p>
-        ) : key === "super" ? (
-          <p className="mt-[1.1%] max-w-[85%] rounded-lg bg-royal px-6 py-[0.7%] font-serif text-[clamp(13px,2vw,23px)] font-bold text-white">
-            {t("Super! Ishtirokingiz bilan tabriklaymiz!")}
-          </p>
-        ) : olympiad && key !== "fail" ? (
-          <p className="mt-[1.1%] max-w-[85%] rounded-lg border-2 border-royal px-6 py-[0.6%] font-serif text-[clamp(12px,1.8vw,21px)] font-bold text-royal">
-            {key === "excellent" ? t("Faol ishtirokingiz uchun") : t("Ishtirokingiz uchun")}
-          </p>
-        ) : null}
-        <p className="mt-[1.1%] max-w-[88%] text-[clamp(11px,1.4vw,16px)] leading-normal">
+        <div className="mt-[1cqw] w-full"><CertificateBrand /></div>
+        <h1
+          className="cert-serif mt-[0.8cqw] pl-[0.06em] text-[6.6cqw] font-black uppercase leading-none tracking-[0.06em] text-[#0B1F5C]"
+          style={{ textShadow: "0 0.25cqw 0.5cqw rgba(11,31,92,0.18)" }}
+        >
+          {t("SERTIFIKAT")}
+        </h1>
+        {olympiad && (
+          <div className="mt-[0.6cqw] flex w-full items-center justify-center gap-[1.4cqw]">
+            <span aria-hidden className="h-[0.15cqw] w-[6cqw] bg-gradient-to-r from-transparent to-[#1F4FC4]" />
+            <p className="text-[1.85cqw] font-extrabold uppercase leading-none tracking-[0.04em] text-[#1F4FC4]">{olympiadName}</p>
+            <span aria-hidden className="h-[0.15cqw] w-[6cqw] bg-gradient-to-l from-transparent to-[#1F4FC4]" />
+          </div>
+        )}
+        <p className="mt-[0.8cqw] pl-[0.22em] text-[1.25cqw] uppercase leading-none tracking-[0.22em] text-[#4A5A84]">{t("Ushbu sertifikat")}</p>
+        <p className="cert-serif mt-[0.8cqw] text-[4.3cqw] font-extrabold leading-tight text-[#0B1F5C]">{c.user.fullName}</p>
+        {org.length > 0 && <p className="mt-[0.2cqw] text-[1.35cqw] leading-tight text-[#2A3A66]">{org.join(" · ")}</p>}
+        <GoldDivider className="mt-[0.5cqw] w-[50%]" />
+        {ribbon && (
+          <div className="relative mt-[1cqw] flex h-[5cqw] min-w-[54%] max-w-[88%] items-center justify-center gap-[1.2cqw] px-[3.8cqw]">
+            <RibbonShape />
+            <Laurel className="relative h-[3.4cqw] w-[1.8cqw] shrink-0" />
+            <p className="cert-serif relative whitespace-nowrap font-extrabold uppercase leading-none tracking-[0.02em] text-white" style={{ fontSize: fit(ribbon, 2, 72, 0.9) }}>
+              {ribbon}
+            </p>
+            <Laurel flip className="relative h-[3.4cqw] w-[1.8cqw] shrink-0" />
+          </div>
+        )}
+        <p className="mt-[1.2cqw] max-w-[94%] text-[1.3cqw] leading-snug text-[#1B2B55]">
           {olympiad
             ? t("{olympiad}da {date} kuni ishtirok etib, {max} balldan {score} ball to'plagani uchun berildi.", {
                 olympiad: olympiadName,
@@ -68,32 +98,45 @@ export function CertificateView({ c, qrSvg, t, lang }: { c: Certificate; qrSvg: 
                 max: fmtScore(c.maxScore),
               })}
         </p>
-        <div className="mt-[1.4%] grid w-full max-w-[78%] grid-cols-4 overflow-hidden rounded-lg border border-royal/30 text-[clamp(10px,1.2vw,14px)]">
-          {[
-            [t("Natija"), `${c.percent}%`],
-            [t("Ball"), `${fmtScore(c.score)}/${fmtScore(c.maxScore)}`],
-            [t("To'g'ri javoblar"), `${c.correctCount}/${c.totalQuestions}`],
-            [t("Baho"), grade],
-          ].map(([k, v], i) => (
-            <div key={k} className={`px-2 py-[1.2%] ${i ? "border-l border-royal/30" : ""} ${i === 3 ? "bg-royal text-white" : "bg-royal/[0.04]"}`}>
-              <p className={`text-[0.8em] uppercase tracking-wide ${i === 3 ? "text-white/80" : "text-muted-foreground"}`}>{k}</p>
-              <p className="text-[1.35em] font-extrabold">{v}</p>
+        <div className="mt-[1.3cqw] grid h-[6.1cqw] w-[74%] grid-cols-[1fr_1.15fr_1.25fr_1.1fr] overflow-hidden rounded-[1.1cqw] border border-[#1F4FC4]/35 bg-white/90 shadow-[0_0.4cqw_1.2cqw_rgba(11,31,99,0.12)]">
+          {stats.map(({ icon: Icon, label, value }, i) => (
+            <div key={label} className={`flex items-center gap-[0.9cqw] px-[1.1cqw] ${i ? "border-l border-[#1F4FC4]/20" : ""}`}>
+              <span className="flex size-[3.3cqw] shrink-0 items-center justify-center rounded-full bg-gradient-to-b from-[#2F63DA] to-[#0B1F63] shadow-[0_0.2cqw_0.4cqw_rgba(11,31,99,0.3)]">
+                <Icon className="size-[1.9cqw] text-white" strokeWidth={2.2} />
+              </span>
+              <span className="min-w-0 text-left leading-none">
+                <span className="block text-[0.82cqw] font-semibold uppercase leading-tight tracking-wide text-[#4A5A84]">{label}</span>
+                <span className="mt-[0.4cqw] block whitespace-nowrap text-[2cqw] font-extrabold text-[#0B1B4D]">{value}</span>
+              </span>
             </div>
           ))}
+          <div className="relative flex items-center justify-center gap-[0.8cqw] bg-gradient-to-b from-[#2F63DA] via-[#1D46B4] to-[#0B1F63] text-white">
+            {grade.length <= 8 && <Laurel className="h-[4cqw] w-[2cqw] shrink-0" />}
+            <span className="leading-none">
+              <span className="flex items-center justify-center gap-[0.4cqw] text-[0.9cqw] font-semibold uppercase tracking-wide text-white/85">
+                <Star className="size-[1cqw]" fill={GOLD} stroke={GOLD} /> {t("Baho")}
+              </span>
+              <span className="mt-[0.4cqw] block whitespace-nowrap font-extrabold" style={{ fontSize: fit(grade, 2, 11.5, 0.7) }}>{grade}</span>
+            </span>
+            {grade.length <= 8 && <Laurel flip className="h-[4cqw] w-[2cqw] shrink-0" />}
+          </div>
         </div>
 
-        <div className="mt-auto flex w-full items-end justify-between gap-4">
-          <div className="flex w-[30%] flex-col items-center">
-            <div className="w-[min(104px,9.5vw)] print:w-[104px]"><SamuSeal size={104} /></div>
-            <p className="mt-1 text-[clamp(9px,1vw,12px)] text-muted-foreground">{t("SAMU platformasi muhri")}</p>
+        <div className="mt-auto flex w-full items-end justify-between">
+          <div className="flex w-[28%] flex-col items-center pl-[3cqw]">
+            <div className="w-[9.2cqw] [&_svg]:size-full"><SamuSeal size={104} /></div>
+            <p className="mt-[0.4cqw] text-[1cqw] text-[#2A3A66]">{t("SAMU platformasi muhri")}</p>
           </div>
-          <div className="w-[36%] text-[clamp(9px,1.05vw,13px)] text-midnight/80">
-            <p>{t("Sertifikat raqami")}: <b className="font-mono text-midnight">{c.number}</b></p>
-            <p>{t("Berilgan sana")}: <b className="text-midnight">{formatDate(c.submittedAt, lang)}</b></p>
+          <div className="flex w-[36%] flex-col items-center pb-[0.4cqw] text-[1.2cqw] leading-relaxed text-[#2A3A66]">
+            <GoldDivider className="mb-[0.8cqw] w-[70%]" />
+            <p>{t("Sertifikat raqami")}: <b className="font-extrabold text-[#0B2A7A]">{c.number}</b></p>
+            <p>{t("Berilgan sana")}: <b className="font-extrabold text-[#0B2A7A]">{formatDate(c.submittedAt, lang)}</b></p>
           </div>
-          <div className="flex w-[30%] flex-col items-center">
-            <div className="size-[min(110px,10vw)] print:size-[110px] [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: qrSvg }} />
-            <p className="mt-1 max-w-[180px] text-[clamp(8px,0.9vw,11px)] leading-tight text-muted-foreground">{t("Haqiqiyligini tekshirish uchun QR kodni skanerlang")}</p>
+          <div className="flex w-[28%] flex-col items-center pr-[3cqw]">
+            <div className="rounded-[0.8cqw] bg-white p-[0.6cqw] shadow-[0_0.3cqw_1cqw_rgba(11,31,99,0.15)]">
+              <div className="size-[7.8cqw] [&_svg]:size-full" dangerouslySetInnerHTML={{ __html: qrSvg }} />
+            </div>
+            <p className="mt-[0.5cqw] max-w-[16cqw] text-[0.9cqw] leading-tight text-[#2A3A66]">{t("Haqiqiyligini tekshirish uchun QR kodni skanerlang")}</p>
           </div>
         </div>
       </div>
